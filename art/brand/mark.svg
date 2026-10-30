@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="t">
+  <title id="t">Outrun Your Soul</title>
+  <!-- The mark: the ivory masked body racing ahead, the pale soul trailing on the vermilion thread, inside the gold railway ring. Original artwork. -->
+  <defs>
+    <radialGradient id="bg" cx="50%" cy="38%" r="70%">
+      <stop offset="0" stop-color="#3f66cc"/>
+      <stop offset="0.55" stop-color="#2443a3"/>
+      <stop offset="1" stop-color="#14215a"/>
+    </radialGradient>
+    <radialGradient id="glow" cx="50%" cy="50%" r="50%">
+      <stop offset="0" stop-color="#9fe3ff" stop-opacity="0.95"/>
+      <stop offset="0.45" stop-color="#5cc8ff" stop-opacity="0.55"/>
+      <stop offset="1" stop-color="#5cc8ff" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="thread" x1="0" y1="1" x2="1" y2="0">
+      <stop offset="0" stop-color="#e8411f" stop-opacity="0.55"/>
+      <stop offset="1" stop-color="#e8411f"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="112" fill="url(#bg)"/>
+  <circle cx="256" cy="256" r="200" fill="none" stroke="#d9a43c" stroke-width="12"/>
+  <circle cx="256" cy="256" r="182" fill="none" stroke="#d9a43c" stroke-opacity="0.35" stroke-width="3"/>
+  <!-- speed marks behind the body -->
+  <g stroke="#f4ecd8" stroke-linecap="round" stroke-opacity="0.75">
+    <line x1="252" y1="150" x2="290" y2="150" stroke-width="9"/>
+    <line x1="232" y1="182" x2="282" y2="182" stroke-width="9"/>
+    <line x1="252" y1="214" x2="288" y2="214" stroke-width="9"/>
+  </g>
+  <!-- the thread: a forecast, not a weapon -->
+  <path d="M152 344 C 214 352, 246 268, 300 226 S 344 186, 350 182" fill="none" stroke="url(#thread)" stroke-width="20" stroke-linecap="round"/>
+  <!-- the soul, slower, glowing -->
+  <circle cx="152" cy="344" r="74" fill="url(#glow)"/>
+  <circle cx="152" cy="344" r="38" fill="#c9f2ff"/>
+  <path d="M136 340 q6 -7 12 0 M156 340 q6 -7 12 0" fill="none" stroke="#2443a3" stroke-width="5" stroke-linecap="round"/>
+  <!-- the body: ivory mask, dark slit -->
+  <circle cx="352" cy="180" r="56" fill="#f4ecd8" stroke="#14215a" stroke-width="8"/>
+  <rect x="320" y="172" width="64" height="14" rx="7" fill="#1b1830"/>
+  <path d="M398 206 q24 18 40 6" fill="none" stroke="#e8411f" stroke-width="12" stroke-linecap="round"/>
+</svg>

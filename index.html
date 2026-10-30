@@ -8,7 +8,25 @@
     />
     <meta name="theme-color" content="#14215a" />
     <meta name="description" content="Your body can outrun death. Your soul cannot." />
-    <link rel="icon" href="data:," />
+    <link rel="icon" href="./favicon.svg" type="image/svg+xml" />
+    <link rel="icon" href="./favicon-32.png" sizes="32x32" type="image/png" />
+    <link rel="icon" href="./favicon-16.png" sizes="16x16" type="image/png" />
+    <link rel="apple-touch-icon" href="./apple-touch-icon.png" />
+    <link rel="manifest" href="./site.webmanifest" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="Outrun" />
+    <meta name="author" content="Junaid" />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Outrun Your Soul" />
+    <meta property="og:description" content="Your body can outrun death. Your soul cannot. A touch-first action roguelite on a funeral railway." />
+    <meta property="og:image" content="https://outrun-your-soul.vercel.app/og.jpg" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:url" content="https://outrun-your-soul.vercel.app/" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Outrun Your Soul" />
+    <meta name="twitter:description" content="Your body can outrun death. Your soul cannot." />
+    <meta name="twitter:image" content="https://outrun-your-soul.vercel.app/og.jpg" />
     <title>Outrun Your Soul</title>
     <style>
       html,
@@ -45,6 +63,7 @@
         transition: opacity 0.5s ease;
       }
       #boot.is-done { opacity: 0; pointer-events: none; }
+      #boot .mark { width: 84px; height: 84px; filter: drop-shadow(0 8px 18px rgba(5, 8, 30, 0.5)); margin-bottom: 6px; }
       #boot .k { letter-spacing: 0.32em; font-size: 12px; color: #d9a43c; text-transform: uppercase; font-family: system-ui, sans-serif; }
       #boot h1 { margin: 0; font-weight: 400; font-size: clamp(34px, 11vw, 56px); line-height: 1.02; letter-spacing: 0.06em; color: #f4ecd8; }
       #boot h1 span { display: block; font-size: 0.56em; letter-spacing: 0.3em; }
@@ -63,6 +82,7 @@
   <body>
     <div id="app"></div>
     <div id="boot" role="status" aria-live="polite">
+      <img class="mark" src="./favicon.svg" alt="" width="84" height="84" />
       <div class="k">A funeral-railway escape</div>
       <h1>Outrun<span>your soul</span></h1>
       <div class="track" aria-hidden="true"><div class="thread"></div><div class="soul"></div><div class="body"></div></div>

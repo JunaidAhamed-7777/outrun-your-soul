@@ -1,98 +1,126 @@
-# OUTRUN YOUR SOUL
+<p align="center">
+  <img src="art/brand/banner.png" alt="Outrun Your Soul — a funeral-railway escape. Your body can outrun death. Your soul cannot." width="100%" />
+</p>
 
-**Your body can outrun death. Your soul cannot.**
+<p align="center">
+  <a href="https://outrun-your-soul.vercel.app"><b>▶ Play in your browser</b></a>
+  &nbsp;·&nbsp; portrait, touch-first &nbsp;·&nbsp; works with a mouse too
+  &nbsp;·&nbsp; made for <a href="https://itch.io/jam/slapjam-ai-2">Slapjam #2</a> (theme: <b>Speed</b>)
+</p>
 
-A dead courier steals their body back from a funeral railway. Dash through sunlit courtyards while a slower, vulnerable soul follows the living route you leave behind. Every attack commits a future position for your soul. Every reunion is a choice.
+---
 
-A mobile-portrait, touch-first action roguelite for [Slapjam #2](https://itch.io/jam/slapjam-ai-2), theme **Speed**. Planned art direction: cobalt stone, ivory masks, vermilion thread and distant golden funeral machinery, with Blender-authored models.
+A dead courier steals their body back from a funeral railway. The body is fast. The soul is not: it follows the exact route you ran, slower, on a vermilion thread. Every dash is a promise your soul has to keep, and enemies aim at where your soul **will be**.
+
+<p align="center">
+  <img src="art/previews/e2e-tutorial.png" alt="First Light: the onboarding card reads Step 1 of 8, Dash" width="200" />
+  <img src="art/previews/e2e-telegraph.png" alt="A locked amber shot line crossing the courtyard while the soul trails behind on the thread" width="200" />
+  <img src="art/previews/e2e-station.png" alt="The Signal House station between rooms, where relics are drafted" width="200" />
+  <img src="art/previews/menu-levels-edge-375x812.png" alt="Level select: eight levels in order, cleared ones ticked, later ones locked" width="200" />
+</p>
+<p align="center"><sub>Captured from the built game in desktop Edge at phone size (375×812). Not phone photos.</sub></p>
+
+## How to play
+
+| Gesture | What happens |
+|---|---|
+| **Drag anywhere, release** | Your body **dashes** that way. A dash cuts through sentries and their bolts, and only the dashing body is protected. |
+| **Wait** | Your **soul** walks the thread you left, slowly, and rejoins you when it arrives. |
+| **Tap** | **Return**: your body runs back along the thread to meet the soul. You are vulnerable while you do. |
+| **Dash into your soul** | Touching it rejoins you **at once**. The gold ring in the preview shows where. |
+
+The red thread is a forecast, never a weapon. Only your body and your soul can be hit, and they share one health bar. Amber lines are shots about to fire; once one locks, it never moves. The exit gate opens only for both of you.
 
 ## The story
 
-A courier died on the funeral railway, and then stole their body back. Now the body is quick again, sharply, physically alive. The soul is not. It drifts behind on a vermilion thread, walking the exact route the body ran, slower, always arriving later.
+You died on the funeral railway, and then you took your body back. Each level opens with one line of the story, and it unfolds in order from the first courtyard to the last train:
 
-To escape, the pair must cross the railway's sunlit cobalt courtyards, past ivory-masked sentries that read the thread as a forecast: Needlers fire at the body, Keepers aim at where the soul *will be*, and Wardens hold their shields toward whoever approaches. Between courtyards wait the Signal Houses, small safe platforms where relics are left for the dead. Beyond them stands the Last Warden, the courier's mirror: fast, armoured, and followed by a slow heart of its own.
+1. **First Light** — the onboarding level: eight short lessons, live sentries, and no way to lose.
+2. **Departure Court** — learn to leave yourself behind.
+3. **Needle Gallery** — cover splits a straight firing line from a longer flank.
+4. **Silk Cloister** — close as the crow flies, far along the thread.
+5. **Glass Crossing** — funeral light sweeps the court; your soul crosses later than you do.
+6. **Mourner's Garden** — sentries ring a guarded centre; choose where you meet.
+7. **Last Platform** — every role at once around one narrow opening.
+8. **The Last Warden** — it is fast too. Its heart is not.
 
-Every dash is a promise the soul must keep. Every reunion is a choice. The gate only opens for both of you.
+Levels unlock strictly in order. **Play** on the title screen starts the next one you have not cleared; **Levels** replays any you have opened.
 
-## Identity
+## Two ways to play
 
-There is no logo or cover art yet. The identity that exists is the in-game one:
+- **Levels** — the eight levels above, in order, with the story between them.
+- **Expedition** — a roguelite run through the same railway: a seeded, branching route of rooms, two Signal House stations where you draft **relics** (six of them, two slots, fourteen legal pairs), two starting builds, and the Last Warden at the end. Progress is saved at each room's entrance: *Continue restarts this room.*
 
-- **Wordmark:** "OUTRUN YOUR SOUL" set in a system serif, under the kicker "A funeral-railway escape".
-- **Tagline:** *Your body can outrun death. Your soul cannot.*
-- **Palette** ([src/content/palette.json](src/content/palette.json)): cobalt stone, ivory masks, vermilion silk for the thread, gold funeral machinery, a pale cyan soul. Amber is reserved for attack warnings and violet for environmental lanes, so gameplay signals never blend into the architecture.
+## How it is built
+
+- **A deterministic rules engine** (`src/sim`) runs at a fixed 120 Hz on a flat 2D plane and resolves every collision in true event-time order, so array order never decides who gets hit. The preview line you aim with runs the same code as the real dash.
+- **Three.js presentation** (`src/render`): a fixed orthographic camera over the 2D game, toon lighting, a living ribbon drawn from the real route, and short effects driven only by game events.
+- **Touch-first input** (`src/input`): one finger owns a gesture; dead-zone cancel, long-press ignore, and pause on any interruption.
+- **Synthesized sound** (`src/audio`): every effect is generated in the browser. The body plucks a note, the soul answers an octave lower a moment later, and reunions resolve into a chord.
+- **18 original 3D models**, built in Blender 5.2 through a pinned, hash-verified [Blender MCP](https://github.com/ahujasid/blender-mcp) bridge, validated with the Khronos glTF Validator, about 1.2 MB in total.
 
 <p align="center">
-  <img src="art/previews/e2e-title.png" alt="Title screen, captured from the built game in Edge at 375x812" width="240" />
-  <img src="art/previews/e2e-telegraph.png" alt="A locked amber telegraph in play, captured from the built game" width="240" />
+  <img src="art/previews/actors-lineup-game-camera.png" alt="The cast in Blender at true scale: courier, soul, needler, keeper, warden, the Last Warden and its caged heart" width="100%" />
+</p>
+<p align="center"><sub>The cast, rendered in Blender at true relative scale on their collision rings.</sub></p>
+
+## Brand
+
+| Asset | File |
+|---|---|
+| Mark (icon) | [`art/brand/mark.svg`](art/brand/mark.svg) · small-size variant [`mark-small.svg`](art/brand/mark-small.svg) |
+| Banner | [`art/brand/banner.png`](art/brand/banner.png) |
+| Stacked logo | [`art/brand/logo-stacked.png`](art/brand/logo-stacked.png) |
+| itch.io cover (630×500) | [`art/brand/itch-cover.png`](art/brand/itch-cover.png) |
+| Social card (1200×630) | [`public/og.jpg`](public/og.jpg) |
+| Favicons and app icons | `public/favicon.svg`, `favicon-16/32.png`, `apple-touch-icon.png`, `icon-192/512.png`, `icon-maskable-512.png`, `site.webmanifest` |
+
+The mark shows the game in one picture: the ivory masked body racing ahead, the pale soul trailing on the vermilion thread, inside the gold ring of the railway. The palette is fixed in [`src/content/palette.json`](src/content/palette.json): cobalt stone, ivory, vermilion for the thread, gold for the machinery, cyan for the soul; amber is reserved for attack warnings and violet for hazard lanes. Every raster asset is regenerated by `node scripts/brand.mjs`, which renders the SVG sources with the locally installed Edge.
+
+<p align="center">
+  <img src="art/brand/logo-stacked.png" alt="Stacked logo: the mark above the Outrun Your Soul wordmark" width="260" />
+  &nbsp;
+  <img src="art/brand/itch-cover.png" alt="itch.io cover image" width="330" />
 </p>
 
-<sub>Captured from the built game in desktop Edge with phone-size emulation (375x812), not on a phone.</sub>
+## Development
 
-## Status
+Requires Node.js (developed with v26.8.1). Dependencies are pinned exactly in `package-lock.json`: TypeScript 7.0.2, Vite 8.3.5, Vitest 5.0.5, Three.js 0.187.0; release tooling uses fflate 0.8.3, the Khronos glTF Validator 2.0.0-dev.3.10 and playwright-core 1.64.1.
 
-**Playable expedition, verified on desktop browsers and emulated phone viewports only. Not yet tested on a real phone, not published to itch.io, not submitted to the jam.**
+```bash
+npm ci
+```
 
-What exists (30 October 2026):
-- Deterministic 2D combat simulation (fixed 120 Hz step, event-time-ordered sweeps): finite-speed dash, slower route-following soul, vulnerable RETURN, genuine-contact reunion, shared health with attack-ID dedup, needler / keeper (forecast aim on the soul's route) / warden, persistent lanes, four behavioural relics plus Long Silk / Short Stitch parameters, and the Last Warden boss.
-- First Light: an eight-step onboarding room (dash, follow, RETURN, contact reunion, strike, locked lines, protecting the soul, leaving together) played before a first expedition; skippable after a defeat.
-- Run layer: six relics (14 legal pairs), two starters, a seeded branching expedition (opening, two branches, two stations with drafts, final approach, boss, ending), room-entry checkpoints ("Continue restarts this room."), progress atlas.
-- Six room templates with two authored variants each (validated, cleared by novice- and expert-timed planning bots) plus the boss arena.
-- Three.js orthographic presentation with 18 original Blender-authored GLB models (made through the pinned Blender MCP bridge, Khronos-validated, provenance in `art/provenance.csv`), touch gestures, procedural WebAudio, accessible DOM UI.
-- Evidence: automated test suite, model validation, itch-style nested-iframe package check, and Edge/Chrome end-to-end runs including a full expedition, reload-to-Continue and defeat-to-Retry. See [docs/EVIDENCE.md](docs/EVIDENCE.md).
-
-Not yet done: real-phone input/performance testing (the roadmap gate), human playtesting of difficulty and build divergence, itch upload and jam submission.
-
-Official deadline: **31 October 2026, 15:00 UTC / 20:30 IST**. Internal submission target: **12:00 UTC / 17:30 IST** that day.
-
-## Start here
-
-Give your implementation agent this assignment:
-
-> Read AGENTS.md and the linked documents. Follow ROADMAP.md from the current repository state. First prove one polished touch encounter and the Blender-to-browser asset pipeline on a real phone. Preserve the combat rules, record test evidence, and expand only after the gates pass. Do not claim a feature or submission exists before verifying it.
-
-- [Agent instructions](AGENTS.md)
-- [Roadmap and acceptance gates](docs/ROADMAP.md)
-- [Game vision and play loop](docs/GAME_DESIGN.md)
-- [Authoritative combat rules](docs/COMBAT_SPEC.md)
-- [Rooms, enemies, relics and replay depth](docs/CONTENT.md)
-- [Technical architecture](docs/ARCHITECTURE.md)
-- [Blender MCP art pipeline](docs/ART_PIPELINE.md)
-- [Asset manifest and priorities](docs/ASSET_MANIFEST.md)
-- [Testing and evidence plan](docs/TEST_PLAN.md)
-- [itch.io publishing and Slapjam submission](docs/SUBMISSION.md)
-- [Release checklist](docs/RELEASE_CHECKLIST.md)
-- [Category goals and delivery status](docs/QUALITY_AND_STATUS.md)
-
-## Scope that protects the idea
-
-The jam target is three enemy roles, six authored room templates used as a branching pool, one warden encounter, six relics with two equipped slots, two starting sidegrades, and room-entry checkpoints. Repeat play should change routes and target priorities, not simply increase health or grind requirements. A 10–15-minute expedition and play across later sessions are targets to test, not measured promises.
-
-The foundation is a deterministic 2D combat simulation with an orthographic Three.js presentation. Blender creates visual assets; it does not determine collision or damage. Renderer feasibility is tested early, with a prerendered-sprite fallback before mass asset production. No runtime AI API, account system or paid backend is needed.
-
-## Development commands
-
-Requires Node.js (developed with v26.8.1) and npm. Dependencies are pinned to exact versions in `package-lock.json` (TypeScript 7.0.2, Vite 8.3.5, Vitest 5.0.5, Three.js 0.187.0; release tooling uses fflate 0.8.3, the Khronos glTF Validator 2.0.0-dev.3.10 and playwright-core 1.64.1).
+```bash
+npm run dev
+```
 
 | Command | What it does |
 |---|---|
-| `npm ci` | Install the exact locked dependencies. |
-| `npm run dev` | Vite dev server (also on the LAN via `--host`, for phone testing on the same network). |
-| `npm test` | Vitest unit tests (simulation, tooling). `npm run test:watch` re-runs on change. |
-| `npm run typecheck` | `tsc --noEmit` over `src/`, `tests/` and the Vite config. |
-| `npm run build` | Typecheck, then production build into `dist/` with a relative base (`./`) for itch.io's nested iframe URL. |
-| `npm run preview` | Serve the built `dist/` locally. |
-| `npm run package` | Build, check `dist/` against itch.io's HTML5 ZIP rules and project policy, then write a deterministic `release/outrun-your-soul-<version>-<shortsha>.zip` (`-dirty` suffix if the working tree has uncommitted changes) plus a `.json` manifest; prints the ZIP name, byte size and SHA-256. |
-| `npm run check:nested` | Serve `dist/` (or `-- --zip release/<name>.zip`, or `-- --zip latest`) under an itch-like nested, case-sensitive path inside a cross-origin iframe and crawl every reference; fails on any non-200. `-- --serve` keeps it running so the printed embed URL can be opened in a browser. |
-| `npm run check:models` | Validate `public/assets/models/*.glb` (shipping) and `art/exports/*.glb` (fixtures, never shipped) with the Khronos glTF Validator plus the asset-contract and budget checks; writes `art/reports/models-validation.json`. |
-| `npm run verify` | Typecheck, tests, build, package, model validation and the nested crawl of the exact new ZIP, with a summary. |
-| `npm run e2e` | Build, serve under the nested itch-like path, and drive an **already installed** Edge or Chrome (pinned playwright-core; it never downloads a browser) at 375x812, DPR 2, touch. Covers the production load (no debug hook, WebGL2, live scene renders the packaged GLBs), the real UI path (Begin → starter → room → Onward → route choice → next room), a real touch drag dash and tap RETURN, pause on hidden/blur, reload → Continue restarting the same room, a deliberate defeat → Retry room, and a full expedition to the ending. Writes `art/previews/e2e-*.png` and `art/reports/e2e-report-<browser>.json`. Options: `-- --zip release/<name>.zip` (test the exact upload), `-- --no-build`, `-- --browser chrome`, `-- --seed N`, `-- --headed`. Exit 2 means no system browser was found. Its numbers come from a desktop browser and are not phone evidence. |
+| `npm run dev` | Vite dev server (also on the LAN via `--host`, for testing on a phone on the same network). |
+| `npm test` | Unit and simulation tests. |
+| `npm run typecheck` | `tsc --noEmit` over sources, tests and config. |
+| `npm run build` | Production build into `dist/` with a relative base for itch.io's nested iframe. |
+| `npm run package` | Build, check against itch.io's HTML5 ZIP rules, and write a deterministic `release/outrun-your-soul-<version>-<sha>.zip` with its SHA-256. |
+| `npm run check:nested` | Serve the build under an itch-like nested path inside a cross-origin iframe and confirm every file loads. |
+| `npm run check:models` | Khronos glTF validation plus the project's asset-contract and budget checks. |
+| `npm run verify` | Typecheck, tests, build, package, model checks and the nested crawl in one run. |
+| `npm run e2e` | Drive an already-installed Edge or Chrome at 375×812 with touch: the tutorial lessons, levels in order, a real drag-dash and tap-return, pause on interruption, reload → Continue, defeat → Retry, and a full expedition to the ending. Never downloads a browser. |
 
-These are automated checks only. They do not replace real-phone testing or testing the uploaded itch.io page; record those in [docs/EVIDENCE.md](docs/EVIDENCE.md).
+Debug URL options: `?debug` exposes a test hook, `?seed=N` fixes the expedition seed, `?tutorial=0|1` forces the tutorial off or on.
 
-## Rights and credits
+## Status
 
-**Music:** "Cathedral in the forest (ambient loop)" by [congusbongus](https://opengameart.org/users/congusbongus), from [OpenGameArt](https://opengameart.org/content/cathedral-in-the-forest-ambient-loop), dedicated to the public domain under CC0 1.0. Credit is not required; it is given with thanks. Record: [art/provenance-audio.csv](art/provenance-audio.csv). All sound effects are synthesized in the browser; all 3D models are original (see [art/provenance.csv](art/provenance.csv)).
+**Playable from start to finish in desktop browsers and at emulated phone sizes. Not yet tested on a real phone or by players; not yet uploaded to itch.io or submitted to the jam.** Automated evidence (unit and simulation tests, model validation, package checks, end-to-end browser runs) is logged in [docs/EVIDENCE.md](docs/EVIDENCE.md); real-device rows remain open. Difficulty is tuned with planning bots that aim perfectly, so human difficulty is unverified.
 
+Design and engineering docs: [game design](docs/GAME_DESIGN.md) · [combat rules](docs/COMBAT_SPEC.md) · [content](docs/CONTENT.md) · [architecture](docs/ARCHITECTURE.md) · [art pipeline](docs/ART_PIPELINE.md) · [asset contract](docs/ASSET_CONTRACT.md) · [roadmap](docs/ROADMAP.md) · [test plan](docs/TEST_PLAN.md) · [submission](docs/SUBMISSION.md) · [agent instructions](AGENTS.md).
 
-No open-source license has been selected. Public visibility alone does not grant a blanket reuse license. Keep third-party licenses and attribution with their assets. Credit AI-assisted work accurately according to the platform and jam rules. Do not commit private prize-contact answers, credentials or correspondence.
+## Credits
+
+**Made by Junaid.**
+
+- **Music:** "Cathedral in the forest (ambient loop)" by [congusbongus](https://opengameart.org/users/congusbongus), from [OpenGameArt](https://opengameart.org/content/cathedral-in-the-forest-ambient-loop), dedicated to the public domain under CC0 1.0. Credit is not required; it is given with thanks. Record: [art/provenance-audio.csv](art/provenance-audio.csv).
+- **3D models, brand art and sound effects:** original to this project. Models were authored as Blender Python scripts executed through the Blender MCP bridge; sound effects are synthesized in the browser. Provenance: [art/provenance.csv](art/provenance.csv).
+- **AI assistance:** code, models, brand art and documentation were produced with Claude Code agents, directed by the author.
+
+No open-source license has been selected; public visibility does not grant a reuse license. Third-party licenses stay with their assets.
