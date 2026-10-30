@@ -54,6 +54,34 @@ export function makeLane(id: number, room: RoomDef, status: LaneState['status'])
   return { id, key: def.id, rect: def.rect, status, attackId: status === 'active' ? 77 : null, cycleTime: 0 };
 }
 
+/**
+ * Phase-2 presentation fixture: warden mid-sweep, relic state (halo, boost, bell, decoy) and a
+ * boss structure. Uses optional fields the simulation is adding; cast because they are not yet
+ * part of SimState.
+ */
+export function makeFeatureState(room: RoomDef = LAB_ROOM): SimState {
+  const s = makeFixtureState(room);
+  const warden = {
+    ...makeEnemy(4, 'w1', 'warden', { x: 5.6, y: 10.2 }, 'locked', { x: -1.2, y: -2.5 }),
+    radius: 0.55,
+    facing: { x: 0, y: -1 },
+    phaseTime: 0.4,
+    phaseDuration: 0.6,
+  } as EnemyState;
+  s.enemies = [...s.enemies, warden];
+  s.soul = { ...s.soul, boostLeft: 0.6 };
+  s.projectiles = [...s.projectiles, makeProjectile(12, { x: 4.6, y: 2.6 }, { x: -3, y: 1.5 })];
+  Object.assign(s, {
+    relicState: { equipped: ['glass_lantern', 'mourning_bell'], haloRadius: 1.25, bellCharge: 1, bellChargeMax: 2, decoy: { x: 6.6, y: 5.6 } },
+    boss: {
+      body: { pos: { x: 1.4, y: 10.6 } },
+      heart: { pos: { x: 1.0, y: 8.2 } },
+      route: { points: [{ x: 1.0, y: 8.2 }, { x: 1.0, y: 9.6 }, { x: 1.4, y: 10.6 }] },
+    },
+  });
+  return s;
+}
+
 /** A separated pair with a cornered route, enemies in several phases, bolts and a lane. */
 export function makeFixtureState(room: RoomDef = LAB_ROOM): SimState {
   const route: Vec2[] = [

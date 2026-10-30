@@ -7,7 +7,7 @@
 import type { DashPreview, GateStatus, SimEvent, SimState } from '../../sim/types';
 import type { Vec2 } from '../../sim/vec';
 import { createRenderer, type RenderOverlay } from '../renderer';
-import { LAB_ROOM, makeFixtureState, makeLane } from './fixture';
+import { LAB_ROOM, makeFeatureState, makeFixtureState, makeLane } from './fixture';
 import { MiniSim } from './minisim';
 import { RealSim } from './realsim';
 import { ROOMS, DEPARTURE_COURT } from '../../content/rooms';
@@ -25,8 +25,10 @@ const realRoom = ROOMS[params.get('room') ?? ''] ?? DEPARTURE_COURT;
 renderer.setRoom(scene === 'sim' ? realRoom : LAB_ROOM);
 
 const sim: MiniSim | RealSim = scene === 'sim' ? new RealSim(realRoom) : new MiniSim(makeFixtureState());
-const still = makeFixtureState();
-let state: SimState = scene === 'still' ? still : sim.state;
+// Frozen scenes: 'still' (phase-1 overlays) and 'features' (warden, relics, boss, forecast).
+const frozen = scene === 'still' || scene === 'features';
+const still = scene === 'features' ? makeFeatureState() : makeFixtureState();
+let state: SimState = frozen ? still : sim.state;
 const overlay: RenderOverlay = { dashPreview: null, aimCancel: false, returnPreview: null, queued: false };
 
 // --- frozen preview variants for the still scene --------------------------------
@@ -43,7 +45,7 @@ const variants: { name: string; make(s: SimState): Partial<RenderOverlay> }[] = 
   { name: 'cancel', make: () => ({ dashPreview: null, aimCancel: true }) },
   { name: 'queued', make: (s) => ({ dashPreview: fake(s, { x: 5.8, y: 6.2 }, { x: 5.8, y: 6.2 }, 'none'), queued: true }) },
 ];
-let variant = 1;
+let variant = scene === 'features' ? 0 : 1;
 
 function fake(s: SimState, end: Vec2, requestedEnd: Vec2, limitedBy: DashPreview['limitedBy']): DashPreview {
   return {
@@ -66,7 +68,7 @@ function applyVariant(): void {
   overlay.queued = false;
   Object.assign(overlay, variants[variant]!.make(state));
 }
-if (scene === 'still') applyVariant();
+if (frozen) applyVariant();
 
 // --- controls ------------------------------------------------------------------
 function button(label: string, onClick: () => void): HTMLButtonElement {
@@ -91,7 +93,26 @@ button('motion', () => {
   reducedMotion = !reducedMotion;
   renderer.setReducedMotion(reducedMotion);
 });
-if (scene === 'still') {
+if (scene === 'features') {
+  const warden = () => state.enemies.find((e) => e.key === 'w1');
+  button('exposed', () => {
+    const w = warden();
+    if (w) w.phase = (w.phase as string) === 'exposed' ? 'locked' : ('exposed' as never);
+  });
+  button('sweep', () => pending.push({ type: 'sweep', t: state.time, enemyId: warden()?.id ?? 0 } as never));
+  button('guard', () => pending.push({ type: 'guarded', t: state.time, enemyId: warden()?.id ?? 0, at: { x: 5.6, y: 9.6 } } as never));
+  button('burst', () => pending.push({ type: 'burst', t: state.time, at: state.body.pos, radius: 1.6 } as never));
+  button('decoy', () => {
+    const rs = (state as unknown as { relicState: { decoy: unknown } }).relicState;
+    const had = rs.decoy;
+    rs.decoy = had ? null : { x: 6.6, y: 5.6 };
+    pending.push({ type: had ? 'decoyTaken' : 'decoyPlaced', t: state.time, at: { x: 6.6, y: 5.6 } } as never);
+  });
+  button('iris', () => {
+    void renderer.transitionOut().then(() => renderer.transitionIn());
+  });
+}
+if (frozen) {
   button('preview', () => {
     variant = (variant + 1) % variants.length;
     applyVariant();
@@ -124,7 +145,7 @@ function aimFrom(x: number, y: number): Vec2 | null {
   return { x: (b.x - a.x) * 1.6, y: (b.y - a.y) * 1.6 };
 }
 canvas.addEventListener('pointerdown', (e) => {
-  if (down || scene === 'still') return;
+  if (down || frozen) return;
   canvas.setPointerCapture(e.pointerId);
   down = { id: e.pointerId, x: e.clientX, y: e.clientY, t: performance.now(), armed: false };
   lastInput = performance.now();
@@ -207,7 +228,7 @@ function frame(now: number): void {
 }
 
 function tick(dt: number): void {
-  if (scene !== 'still') {
+  if (!frozen) {
     autopilot(dt);
     acc += dt;
     while (acc >= 1 / 120) {
@@ -223,7 +244,7 @@ function tick(dt: number): void {
   if (pending.length) {
     renderer.handleEvents(pending.splice(0), state);
   }
-  renderer.render(state, scene === 'still' ? 1 : acc * 120, overlay, dt);
+  renderer.render(state, frozen ? 1 : acc * 120, overlay, dt);
   frames++;
   fpsTime += dt;
   if (fpsTime >= 0.5) {
@@ -234,7 +255,7 @@ function tick(dt: number): void {
     const glbs = Object.entries(st.models)
       .filter(([, v]) => v === 'glb')
       .map(([k]) => k);
-    hud.textContent = `${scene}${scene === 'still' ? ` [${variants[variant]!.name}]` : ''} · ${fps.toFixed(0)} fps · calls ${st.calls} · tris ${st.triangles} · dpr ${st.pixelRatio} · glb: ${glbs.join(',') || 'none'}${reducedMotion ? ' · reduced motion' : ''}`;
+    hud.textContent = `${scene}${frozen ? ` [${variants[variant]!.name}]` : ''} · ${fps.toFixed(0)} fps · cpu ${st.cpuMs.toFixed(2)}ms (max ${st.cpuMsMax.toFixed(1)}) · calls ${st.calls} · tris ${st.triangles} · dpr ${st.pixelRatio} · glb: ${glbs.join(',') || 'none'}${reducedMotion ? ' · reduced motion' : ''}`;
   }
 }
 requestAnimationFrame(frame);
