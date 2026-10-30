@@ -40,6 +40,31 @@ export function makeSim(spec: RoomSpec = {}, seed = 1): SimState {
   return createSim(makeRoom(spec), { seed });
 }
 
+/**
+ * A separated state with an explicit outstanding route (soul at points[0], body at the
+ * last point), as if earlier dashes had laid it. Contact is armed when the endpoints are
+ * already apart, matching how a real separation would have armed it.
+ */
+export function separatedFixture(
+  spec: RoomSpec,
+  points: Vec2[],
+  params: Partial<SimState['params']> = {},
+): SimState {
+  const s = createSim(makeRoom({ ...spec, spawn: points[points.length - 1]! }), { seed: 1, params });
+  s.route.points = points.slice();
+  s.route.length = points.slice(1).reduce((acc, p, i) => acc + Math.hypot(p.x - points[i]!.x, p.y - points[i]!.y), 0);
+  s.soul.pos = points[0]!;
+  s.soul.prevPos = points[0]!;
+  s.body.pos = points[points.length - 1]!;
+  s.body.prevPos = s.body.pos;
+  const gap = Math.hypot(s.body.pos.x - s.soul.pos.x, s.body.pos.y - s.soul.pos.y);
+  s.contactArmed = gap > 0.72;
+  s.gate = s.enemies.every((e) => e.phase === 'dead') ? 'ready' : 'sealed';
+  const errors = checkInvariants(s);
+  if (errors.length) throw new Error(`Bad fixture: ${errors.join('; ')}`);
+  return s;
+}
+
 /** Step once and assert invariants. */
 export function step(state: SimState, commands: Command[] = []): SimEvent[] {
   const events = stepSim(state, commands);
