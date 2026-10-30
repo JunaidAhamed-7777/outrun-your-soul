@@ -83,6 +83,9 @@ export async function startGame(container: HTMLElement): Promise<GameHandle | nu
   let frameEvents: SimEvent[] = [];
   let endingLeft = 0;
   let afterEnding: (() => void) | null = null;
+  let transitionToken = 0;
+  /** Settles when the latest room entry (with its iris transition) has finished. */
+  let roomReady: Promise<void> = Promise.resolve();
   let invariantReported = false;
   const aim = new AimTracker();
   const machine = new GestureMachine();
@@ -106,7 +109,7 @@ export async function startGame(container: HTMLElement): Promise<GameHandle | nu
     onRestart: () => {
       ui.hidePause();
       ui.hideResult();
-      if (current) startRoom(current);
+      if (current) roomReady = enterRoom(current);
     },
     onPause: () => pause('user'),
     onSettingsChange: (next) => {
@@ -171,7 +174,7 @@ export async function startGame(container: HTMLElement): Promise<GameHandle | nu
     ui.hidePause();
     switch (screen.kind) {
       case 'room':
-        startRoom(screen);
+        roomReady = enterRoom(screen);
         return;
       case 'route':
         phase = 'choosing';
@@ -181,7 +184,18 @@ export async function startGame(container: HTMLElement): Promise<GameHandle | nu
       case 'station':
         phase = 'choosing';
         ui.hideHud();
-        ui.showDraft(draftView(screen), (pick, replaceIndex) => present(director.takeDraft(pick as RelicId | null, replaceIndex)));
+        void (async () => {
+          const token = ++transitionToken;
+          await activeRenderer.transitionOut();
+          if (token !== transitionToken) return;
+          activeRenderer.showStation();
+          await activeRenderer.transitionIn();
+        })();
+        ui.showDraft(draftView(screen), (pick, replaceIndex) => {
+          if (pick) activeRenderer.stationSignal('pick');
+          activeRenderer.stationSignal('depart');
+          present(director.takeDraft(pick as RelicId | null, replaceIndex));
+        });
         return;
       case 'ending': {
         phase = 'choosing';
@@ -194,6 +208,17 @@ export async function startGame(container: HTMLElement): Promise<GameHandle | nu
         return;
       }
     }
+  }
+
+  /** Iris out, build the room (leaving any station scene), iris in. Stale transitions are dropped. */
+  async function enterRoom(screen: RoomScreen): Promise<void> {
+    const token = ++transitionToken;
+    phase = 'choosing';
+    await activeRenderer.transitionOut();
+    if (token !== transitionToken) return;
+    activeRenderer.hideStation();
+    startRoom(screen);
+    await activeRenderer.transitionIn();
   }
 
   function startRoom(screen: RoomScreen): void {
@@ -343,11 +368,14 @@ export async function startGame(container: HTMLElement): Promise<GameHandle | nu
       ...handle,
       run: () => director.run,
       push: (command: Command) => pendingCommands.push(command),
-      /** Start a fresh expedition with a starter, skipping the title/starter panels. */
+      /** Start a fresh expedition with a starter, skipping the title/starter panels. Await it. */
       start: (starter = 'threadkeeper') => {
         ui.hideTitle();
         if (isStarterId(starter)) present(director.newRun(newSeed(), starter));
+        return roomReady;
       },
+      /** Settles once the current room entry transition has finished (await after Onward/route clicks). */
+      ready: () => roomReady,
       pause: () => pause('user'),
       resume,
       /** Drive the game synchronously (hidden/throttled browser panes do not fire frames). */
