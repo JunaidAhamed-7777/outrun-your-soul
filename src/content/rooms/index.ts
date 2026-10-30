@@ -32,19 +32,19 @@ export const ROOM_VARIANTS: Readonly<Record<string, readonly RoomDef[]>> = {
   needle_gallery: [NEEDLE_GALLERY, NEEDLE_GALLERY_CROSSFIRE],
   silk_cloister: [SILK_CLOISTER, SILK_CLOISTER_ARCADE],
   glass_crossing: [GLASS_CROSSING, GLASS_CROSSING_B],
-  mourners_garden: [MOURNERS_GARDEN, MOURNERS_GARDEN_VIGIL],
-  last_platform: [LAST_PLATFORM, LAST_PLATFORM_LONG_CHAIN],
+  mourners_garden: [MOURNERS_GARDEN_WARDEN, MOURNERS_GARDEN_VIGIL],
+  last_platform: [LAST_PLATFORM_WARDEN, LAST_PLATFORM_LONG_CHAIN],
   last_warden: [LAST_WARDEN_ARENA],
 };
 
 /**
- * Warden layouts authored ahead of the warden role. NOT playable yet: createSim throws
- * on wardens and validateRoom rejects them. Once the simulation implements wardens,
- * append these to ROOM_VARIANTS (e.g. as each template's second variant).
+ * Validated layouts rotated out of the two-variant pool when the warden role shipped:
+ * the warden-free stand-ins for Mourner's Garden and Last Platform. Kept for evidence
+ * runs and as a fallback if the warden variants fail device testing.
  */
-export const PENDING_WARDEN_ROOMS: Readonly<Record<string, readonly RoomDef[]>> = {
-  mourners_garden: [MOURNERS_GARDEN_WARDEN],
-  last_platform: [LAST_PLATFORM_WARDEN],
+export const RESERVE_ROOMS: Readonly<Record<string, readonly RoomDef[]>> = {
+  mourners_garden: [MOURNERS_GARDEN],
+  last_platform: [LAST_PLATFORM],
 };
 
 /** The first variant of every template, by ID. */

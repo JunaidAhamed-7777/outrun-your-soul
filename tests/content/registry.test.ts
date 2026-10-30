@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   ALL_ROOM_VARIANTS,
   FIRST_ROOM_ID,
-  PENDING_WARDEN_ROOMS,
+  RESERVE_ROOMS,
   ROOM_VARIANTS,
   ROOMS,
   roomFor,
@@ -64,10 +64,12 @@ describe('room registry', () => {
     expect(currentNode(run).roomId).toBe(FIRST_ROOM_ID);
   });
 
-  it('pending warden rooms now validate (wardens are implemented) and stay out of the pool until enabled', () => {
-    const pending = Object.values(PENDING_WARDEN_ROOMS).flat();
-    expect(pending.length).toBeGreaterThan(0);
-    for (const room of pending) {
+  it('warden variants are in the pool and the rotated-out reserve rooms still validate', () => {
+    const wardenRooms = ALL_ROOM_VARIANTS.filter((r) => r.enemies.some((e) => e.role === 'warden'));
+    expect(wardenRooms.map((r) => r.id).sort()).toEqual(['last_platform', 'mourners_garden']);
+    const reserve = Object.values(RESERVE_ROOMS).flat();
+    expect(reserve.length).toBeGreaterThan(0);
+    for (const room of reserve) {
       expect(validateRoom(room)).toEqual([]);
       expect(ALL_ROOM_VARIANTS).not.toContain(room);
     }
