@@ -3,7 +3,7 @@ import { createEnemy } from './enemies';
 import { laneCycleTime, laneStatusAt } from './lanes';
 import { seedRng } from './rng';
 import { TUNING } from './tuning';
-import type { LaneState, RoomDef, RoomParams, SimState } from './types';
+import type { LaneState, RelicRuntimeState, RoomDef, RoomParams, SimRelicCharges, SimRelicConfig, SimState } from './types';
 
 /** Bump when rules change in a way that invalidates saved room-entry checkpoints. */
 export const RULES_VERSION = 1;
@@ -12,6 +12,23 @@ export interface CreateOptions {
   readonly seed: number;
   readonly params?: Partial<RoomParams>;
   readonly health?: number;
+  /** Behavioural relics equipped for this room (reach relics come through params). */
+  readonly relics?: SimRelicConfig;
+  /** Earned relic charges carried in from the room-entry checkpoint. */
+  readonly charges?: SimRelicCharges;
+}
+
+/** Clamp carried charges to what the equipped relics can hold. */
+export function initialRelicState(config: SimRelicConfig = {}, charges?: SimRelicCharges): RelicRuntimeState {
+  const bell = config.mourningBell;
+  const kills = charges && Number.isFinite(charges.bellKills) ? Math.floor(charges.bellKills) : 0;
+  return {
+    config,
+    bellKills: bell ? Math.min(Math.max(kills, 0), Math.max(0, bell.killsPerCharge - 1)) : 0,
+    bellCharged: Boolean(bell && charges?.bellCharged === true && bell.maxCharges > 0),
+    knotMarked: Boolean(config.travelersKnot && charges?.knotMarked === true && config.travelersKnot.maxMarks > 0),
+    decoy: null,
+  };
 }
 
 export function createSim(room: RoomDef, options: CreateOptions): SimState {
@@ -61,5 +78,6 @@ export function createSim(room: RoomDef, options: CreateOptions): SimState {
     buffered: null,
     bufferedAge: 0,
     stats: { dashes: 0, returns: 0, cuts: 0, kills: 0, hits: 0, contactReunions: 0, exhaustionReunions: 0 },
+    relicState: initialRelicState(options.relics, options.charges),
   };
 }

@@ -200,6 +200,49 @@ export interface RoomParams {
   readonly dashMaxDistance: number;
 }
 
+// ---------------------------------------------------------------------------
+// Relics (behavioural hooks; structurally compatible with src/run/relics.ts)
+// ---------------------------------------------------------------------------
+
+/**
+ * Behavioural relic parameters for one room. Mirrors RelicSimHooks in src/run/relics.ts
+ * (the simulation may not import the run layer). Absent keys mean "not equipped".
+ * Reach relics (Long Silk, Short Stitch) arrive as RoomParams instead.
+ */
+export interface SimRelicConfig {
+  readonly needlesong?: { readonly boostMultiplier: number; readonly boostSeconds: number };
+  readonly glassLantern?: { readonly haloRadius: number; readonly slowFactor: number };
+  readonly mourningBell?: { readonly killsPerCharge: number; readonly maxCharges: number; readonly burstRadius: number };
+  readonly travelersKnot?: { readonly maxMarks: number; readonly decoyRadius: number };
+}
+
+/** Earned relic state carried across rooms (mirrors RelicCharges in src/run/relics.ts). */
+export interface SimRelicCharges {
+  readonly bellKills: number;
+  readonly bellCharged: boolean;
+  readonly knotMarked: boolean;
+}
+
+export interface DecoyState {
+  readonly pos: Vec2;
+  readonly radius: number;
+  /** Sentry whose new aim acquisition took the decoy; consumed when that aim locks. */
+  claimedBy: EntityId | null;
+}
+
+/** Live relic state. Charges (bellKills, bellCharged, knotMarked) are what a checkpoint keeps. */
+export interface RelicRuntimeState {
+  readonly config: SimRelicConfig;
+  /** Mourning Bell: distinct direct dash kills counted toward the next charge. */
+  bellKills: number;
+  /** Mourning Bell: a burst waiting for the next separated-to-reunited transition. */
+  bellCharged: boolean;
+  /** Traveler's Knot: an earned mark waiting to become a decoy at the next reunion. */
+  knotMarked: boolean;
+  /** Traveler's Knot: an active decoy on the ground (never crosses rooms). */
+  decoy: DecoyState | null;
+}
+
 export interface RunStats {
   dashes: number;
   returns: number;
@@ -238,6 +281,8 @@ export interface SimState {
   buffered: Command | null;
   bufferedAge: number;
   stats: RunStats;
+  /** Relic runtime state. Always populated by createSim (optional only for test fixtures). */
+  relicState?: RelicRuntimeState;
 }
 
 // ---------------------------------------------------------------------------
@@ -300,7 +345,15 @@ export type SimEvent =
   | { readonly type: 'separated'; readonly t: number }
   | { readonly type: 'reunion'; readonly t: number; readonly at: Vec2; readonly cause: 'contact' | 'exhaustion' | 'return' }
   | { readonly type: 'cut'; readonly t: number; readonly projectileId: EntityId; readonly at: Vec2 }
-  | { readonly type: 'kill'; readonly t: number; readonly enemyId: EntityId; readonly role: EnemyRole; readonly at: Vec2 }
+  | {
+      readonly type: 'kill';
+      readonly t: number;
+      readonly enemyId: EntityId;
+      readonly role: EnemyRole;
+      readonly at: Vec2;
+      /** 'dash' for a direct outward-dash kill; 'burst' for a Mourning Bell burst. */
+      readonly cause?: 'dash' | 'burst';
+    }
   | { readonly type: 'hit'; readonly t: number; readonly endpoint: 'body' | 'soul'; readonly attackId: AttackId; readonly at: Vec2; readonly health: number; readonly source: 'bolt' | 'lane' }
   | { readonly type: 'shielded'; readonly t: number; readonly endpoint: 'body' | 'soul'; readonly attackId: AttackId; readonly at: Vec2; readonly reason: 'grace' | 'dash' | 'spent' }
   | { readonly type: 'wake'; readonly t: number; readonly enemyId: EntityId }
@@ -314,6 +367,22 @@ export type SimEvent =
   | { readonly type: 'defeat'; readonly t: number }
   | { readonly type: 'rejected'; readonly t: number; readonly command: Command['kind']; readonly reason: RejectReason }
   | { readonly type: 'queued'; readonly t: number; readonly command: Command['kind'] }
-  | { readonly type: 'queueExpired'; readonly t: number };
+  | { readonly type: 'queueExpired'; readonly t: number }
+  /** Needlesong: a cut sped up the soul (refreshes, never stacks). */
+  | { readonly type: 'soulBoost'; readonly t: number; readonly multiplier: number; readonly seconds: number }
+  | { readonly type: 'soulBoostEnd'; readonly t: number }
+  /** Glass Lantern: a bolt crossed the soul halo boundary (its speed changed). */
+  | { readonly type: 'halo'; readonly t: number; readonly projectileId: EntityId; readonly inside: boolean; readonly at: Vec2 }
+  /** Mourning Bell: progress after a direct dash kill. */
+  | { readonly type: 'bellCharge'; readonly t: number; readonly kills: number; readonly charged: boolean }
+  /** Mourning Bell: the stored charge rang out at a reunion. */
+  | { readonly type: 'bellBurst'; readonly t: number; readonly at: Vec2; readonly radius: number; readonly killed: readonly EntityId[] }
+  /** Traveler's Knot: a direct dash kill earned a mark. */
+  | { readonly type: 'knotMarked'; readonly t: number }
+  | { readonly type: 'decoyPlaced'; readonly t: number; readonly at: Vec2 }
+  /** A sentry's new aim acquisition took the decoy (tracking toward it). */
+  | { readonly type: 'decoyClaimed'; readonly t: number; readonly enemyId: EntityId; readonly at: Vec2 }
+  /** The claiming sentry locked onto the decoy; the decoy is gone, the locked line stays. */
+  | { readonly type: 'decoyConsumed'; readonly t: number; readonly enemyId: EntityId; readonly at: Vec2 };
 
 export type SimEventType = SimEvent['type'];
