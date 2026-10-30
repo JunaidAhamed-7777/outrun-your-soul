@@ -1,7 +1,7 @@
 {
   "note": "Desktop browser with phone emulation. Not phone evidence: no real touch hardware, mobile GPU, iOS Safari or itch.io page involved.",
-  "source": "ZIP C:\\Github\\outrun-your-soul\\release\\outrun-your-soul-0.1.0-24ed71e.zip",
-  "gameUrl": "http://127.0.0.1:54799/html/1234567/index.html",
+  "source": "directory C:\\Github\\outrun-your-soul\\dist",
+  "gameUrl": "http://127.0.0.1:50708/html/1234567/index.html",
   "viewport": {
     "width": 375,
     "height": 812,
@@ -22,7 +22,7 @@
     {
       "id": "A3 title Begin button visible",
       "ok": true,
-      "detail": "759 ms after navigation start"
+      "detail": "724 ms after navigation start"
     },
     {
       "id": "A5 title scene renders packaged GLBs, not placeholders (triangle counts match)",
@@ -52,7 +52,7 @@
     {
       "id": "B3 real touch drag (130 px up) dashes",
       "ok": true,
-      "detail": "dashes 0 -> 1; body (4.00, 1.50) -> (4.00, 4.13); kills 0"
+      "detail": "dashes 0 -> 1; body (4.00, 1.50) -> (4.00, 4.00); kills 0"
     },
     {
       "id": "B4 real short tap RETURNs when separated",
@@ -62,22 +62,22 @@
     {
       "id": "B5 visibilitychange(hidden) pauses, shows the pause panel and freezes sim time",
       "ok": true,
-      "detail": "phase paused, panel true, sim t 3.375 -> 3.375 over 1 s"
+      "detail": "phase paused, panel true, sim t 3.558333333333333 -> 3.558333333333333 over 1 s"
     },
     {
       "id": "B6 explicit Resume continues the same in-memory state",
       "ok": true,
-      "detail": "sim t 3.375 -> 3.675"
+      "detail": "sim t 3.558333333333333 -> 3.875"
     },
     {
       "id": "B7 window blur pauses and freezes sim time",
       "ok": true,
-      "detail": "phase paused, sim t 3.675 -> 3.675"
+      "detail": "phase paused, sim t 3.8833333333333333 -> 3.8833333333333333"
     },
     {
       "id": "B8 scripted Departure Court clear reaches victory",
       "ok": true,
-      "detail": "sim 12.82 s, health 5, stats {\"dashes\":22,\"returns\":3,\"cuts\":0,\"kills\":4,\"hits\":0,\"contactReunions\":0,\"exhaustionReunions\":4}"
+      "detail": "sim 13.07 s, health 5, stats {\"dashes\":22,\"returns\":3,\"cuts\":0,\"kills\":4,\"hits\":0,\"contactReunions\":0,\"exhaustionReunions\":4}"
     },
     {
       "id": "B9 result panel shows \"The gate opens.\" with an Onward button",
@@ -101,12 +101,12 @@
     {
       "id": "B13 Continue restarts the same room (node, room, entry health) from its start",
       "ok": true,
-      "detail": "at n1a -> n1a; room silk_cloister -> silk_cloister; health 5 -> 5; sim t 0.35 s after Continue"
+      "detail": "at n1a -> n1a; room silk_cloister -> silk_cloister; health 5 -> 5; sim t 0.36 s after Continue"
     },
     {
       "id": "B14 deliberately walking into firing lines (no kills) loses the room and offers Retry room / Abandon expedition",
       "ok": true,
-      "detail": "outcome defeat at sim 18.93 s after 2 dashes, health 0, kills 0"
+      "detail": "outcome defeat at sim 18.94 s after 2 dashes, health 0, kills 0"
     },
     {
       "id": "B15 Retry room restarts the same room as attempt 2 at entry health",
@@ -121,7 +121,7 @@
     {
       "id": "C1 full expedition via __oys.start() + bot + DOM panel clicks reaches \"Escaped.\"",
       "ok": true,
-      "detail": "5 room attempts over nodes n0 > n1a > n2 > n3a > n4 > n5 > n6 > n7; relics taken [\"Mourning Bell\",\"Long Silk\"]; final loadout [\"long_silk\",\"mourning_bell\"]; 61.06 s sim; failures 0"
+      "detail": "5 room attempts over nodes n0 > n1a > n2 > n3a > n4 > n5 > n6 > n7; relics taken [\"Mourning Bell\",\"Long Silk\"]; final loadout [\"long_silk\",\"mourning_bell\"]; 63.32 s sim; failures 0"
     },
     {
       "id": "C2 after the run, the title offers Begin again and Long Reach is unlocked on the starter panel",
@@ -136,24 +136,24 @@
   ],
   "measurements": {
     "coldLoad": {
-      "domContentLoadedMs": 195,
-      "loadMs": 197,
-      "firstWebGLDrawMs": 491,
-      "transferBytes": 2083395,
+      "domContentLoadedMs": 172,
+      "loadMs": 176,
+      "firstWebGLDrawMs": 467,
+      "transferBytes": 2086995,
       "canvas": true,
       "webgl2": true,
       "renderer": "ANGLE (AMD, AMD Radeon(TM) Graphics (0x00001638) Direct3D11 vs_5_0 ps_5_0, D3D11)",
       "debugHook": false,
-      "beginVisibleMs": 759,
+      "beginVisibleMs": 724,
       "label": "desktop headless browser, local server, cold cache; not phone evidence"
     },
     "livePlay": {
       "label": "desktop headless browser rAF over 2 s of live play; not phone frame pacing",
-      "frames": 332,
+      "frames": 310,
       "frameIntervalMs": {
         "p50": 6.1,
-        "p95": 6.2,
-        "max": 6.4
+        "p95": 12,
+        "max": 18.5
       },
       "drawCallsPerFrame": {
         "p50": 42,
@@ -167,10 +167,10 @@
     },
     "afterPlaythrough": {
       "label": "desktop Chromium-family metrics after clearing room 1; not phone memory evidence",
-      "jsHeapUsedBytes": 10062984,
-      "jsHeapTotalBytes": 20586496,
-      "domNodes": 285,
-      "jsEventListeners": 150
+      "jsHeapUsedBytes": 10081160,
+      "jsHeapTotalBytes": 20324352,
+      "domNodes": 304,
+      "jsEventListeners": 148
     }
   },
   "screenshots": [
@@ -191,8 +191,8 @@
     "method": "tests/sim/bot.ts botCommand() run in Node on page state each 0.05 s sim; commands via window.__oys.push; time via __oys.advance(0.05) plus the live rAF loop",
     "outcome": "victory",
     "roomData": "departure_court",
-    "simSeconds": 12.82,
-    "wallSeconds": 1.16,
+    "simSeconds": 13.07,
+    "wallSeconds": 1.06,
     "healthStart": 5,
     "healthLeft": 5,
     "stats": {
@@ -225,18 +225,18 @@
         "attempt": 1,
         "outcome": "victory",
         "roomData": "departure_court",
-        "simSeconds": 11.46,
-        "wallSeconds": 1.07,
+        "simSeconds": 10.78,
+        "wallSeconds": 1.11,
         "healthStart": 5,
         "healthLeft": 4,
         "stats": {
-          "dashes": 33,
-          "returns": 1,
+          "dashes": 28,
+          "returns": 2,
           "cuts": 0,
           "kills": 4,
           "hits": 1,
           "contactReunions": 0,
-          "exhaustionReunions": 2
+          "exhaustionReunions": 3
         },
         "fallbackCommands": 0
       },
@@ -247,8 +247,8 @@
         "attempt": 1,
         "outcome": "victory",
         "roomData": "needle_gallery",
-        "simSeconds": 7.96,
-        "wallSeconds": 0.58,
+        "simSeconds": 7.98,
+        "wallSeconds": 0.61,
         "healthStart": 4,
         "healthLeft": 4,
         "stats": {
@@ -269,8 +269,8 @@
         "attempt": 1,
         "outcome": "victory",
         "roomData": "mourners_garden",
-        "simSeconds": 9.92,
-        "wallSeconds": 0.83,
+        "simSeconds": 9.96,
+        "wallSeconds": 0.88,
         "healthStart": 5,
         "healthLeft": 4,
         "stats": {
@@ -291,8 +291,8 @@
         "attempt": 1,
         "outcome": "victory",
         "roomData": "last_platform",
-        "simSeconds": 9.96,
-        "wallSeconds": 0.7,
+        "simSeconds": 9.95,
+        "wallSeconds": 0.73,
         "healthStart": 5,
         "healthLeft": 5,
         "stats": {
@@ -313,18 +313,18 @@
         "attempt": 1,
         "outcome": "victory",
         "roomData": "last_warden",
-        "simSeconds": 21.76,
-        "wallSeconds": 9.7,
+        "simSeconds": 24.65,
+        "wallSeconds": 16.14,
         "healthStart": 5,
-        "healthLeft": 4,
+        "healthLeft": 1,
         "stats": {
-          "dashes": 22,
-          "returns": 1,
+          "dashes": 12,
+          "returns": 0,
           "cuts": 0,
           "kills": 0,
-          "hits": 1,
-          "contactReunions": 4,
-          "exhaustionReunions": 4
+          "hits": 4,
+          "contactReunions": 1,
+          "exhaustionReunions": 5
         },
         "fallbackCommands": 0
       }
@@ -381,8 +381,8 @@
     ],
     "failures": [],
     "ending": "Escaped.",
-    "totalSimSeconds": 61.06,
-    "wallSeconds": 23.81,
+    "totalSimSeconds": 63.32,
+    "wallSeconds": 29.75,
     "history": [
       "n0",
       "n1a",
@@ -401,11 +401,11 @@
     "runTotals": {
       "roomsCleared": 5,
       "failedAttempts": 0,
-      "hitsTaken": 3,
+      "hitsTaken": 6,
       "cuts": 0,
       "kills": 15,
-      "contactReunions": 4,
-      "roomSeconds": 61.050000000000004
+      "contactReunions": 1,
+      "roomSeconds": 63.324999999999996
     },
     "notAuthoredWarnings": []
   },
