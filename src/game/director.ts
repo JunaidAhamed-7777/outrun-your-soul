@@ -50,6 +50,7 @@ export interface DirectorDeps {
 export class Director {
   private runState: RunState | null = null;
   private progressState: ProgressState;
+  private progressBefore: ProgressState | null = null;
 
   constructor(private readonly deps: DirectorDeps) {
     this.progressState = deps.progress.loadOrCreate();
@@ -63,6 +64,11 @@ export class Director {
     return this.progressState;
   }
 
+  /** Progress as it was when the current run started or was continued (for "new in the atlas"). */
+  get progressAtStart(): ProgressState | null {
+    return this.progressBefore;
+  }
+
   /** True when a saved, unfinished expedition can be continued. */
   hasContinue(): boolean {
     const loaded = this.deps.checkpoints.load();
@@ -70,6 +76,7 @@ export class Director {
   }
 
   newRun(seed: number, starter: StarterId): Screen {
+    this.progressBefore = this.progressState;
     this.runState = createRun(seed >>> 0, starter);
     this.saveProgress(recordRunStart(this.progressState, this.runState));
     this.deps.checkpoints.save(this.runState);
@@ -80,6 +87,7 @@ export class Director {
   continueRun(): Screen | null {
     const loaded = this.deps.checkpoints.load();
     if (!loaded.value || isFinished(loaded.value.run)) return null;
+    this.progressBefore = this.progressState;
     this.runState = resumeFrom(loaded.value).run;
     return this.screen();
   }
