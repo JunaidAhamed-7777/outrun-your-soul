@@ -1,7 +1,7 @@
 {
   "note": "Desktop browser with phone emulation. Not phone evidence: no real touch hardware, mobile GPU, iOS Safari or itch.io page involved.",
-  "source": "ZIP C:\\Github\\outrun-your-soul\\.claude\\worktrees\\agent-a3967bf4c2c29b0ed\\release\\outrun-your-soul-0.1.0-50bb349.zip",
-  "gameUrl": "http://127.0.0.1:59033/html/1234567/index.html",
+  "source": "directory C:\\Github\\outrun-your-soul\\dist",
+  "gameUrl": "http://127.0.0.1:61781/html/1234567/index.html",
   "viewport": {
     "width": 375,
     "height": 812,
@@ -22,7 +22,7 @@
     {
       "id": "A3 title Begin button visible",
       "ok": true,
-      "detail": "904 ms after navigation start"
+      "detail": "1029 ms after navigation start"
     },
     {
       "id": "A5 title scene renders packaged GLBs, not placeholders (triangle counts match)",
@@ -32,7 +32,7 @@
     {
       "id": "A4 no console errors, page errors or failed requests (production load)",
       "ok": true,
-      "detail": "noted 1 net::ERR_ABORTED report(s) for resources that finished with HTTP 200 or render from their GLB: distant_engine.glb"
+      "detail": ""
     },
     {
       "id": "B1b room 1 scene renders packaged GLBs for every named model root (courier, soul, sentries, gate, engine)",
@@ -62,22 +62,22 @@
     {
       "id": "B5 visibilitychange(hidden) pauses, shows the pause panel and freezes sim time",
       "ok": true,
-      "detail": "phase paused, panel true, sim t 3.475 -> 3.475 over 1 s"
+      "detail": "phase paused, panel true, sim t 3.3833333333333333 -> 3.3833333333333333 over 1 s"
     },
     {
       "id": "B6 explicit Resume continues the same in-memory state",
       "ok": true,
-      "detail": "sim t 3.475 -> 3.775"
+      "detail": "sim t 3.3833333333333333 -> 3.6916666666666664"
     },
     {
       "id": "B7 window blur pauses and freezes sim time",
       "ok": true,
-      "detail": "phase paused, sim t 3.783333333333333 -> 3.783333333333333"
+      "detail": "phase paused, sim t 3.7083333333333335 -> 3.7083333333333335"
     },
     {
       "id": "B8 scripted Departure Court clear reaches victory",
       "ok": true,
-      "detail": "sim 13.1 s, health 5, stats {\"dashes\":22,\"returns\":3,\"cuts\":0,\"kills\":4,\"hits\":0,\"contactReunions\":0,\"exhaustionReunions\":4}"
+      "detail": "sim 13.36 s, health 5, stats {\"dashes\":24,\"returns\":2,\"cuts\":0,\"kills\":4,\"hits\":0,\"contactReunions\":0,\"exhaustionReunions\":3}"
     },
     {
       "id": "B9 result panel shows \"The gate opens.\" with an Onward button",
@@ -101,12 +101,12 @@
     {
       "id": "B13 Continue restarts the same room (node, room, entry health) from its start",
       "ok": true,
-      "detail": "at n1a -> n1a; room silk_cloister -> silk_cloister; health 5 -> 5; sim t 0.37 s after Continue"
+      "detail": "at n1a -> n1a; room silk_cloister -> silk_cloister; health 5 -> 5; sim t 0.38 s after Continue"
     },
     {
       "id": "B14 deliberately walking into firing lines (no kills) loses the room and offers Retry room / Abandon expedition",
       "ok": true,
-      "detail": "outcome defeat at sim 18.95 s after 2 dashes, health 0, kills 0"
+      "detail": "outcome defeat at sim 18.97 s after 2 dashes, health 0, kills 0"
     },
     {
       "id": "B15 Retry room restarts the same room as attempt 2 at entry health",
@@ -116,12 +116,12 @@
     {
       "id": "B16 no console errors, page errors or failed requests (UI session incl. reload)",
       "ok": true,
-      "detail": "noted 2 net::ERR_ABORTED report(s) for resources that finished with HTTP 200 or render from their GLB: courier_body.glb, courier_body.glb"
+      "detail": ""
     },
     {
       "id": "C1 full expedition via __oys.start() + bot + DOM panel clicks reaches \"Escaped.\"",
       "ok": true,
-      "detail": "5 room attempts over nodes n0 > n1a > n2 > n3a > n4 > n5 > n6 > n7; relics taken [\"Mourning Bell\",\"Long Silk\"]; final loadout [\"long_silk\",\"mourning_bell\"]; 50.35 s sim; failures 0"
+      "detail": "5 room attempts over nodes n0 > n1a > n2 > n3a > n4 > n5 > n6 > n7; relics taken [\"Mourning Bell\",\"Long Silk\"]; final loadout [\"long_silk\",\"mourning_bell\"]; 49.82 s sim; failures 0"
     },
     {
       "id": "C2 after the run, the title offers Begin again and Long Reach is unlocked on the starter panel",
@@ -131,29 +131,29 @@
     {
       "id": "C3 no console errors, page errors or failed requests (full expedition)",
       "ok": true,
-      "detail": "noted 1 net::ERR_ABORTED report(s) for resources that finished with HTTP 200 or render from their GLB: courier_body.glb"
+      "detail": ""
     }
   ],
   "measurements": {
     "coldLoad": {
-      "domContentLoadedMs": 168,
-      "loadMs": 173,
-      "firstWebGLDrawMs": 515,
-      "transferBytes": 2067417,
+      "domContentLoadedMs": 338,
+      "loadMs": 341,
+      "firstWebGLDrawMs": 705,
+      "transferBytes": 2083933,
       "canvas": true,
       "webgl2": true,
       "renderer": "ANGLE (AMD, AMD Radeon(TM) Graphics (0x00001638) Direct3D11 vs_5_0 ps_5_0, D3D11)",
       "debugHook": false,
-      "beginVisibleMs": 904,
+      "beginVisibleMs": 1029,
       "label": "desktop headless browser, local server, cold cache; not phone evidence"
     },
     "livePlay": {
       "label": "desktop headless browser rAF over 2 s of live play; not phone frame pacing",
-      "frames": 334,
+      "frames": 329,
       "frameIntervalMs": {
         "p50": 6.1,
         "p95": 6.2,
-        "max": 6.7
+        "max": 12.1
       },
       "drawCallsPerFrame": {
         "p50": 42,
@@ -167,10 +167,10 @@
     },
     "afterPlaythrough": {
       "label": "desktop Chromium-family metrics after clearing room 1; not phone memory evidence",
-      "jsHeapUsedBytes": 14401076,
-      "jsHeapTotalBytes": 22683648,
-      "domNodes": 285,
-      "jsEventListeners": 216
+      "jsHeapUsedBytes": 14839204,
+      "jsHeapTotalBytes": 21372928,
+      "domNodes": 290,
+      "jsEventListeners": 226
     }
   },
   "screenshots": [
@@ -191,18 +191,18 @@
     "method": "tests/sim/bot.ts botCommand() run in Node on page state each 0.05 s sim; commands via window.__oys.push; time via __oys.advance(0.05) plus the live rAF loop",
     "outcome": "victory",
     "roomData": "departure_court",
-    "simSeconds": 13.1,
-    "wallSeconds": 1.26,
+    "simSeconds": 13.36,
+    "wallSeconds": 2.01,
     "healthStart": 5,
     "healthLeft": 5,
     "stats": {
-      "dashes": 22,
-      "returns": 3,
+      "dashes": 24,
+      "returns": 2,
       "cuts": 0,
       "kills": 4,
       "hits": 0,
       "contactReunions": 0,
-      "exhaustionReunions": 4
+      "exhaustionReunions": 3
     },
     "fallbackCommands": 0,
     "lockedTelegraphsSeen": [
@@ -213,11 +213,6 @@
     "channel": "msedge",
     "version": "156.0.4314.50"
   },
-  "notes": [
-    "noted 1 net::ERR_ABORTED report(s) for resources that finished with HTTP 200 or render from their GLB: distant_engine.glb",
-    "noted 2 net::ERR_ABORTED report(s) for resources that finished with HTTP 200 or render from their GLB: courier_body.glb, courier_body.glb",
-    "noted 1 net::ERR_ABORTED report(s) for resources that finished with HTTP 200 or render from their GLB: courier_body.glb"
-  ],
   "consoleWarnings": [],
   "expedition": {
     "seed": 11,
@@ -230,18 +225,18 @@
         "attempt": 1,
         "outcome": "victory",
         "roomData": "departure_court",
-        "simSeconds": 10.96,
-        "wallSeconds": 0.81,
+        "simSeconds": 11.62,
+        "wallSeconds": 1.71,
         "healthStart": 5,
         "healthLeft": 4,
         "stats": {
-          "dashes": 29,
-          "returns": 2,
+          "dashes": 32,
+          "returns": 1,
           "cuts": 0,
           "kills": 4,
           "hits": 1,
           "contactReunions": 0,
-          "exhaustionReunions": 3
+          "exhaustionReunions": 2
         },
         "fallbackCommands": 0
       },
@@ -253,7 +248,7 @@
         "outcome": "victory",
         "roomData": "needle_gallery",
         "simSeconds": 7.98,
-        "wallSeconds": 0.52,
+        "wallSeconds": 0.86,
         "healthStart": 4,
         "healthLeft": 4,
         "stats": {
@@ -274,8 +269,8 @@
         "attempt": 1,
         "outcome": "victory",
         "roomData": "mourners_garden",
-        "simSeconds": 10,
-        "wallSeconds": 1.04,
+        "simSeconds": 9.93,
+        "wallSeconds": 1.32,
         "healthStart": 5,
         "healthLeft": 4,
         "stats": {
@@ -296,18 +291,18 @@
         "attempt": 1,
         "outcome": "victory",
         "roomData": "last_platform",
-        "simSeconds": 10.96,
-        "wallSeconds": 1.27,
+        "simSeconds": 10.01,
+        "wallSeconds": 0.98,
         "healthStart": 5,
         "healthLeft": 5,
         "stats": {
-          "dashes": 16,
-          "returns": 4,
+          "dashes": 12,
+          "returns": 2,
           "cuts": 0,
           "kills": 4,
           "hits": 0,
           "contactReunions": 0,
-          "exhaustionReunions": 5
+          "exhaustionReunions": 3
         },
         "fallbackCommands": 0
       },
@@ -318,12 +313,12 @@
         "attempt": 1,
         "outcome": "victory",
         "roomData": "last_warden",
-        "simSeconds": 10.45,
-        "wallSeconds": 1.23,
+        "simSeconds": 10.28,
+        "wallSeconds": 1.06,
         "healthStart": 5,
         "healthLeft": 5,
         "stats": {
-          "dashes": 14,
+          "dashes": 13,
           "returns": 2,
           "cuts": 0,
           "kills": 5,
@@ -386,8 +381,8 @@
     ],
     "failures": [],
     "ending": "Escaped.",
-    "totalSimSeconds": 50.35,
-    "wallSeconds": 16.49,
+    "totalSimSeconds": 49.82,
+    "wallSeconds": 17.9,
     "history": [
       "n0",
       "n1a",
@@ -410,7 +405,7 @@
       "cuts": 0,
       "kills": 20,
       "contactReunions": 0,
-      "roomSeconds": 50.349999999999994
+      "roomSeconds": 49.80833333333333
     },
     "notAuthoredWarnings": []
   },
