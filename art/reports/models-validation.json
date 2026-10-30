@@ -11,7 +11,7 @@
     "shipping": "public/assets/models",
     "fixtures": "art/exports"
   },
-  "note": "no models yet: public/assets/models and art/exports contain no .glb files; the renderer uses placeholders",
+  "note": "Structural and spec checks only. Visual quality, browser appearance and phone performance need separate evidence (docs/EVIDENCE.md).",
   "runtimeModelIds": [
     "courier_body",
     "soul_mask",
@@ -23,20 +23,395 @@
     "distant_engine"
   ],
   "missingRuntimeModels": [
-    "courier_body",
-    "soul_mask",
-    "needler",
-    "keeper",
     "floor_tile",
     "wall_block",
     "exit_gate",
     "distant_engine"
   ],
   "summary": {
-    "shipping": 0,
-    "fixtures": 0,
+    "shipping": 4,
+    "fixtures": 1,
     "failed": 0,
-    "shippingTriangles": 0
+    "shippingTriangles": 2118
   },
-  "models": []
+  "models": [
+    {
+      "assetId": "courier_body",
+      "file": "public/assets/models/courier_body.glb",
+      "shipping": true,
+      "bytes": 49268,
+      "sha256": "35e08e07d9a711dce719d9ac113f9c407ea9e3d5c7ab70903ecdb91652cabcf5",
+      "status": "pass",
+      "errors": [],
+      "warnings": [],
+      "stats": {
+        "assetId": "courier_body",
+        "category": "actor",
+        "budget": {
+          "label": "Courier or soul",
+          "maxTriangles": 2000,
+          "maxMaterials": 3
+        },
+        "rootNodes": [
+          "courier_body"
+        ],
+        "childNodes": [
+          "courier_body_body",
+          "courier_body_head",
+          "courier_body_mask",
+          "courier_body_scarf"
+        ],
+        "triangles": 814,
+        "materials": [
+          "ivory",
+          "mask_black",
+          "vermilion"
+        ],
+        "materialCount": 3,
+        "meshes": 4,
+        "nodes": 5,
+        "animations": [],
+        "extensionsUsed": [],
+        "bounds": {
+          "min": [
+            -0.2569,
+            0,
+            -0.3878
+          ],
+          "max": [
+            0.3215,
+            0.768,
+            0.235
+          ],
+          "size": [
+            0.5784,
+            0.768,
+            0.6228
+          ]
+        }
+      },
+      "khronos": {
+        "validatorVersion": "2.0.0-dev.3.10",
+        "numErrors": 0,
+        "numWarnings": 0,
+        "numInfos": 0,
+        "numHints": 0,
+        "messages": [],
+        "info": {
+          "generator": "Khronos glTF Blender I/O v5.2.40",
+          "drawCallCount": 6,
+          "totalVertexCount": 1640,
+          "totalTriangleCount": 814,
+          "materialCount": 3,
+          "animationCount": 0,
+          "extensionsUsed": []
+        }
+      }
+    },
+    {
+      "assetId": "keeper",
+      "file": "public/assets/models/keeper.glb",
+      "shipping": true,
+      "bytes": 27412,
+      "sha256": "79164e620364811b611fed9d9d2c024db2dec8159143f586f9d9c72533b6a15e",
+      "status": "pass",
+      "errors": [],
+      "warnings": [],
+      "stats": {
+        "assetId": "keeper",
+        "category": "enemy",
+        "budget": {
+          "label": "Ordinary enemy",
+          "maxTriangles": 2500,
+          "maxMaterials": 3
+        },
+        "rootNodes": [
+          "keeper"
+        ],
+        "childNodes": [
+          "keeper_base",
+          "keeper_head",
+          "keeper_muzzle"
+        ],
+        "triangles": 460,
+        "materials": [
+          "cobalt_mist",
+          "gold",
+          "ivory"
+        ],
+        "materialCount": 3,
+        "meshes": 2,
+        "nodes": 4,
+        "animations": [],
+        "extensionsUsed": [],
+        "bounds": {
+          "min": [
+            -0.2273,
+            0,
+            -0.4432
+          ],
+          "max": [
+            0.2832,
+            1.0704,
+            0.3025
+          ],
+          "size": [
+            0.5105,
+            1.0704,
+            0.7457
+          ]
+        }
+      },
+      "khronos": {
+        "validatorVersion": "2.0.0-dev.3.10",
+        "numErrors": 0,
+        "numWarnings": 0,
+        "numInfos": 1,
+        "numHints": 0,
+        "messages": [
+          {
+            "code": "NODE_EMPTY",
+            "severity": "info",
+            "message": "Empty node encountered.",
+            "pointer": "/nodes/1"
+          }
+        ],
+        "info": {
+          "generator": "Khronos glTF Blender I/O v5.2.40",
+          "drawCallCount": 4,
+          "totalVertexCount": 882,
+          "totalTriangleCount": 460,
+          "materialCount": 3,
+          "animationCount": 0,
+          "extensionsUsed": []
+        }
+      }
+    },
+    {
+      "assetId": "needler",
+      "file": "public/assets/models/needler.glb",
+      "shipping": true,
+      "bytes": 19212,
+      "sha256": "e8e9097b59ef6a4bf584fbee55df28cb1053f4c0c2a00842f9a7fb314ddf3fa4",
+      "status": "pass",
+      "errors": [],
+      "warnings": [
+        "widest half-extent 0.7125 exceeds ~1.3x collision radius (0.546); ground ring may misread the footprint"
+      ],
+      "stats": {
+        "assetId": "needler",
+        "category": "enemy",
+        "budget": {
+          "label": "Ordinary enemy",
+          "maxTriangles": 2500,
+          "maxMaterials": 3
+        },
+        "rootNodes": [
+          "needler"
+        ],
+        "childNodes": [
+          "needler_base",
+          "needler_head",
+          "needler_muzzle"
+        ],
+        "triangles": 284,
+        "materials": [
+          "gold",
+          "ivory",
+          "mask_black"
+        ],
+        "materialCount": 3,
+        "meshes": 2,
+        "nodes": 4,
+        "animations": [],
+        "extensionsUsed": [],
+        "bounds": {
+          "min": [
+            -0.3095,
+            0,
+            -0.3375
+          ],
+          "max": [
+            0.3095,
+            0.9075,
+            0.7125
+          ],
+          "size": [
+            0.619,
+            0.9075,
+            1.05
+          ]
+        }
+      },
+      "khronos": {
+        "validatorVersion": "2.0.0-dev.3.10",
+        "numErrors": 0,
+        "numWarnings": 0,
+        "numInfos": 1,
+        "numHints": 0,
+        "messages": [
+          {
+            "code": "NODE_EMPTY",
+            "severity": "info",
+            "message": "Empty node encountered.",
+            "pointer": "/nodes/1"
+          }
+        ],
+        "info": {
+          "generator": "Khronos glTF Blender I/O v5.2.40",
+          "drawCallCount": 5,
+          "totalVertexCount": 558,
+          "totalTriangleCount": 284,
+          "materialCount": 3,
+          "animationCount": 0,
+          "extensionsUsed": []
+        }
+      }
+    },
+    {
+      "assetId": "soul_mask",
+      "file": "public/assets/models/soul_mask.glb",
+      "shipping": true,
+      "bytes": 31572,
+      "sha256": "ff694de7edb91589439478194d6d764d2e0a5fae2109c141d0ebe8c3e292d1fe",
+      "status": "pass",
+      "errors": [],
+      "warnings": [],
+      "stats": {
+        "assetId": "soul_mask",
+        "category": "actor",
+        "budget": {
+          "label": "Courier or soul",
+          "maxTriangles": 2000,
+          "maxMaterials": 3
+        },
+        "rootNodes": [
+          "soul_mask"
+        ],
+        "childNodes": [
+          "soul_mask_mask",
+          "soul_mask_wisp"
+        ],
+        "triangles": 560,
+        "materials": [
+          "soul_core",
+          "soul_glow"
+        ],
+        "materialCount": 2,
+        "meshes": 2,
+        "nodes": 3,
+        "animations": [],
+        "extensionsUsed": [
+          "KHR_materials_emissive_strength"
+        ],
+        "bounds": {
+          "min": [
+            -0.1721,
+            0.006,
+            -0.2453
+          ],
+          "max": [
+            0.1721,
+            0.8745,
+            0.0933
+          ],
+          "size": [
+            0.3443,
+            0.8685,
+            0.3385
+          ]
+        }
+      },
+      "khronos": {
+        "validatorVersion": "2.0.0-dev.3.10",
+        "numErrors": 0,
+        "numWarnings": 0,
+        "numInfos": 0,
+        "numHints": 0,
+        "messages": [],
+        "info": {
+          "generator": "Khronos glTF Blender I/O v5.2.40",
+          "drawCallCount": 2,
+          "totalVertexCount": 1074,
+          "totalTriangleCount": 560,
+          "materialCount": 2,
+          "animationCount": 0,
+          "extensionsUsed": [
+            "KHR_materials_emissive_strength"
+          ]
+        }
+      }
+    },
+    {
+      "assetId": "calibration_tile",
+      "file": "art/exports/calibration_tile.glb",
+      "shipping": false,
+      "bytes": 6004,
+      "sha256": "a8a61c8386bcfcd031d4de8b2bd9e6a666f1f0b97c3a2de883bd61655889f499",
+      "status": "pass",
+      "errors": [],
+      "warnings": [],
+      "stats": {
+        "assetId": "calibration_tile",
+        "category": "fixture",
+        "budget": {
+          "label": "Calibration fixture (never ships)",
+          "maxTriangles": null,
+          "maxMaterials": null
+        },
+        "rootNodes": [
+          "calibration_tile"
+        ],
+        "childNodes": [
+          "calibration_tile_slab"
+        ],
+        "triangles": 52,
+        "materials": [
+          "cobalt",
+          "gold",
+          "ivory",
+          "vermilion"
+        ],
+        "materialCount": 4,
+        "meshes": 1,
+        "nodes": 2,
+        "animations": [],
+        "extensionsUsed": [],
+        "bounds": {
+          "min": [
+            -0.0433,
+            -0.06,
+            -0.99
+          ],
+          "max": [
+            0.99,
+            0.3,
+            0.05
+          ],
+          "size": [
+            1.0333,
+            0.36,
+            1.04
+          ]
+        }
+      },
+      "khronos": {
+        "validatorVersion": "2.0.0-dev.3.10",
+        "numErrors": 0,
+        "numWarnings": 0,
+        "numInfos": 0,
+        "numHints": 0,
+        "messages": [],
+        "info": {
+          "generator": "Khronos glTF Blender I/O v5.2.40",
+          "drawCallCount": 4,
+          "totalVertexCount": 102,
+          "totalTriangleCount": 52,
+          "materialCount": 4,
+          "animationCount": 0,
+          "extensionsUsed": []
+        }
+      }
+    }
+  ]
 }

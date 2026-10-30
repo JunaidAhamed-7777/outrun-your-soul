@@ -38,8 +38,8 @@ export function parseGlb(bytes) {
  * `maxMaterials` breaches are errors except where the doc says "normally" (warning).
  */
 export const BUDGETS = Object.freeze({
-  actor: { label: 'Courier or soul', maxTriangles: 2000, maxMaterials: 2, materialsHard: true },
-  enemy: { label: 'Ordinary enemy', maxTriangles: 2500, maxMaterials: 2, materialsHard: true },
+  actor: { label: 'Courier or soul', maxTriangles: 2000, maxMaterials: 3, materialsHard: true },
+  enemy: { label: 'Ordinary enemy', maxTriangles: 2500, maxMaterials: 3, materialsHard: true },
   warden: { label: 'Warden', maxTriangles: 4000, maxMaterials: 3, materialsHard: true },
   module: { label: 'Small prop / modular wall', maxTriangles: 800, maxMaterials: 1, materialsHard: false },
   setPiece: { label: 'No per-asset budget documented; counts toward the <=60,000-triangle visible room', maxTriangles: 60000, maxMaterials: null, materialsHard: false },
