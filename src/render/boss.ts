@@ -1,16 +1,16 @@
 /**
- * Last Warden boss placeholder: it mirrors the player. A large gilded armoured body, a slower
- * glowing heart that follows the body's route, and its own vermilion-gold ribbon between them.
- * Optional and defensive: drawn only when `state.boss` exists (see simext.bossView); boss parts
- * that arrive as enemies ('last_warden_body' / 'last_warden_heart') are drawn by the renderer's
- * enemy views (WardenView for the body, HeartView for the heart).
+ * Last Warden boss presentation: it mirrors the player. A tall gilded body
+ * (last_warden_body.glb), a slower heart (last_warden_heart.glb: floating cage and core on a
+ * chain down to its true ground position) and its own gold-vermilion ribbon between them.
+ * Optional and defensive: enemies with roles 'last_warden_body' / 'last_warden_heart' use
+ * BossBodyView / HeartView; a dedicated `state.boss` structure is drawn by BossLayer.
  */
 import {
   AdditiveBlending,
   Color,
   Group,
-  IcosahedronGeometry,
   Mesh,
+  MeshBasicMaterial,
   MeshToonMaterial,
   PlaneGeometry,
   Sprite,
@@ -19,51 +19,130 @@ import {
   type ShaderMaterial,
   type Texture,
 } from 'three';
-import type { SimState } from '../sim/types';
+import type { EnemyState, SimState } from '../sim/types';
 import type { Vec2 } from '../sim/vec';
-import { ACTOR_SCALE, groundRing, lerpVec } from './actors';
+import { approachAngle, groundRing, lerpVec } from './actors';
 import type { ModelLibrary } from './assets';
 import { yawForFacing } from './contract';
-import { toonGradient } from './materials';
 import { color } from './palette';
-import { faceted } from './placeholders';
+import { findPart } from './placeholders';
 import { ribbonMaterial, setUniform } from './shaders';
 import { bossView } from './simext';
 import { StripMesh } from './stripMesh';
 
-export const BOSS_SCALE = 1.6;
+export const BOSS_BODY_RADIUS = 0.55;
+export const BOSS_HEART_RADIUS = 0.3;
 
-/** The boss heart: a floating vermilion-gold orb with a halo and a ground ring. */
+function disposeModel(model: Object3D): void {
+  model.traverse((node) => {
+    if (node instanceof Mesh) (Array.isArray(node.material) ? node.material : [node.material]).forEach((m) => m.dispose());
+  });
+}
+
+function shadowDisc(spot: Texture, size: number): Mesh<PlaneGeometry, MeshBasicMaterial> {
+  const geo = new PlaneGeometry(size, size);
+  geo.rotateX(-Math.PI / 2);
+  const mesh = new Mesh(geo, new MeshBasicMaterial({ map: spot, color: new Color('#0a1035'), transparent: true, opacity: 0.45, depthWrite: false }));
+  mesh.position.y = 0.006;
+  mesh.renderOrder = 1;
+  return mesh;
+}
+
+/** The boss body: faces where it is heading, head turns toward the courier, mantle sways. */
+export class BossBodyView {
+  readonly root = new Group();
+  private readonly model: Object3D;
+  private readonly head?: Object3D;
+  private readonly mantle?: Object3D;
+  private readonly ring: Mesh<PlaneGeometry>;
+  private readonly shadow: Mesh<PlaneGeometry, MeshBasicMaterial>;
+  private yaw = 0;
+  private last: Vec2 | null = null;
+
+  constructor(lib: ModelLibrary, spot: Texture, radius = BOSS_BODY_RADIUS) {
+    this.model = lib.instance('last_warden_body', true);
+    this.head = findPart(this.model, 'last_warden_body', 'head');
+    this.mantle = findPart(this.model, 'last_warden_body', 'mantle');
+    this.ring = groundRing(radius, color('gold'), 0.05, 0.9, 0);
+    this.shadow = shadowDisc(spot, 1.4);
+    this.root.add(this.shadow, this.model, this.ring);
+  }
+
+  update(pos: Vec2, facing: Vec2 | null, lookAt: Vec2 | null, dt: number, time: number, reducedMotion: boolean): void {
+    this.root.position.set(pos.x, 0, -pos.y);
+    let dir = facing;
+    if (!dir && this.last) {
+      const dx = pos.x - this.last.x;
+      const dy = pos.y - this.last.y;
+      if (dx * dx + dy * dy > 1e-6) dir = { x: dx, y: dy };
+    }
+    this.last = pos;
+    if (dir) this.yaw = approachAngle(this.yaw, yawForFacing(dir), 10, dt);
+    this.model.rotation.y = this.yaw;
+    if (this.head && lookAt) {
+      const want = yawForFacing({ x: lookAt.x - pos.x, y: lookAt.y - pos.y }) - this.yaw;
+      let d = want;
+      while (d > Math.PI) d -= Math.PI * 2;
+      while (d < -Math.PI) d += Math.PI * 2;
+      this.head.rotation.y = Math.max(-0.9, Math.min(0.9, d));
+    }
+    if (this.mantle) this.mantle.rotation.x = reducedMotion ? 0 : Math.sin(time * 2.1) * 0.05;
+  }
+
+  dispose(): void {
+    disposeModel(this.model);
+    this.ring.geometry.dispose();
+    (this.ring.material as ShaderMaterial).dispose();
+    this.shadow.geometry.dispose();
+    this.shadow.material.dispose();
+    this.root.removeFromParent();
+  }
+}
+
+/** The boss heart: a slow-spinning cage with a beating core above its true ground position. */
 export class HeartView {
   readonly root = new Group();
-  private readonly orb: Mesh<IcosahedronGeometry, MeshToonMaterial>;
+  private readonly model: Object3D;
+  private readonly cage?: Object3D;
+  private readonly core?: Object3D;
+  private readonly coreMaterials: MeshToonMaterial[] = [];
   private readonly glow: Sprite;
   private readonly ring: Mesh<PlaneGeometry>;
 
-  constructor(spot: Texture, radius: number) {
-    const mat = new MeshToonMaterial({ color: color('vermilion'), gradientMap: toonGradient(), emissive: color('gold'), emissiveIntensity: 0.6 });
-    this.orb = new Mesh(faceted(new IcosahedronGeometry(0.2, 0)) as unknown as IcosahedronGeometry, mat);
+  constructor(lib: ModelLibrary, spot: Texture, radius = BOSS_HEART_RADIUS) {
+    this.model = lib.instance('last_warden_heart', true);
+    this.cage = findPart(this.model, 'last_warden_heart', 'cage');
+    this.core = findPart(this.model, 'last_warden_heart', 'core');
+    this.core?.traverse((node) => {
+      if (!(node instanceof Mesh)) return;
+      for (const m of Array.isArray(node.material) ? node.material : [node.material]) {
+        if (m instanceof MeshToonMaterial) {
+          m.emissive.copy(color('vermilion'));
+          this.coreMaterials.push(m);
+        }
+      }
+    });
     this.glow = new Sprite(
-      new SpriteMaterial({ map: spot, color: new Color('#ff9a4a'), transparent: true, opacity: 0.6, blending: AdditiveBlending, depthWrite: false }),
+      new SpriteMaterial({ map: spot, color: new Color('#ff9a4a'), transparent: true, opacity: 0.55, blending: AdditiveBlending, depthWrite: false }),
     );
     this.glow.renderOrder = -1;
     this.ring = groundRing(radius, color('vermilion'), 0.05, 0.9, 10);
-    this.root.add(this.glow, this.orb, this.ring);
+    this.root.add(this.glow, this.model, this.ring);
   }
 
   update(pos: Vec2, time: number, reducedMotion: boolean): void {
     this.root.position.set(pos.x, 0, -pos.y);
-    const beat = reducedMotion ? 1 : 1 + 0.12 * Math.max(0, Math.sin(time * 5.5));
-    this.orb.position.y = 0.6 + (reducedMotion ? 0 : Math.sin(time * 2) * 0.05);
-    this.orb.scale.setScalar(ACTOR_SCALE * beat);
-    this.orb.rotation.y += reducedMotion ? 0 : 0.02;
-    this.glow.position.set(0, 0.42, -0.3);
-    this.glow.scale.set(1.1 * beat, 1.1 * beat, 1);
+    const beat = reducedMotion ? 0 : Math.max(0, Math.sin(time * 5.5));
+    if (this.cage) this.cage.rotation.y = reducedMotion ? 0 : time * 0.6;
+    if (this.core) this.core.scale.setScalar(1 + 0.15 * beat);
+    for (const m of this.coreMaterials) m.emissiveIntensity = 0.4 + 0.5 * beat;
+    this.glow.position.set(0, 0.5, -0.3);
+    const g = 1 + 0.15 * beat;
+    this.glow.scale.set(g, g, 1);
   }
 
   dispose(): void {
-    this.orb.geometry.dispose();
-    this.orb.material.dispose();
+    disposeModel(this.model);
     (this.glow.material as SpriteMaterial).dispose();
     this.ring.geometry.dispose();
     (this.ring.material as ShaderMaterial).dispose();
@@ -80,10 +159,13 @@ export function bossRibbon(): StripMesh<ShaderMaterial> {
   return new StripMesh(mat, 160, 12);
 }
 
-/** Draws `state.boss` when the simulation provides it as a dedicated structure. */
+/**
+ * Boss ribbon between body and heart (both enemy-based and `state.boss`-based bosses), plus
+ * body/heart views when the sim provides a dedicated `state.boss` structure.
+ */
 export class BossLayer {
   readonly group = new Group();
-  private body: Object3D | null = null;
+  private body: BossBodyView | null = null;
   private heart: HeartView | null = null;
   private readonly ribbon = bossRibbon();
   private time = 0;
@@ -96,35 +178,42 @@ export class BossLayer {
     this.group.add(this.ribbon.mesh);
   }
 
-  update(state: SimState, alpha: number, dt: number, reducedMotion: boolean): void {
-    const boss = bossView(state);
-    this.group.visible = !!boss;
-    if (!boss) return;
+  update(state: SimState, alpha: number, dt: number, reducedMotion: boolean, courier: Vec2): void {
     this.time += dt;
-    const bodyPos = boss.body ? lerpVec(boss.body.prevPos, boss.body.pos, alpha) : null;
-    const heartPos = boss.heart ? lerpVec(boss.heart.prevPos, boss.heart.pos, alpha) : null;
-    if (bodyPos) {
-      if (!this.body) {
-        this.body = this.lib.instance('warden', true);
-        this.body.scale.setScalar(ACTOR_SCALE * BOSS_SCALE);
-        this.body.traverse((node) => {
-          if (node instanceof Mesh && node.material instanceof MeshToonMaterial) node.material.color.lerp(color('gold'), 0.35);
-        });
-        this.group.add(this.body);
+    const boss = bossView(state);
+    let bodyPos: Vec2 | null = null;
+    let heartPos: Vec2 | null = null;
+    let route: readonly Vec2[] = [];
+    if (boss) {
+      bodyPos = boss.body ? lerpVec(boss.body.prevPos, boss.body.pos, alpha) : null;
+      heartPos = boss.heart ? lerpVec(boss.heart.prevPos, boss.heart.pos, alpha) : null;
+      route = boss.route;
+      if (bodyPos) {
+        if (!this.body) {
+          this.body = new BossBodyView(this.lib, this.spot);
+          this.group.add(this.body.root);
+        }
+        this.body.update(bodyPos, null, courier, dt, this.time, reducedMotion);
       }
-      this.body.position.set(bodyPos.x, 0, -bodyPos.y);
-      if (heartPos) this.body.rotation.y = yawForFacing({ x: bodyPos.x - heartPos.x, y: bodyPos.y - heartPos.y });
-    }
-    if (heartPos) {
-      if (!this.heart) {
-        this.heart = new HeartView(this.spot, 0.35);
-        this.group.add(this.heart.root);
+      if (heartPos) {
+        if (!this.heart) {
+          this.heart = new HeartView(this.lib, this.spot);
+          this.group.add(this.heart.root);
+        }
+        this.heart.update(heartPos, this.time, reducedMotion);
       }
-      this.heart.update(heartPos, this.time, reducedMotion);
+    } else {
+      // Enemy-based boss: connect the parts (views are owned by the renderer's enemy map).
+      const parts = enemyBossParts(state.enemies);
+      bodyPos = parts.body;
+      heartPos = parts.heart;
+      route = parts.route;
     }
+    if (this.body) this.body.root.visible = !!(boss && bodyPos);
+    if (this.heart) this.heart.root.visible = !!(boss && heartPos);
     this.pts.length = 0;
-    if (boss.route.length >= 2) {
-      this.pts.push(...boss.route);
+    if (route.length >= 2) {
+      this.pts.push(...route);
       if (heartPos) this.pts[0] = heartPos;
       if (bodyPos) this.pts[this.pts.length - 1] = bodyPos;
     } else if (heartPos && bodyPos) {
@@ -135,11 +224,27 @@ export class BossLayer {
   }
 
   dispose(): void {
+    this.body?.dispose();
     this.heart?.dispose();
-    this.body?.traverse((node) => {
-      if (node instanceof Mesh) (Array.isArray(node.material) ? node.material : [node.material]).forEach((m) => m.dispose());
-    });
     this.ribbon.dispose();
     this.group.removeFromParent();
   }
+}
+
+/** Positions (and optional route) of an enemy-based boss, if present and alive. */
+export function enemyBossParts(enemies: readonly EnemyState[]): { body: Vec2 | null; heart: Vec2 | null; route: readonly Vec2[] } {
+  let body: Vec2 | null = null;
+  let heart: Vec2 | null = null;
+  let route: readonly Vec2[] = [];
+  for (const e of enemies) {
+    const role = e.role as string;
+    if (e.phase === 'dead' || !role.startsWith('last_warden')) continue;
+    if (role.includes('heart')) heart = e.pos;
+    else {
+      body = e.pos;
+      const r = (e as unknown as { route?: { points?: unknown } }).route?.points;
+      if (Array.isArray(r)) route = r as Vec2[];
+    }
+  }
+  return { body, heart, route };
 }

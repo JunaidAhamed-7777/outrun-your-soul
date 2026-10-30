@@ -194,35 +194,31 @@ export function keeperPlaceholder(): Group {
 }
 
 /**
- * Warden: broad armoured sentry with a big hinged frontal shield (lowers when exposed) and a
- * chest core that glows gold during its opening. Parts: warden_base, warden_head (turns to aim),
- * warden_shield (hinge at its lower front edge), warden_core.
+ * Warden: broad armoured sentry. Parts follow warden.glb: warden_base (static plinth),
+ * warden_body (turns to the guard facing) holding warden_shield (hinged at its lower front
+ * edge; positive local-X rotation lowers it forward), warden_core (glows when exposed) and
+ * warden_muzzle (sweep origin).
  */
 export function wardenPlaceholder(): Group {
   const root = part('warden');
-  const coreMat = toon('gold', { emissive: '#ffcf6a', emissiveIntensity: 0.05 });
-  coreMat.name = 'core';
-
   const plinth = piece(new CylinderGeometry(0.5, 0.56, 0.14, 8), 'cobalt_deep', 0, 0.07, 0);
   const trim = piece(new CylinderGeometry(0.47, 0.5, 0.05, 8), 'gold', 0, 0.165, 0);
-  const torso = piece(new CylinderGeometry(0.27, 0.36, 0.5, 6), 'ivory', 0, 0.44, -0.04);
-  const belt = piece(new CylinderGeometry(0.33, 0.34, 0.07, 6), 'gold', 0, 0.3, -0.04);
-  const pauldronL = piece(new OctahedronGeometry(0.15, 0), 'gold', -0.36, 0.66, -0.04);
-  const pauldronR = piece(new OctahedronGeometry(0.15, 0), 'gold', 0.36, 0.66, -0.04);
+  const base = part('warden_base', plinth, trim);
+
+  const torso = piece(new CylinderGeometry(0.27, 0.36, 0.5, 6), 'ivory', 0, 0.3, -0.04);
+  const belt = piece(new CylinderGeometry(0.33, 0.34, 0.07, 6), 'gold', 0, 0.16, -0.04);
+  const pauldronL = piece(new OctahedronGeometry(0.15, 0), 'gold', -0.36, 0.52, -0.04);
+  const pauldronR = piece(new OctahedronGeometry(0.15, 0), 'gold', 0.36, 0.52, -0.04);
   pauldronL.scale.set(1.2, 0.8, 1);
   pauldronR.scale.set(1.2, 0.8, 1);
-  const base = part('warden_base', plinth, trim, torso, belt, pauldronL, pauldronR);
-
-  const helm = piece(new IcosahedronGeometry(0.16, 0), 'ivory', 0, 0, 0);
+  const helm = piece(new IcosahedronGeometry(0.16, 0), 'ivory', 0, 0.72, -0.04);
   helm.scale.set(1, 1.15, 1);
-  const visor = piece(new BoxGeometry(0.22, 0.04, 0.05), 'mask_black', 0, 0.01, 0.14);
-  const crest = piece(new ConeGeometry(0.06, 0.24, 4), 'gold', 0, 0.22, -0.02);
-  const head = part('warden_head', helm, visor, crest);
-  head.position.set(0, 0.86, -0.04);
+  const visor = piece(new BoxGeometry(0.22, 0.04, 0.05), 'mask_black', 0, 0.73, 0.1);
+  const crest = piece(new ConeGeometry(0.06, 0.24, 4), 'gold', 0, 0.94, -0.06);
 
-  const core = piece(new OctahedronGeometry(0.11, 0), coreMat, 0, 0.5, 0.2);
-  core.name = 'warden_core_gem';
+  const core = piece(new OctahedronGeometry(0.11, 0), 'gold', 0, 0, 0);
   const coreGroup = part('warden_core', core);
+  coreGroup.position.set(0, 0.34, 0.2);
 
   const plate = piece(new BoxGeometry(0.86, 0.66, 0.07), 'ivory_shadow', 0, 0.33, 0);
   const rimTop = piece(new BoxGeometry(0.9, 0.06, 0.09), 'gold', 0, 0.66, 0);
@@ -231,11 +227,53 @@ export function wardenPlaceholder(): Group {
   const boss = piece(new OctahedronGeometry(0.1, 0), 'gold', 0, 0.36, 0.05);
   boss.scale.set(1, 1.3, 0.5);
   const shield = part('warden_shield', plate, rimTop, rimL, rimR, boss);
-  // Hinge at the shield's lower front edge so it can drop forward when the warden is exposed.
-  shield.position.set(0, 0.06, 0.36);
-  shield.rotation.x = -0.12;
+  shield.position.set(0, -0.08, 0.37);
 
-  root.add(base, coreGroup, head, shield);
+  const muzzle = new Object3D();
+  muzzle.name = 'warden_muzzle';
+  muzzle.position.set(0, 0.12, 0.5);
+  const body = part('warden_body', torso, belt, pauldronL, pauldronR, helm, visor, crest, coreGroup, shield, muzzle);
+  body.position.set(0, 0.14, 0);
+
+  root.add(base, body);
+  return root;
+}
+
+/** Last Warden body: tall gilded mirror of the courier. Parts follow last_warden_body.glb. */
+export function bossBodyPlaceholder(): Group {
+  const root = part('last_warden_body');
+  const robe = piece(new ConeGeometry(0.34, 0.72, 8), 'gold', 0, -0.24, 0);
+  const sash = piece(new BoxGeometry(0.4, 0.06, 0.36), 'vermilion_dark', 0, -0.05, 0);
+  const mantleCape = piece(new ConeGeometry(0.42, 0.3, 8), 'gold_dark', 0, 0, -0.02);
+  const mantle = part('last_warden_body_mantle', mantleCape);
+  mantle.position.set(0, 0.4, 0);
+  const hood = piece(new ConeGeometry(0.2, 0.34, 6), 'ivory', 0, 0.1, -0.03);
+  const plate = piece(new SphereGeometry(0.13, 7, 5), 'ivory', 0, 0, 0);
+  plate.scale.set(1, 1.2, 0.42);
+  const eyeL = piece(new BoxGeometry(0.06, 0.02, 0.02), 'vermilion_dark', -0.05, 0.02, 0.05);
+  const eyeR = piece(new BoxGeometry(0.06, 0.02, 0.02), 'vermilion_dark', 0.05, 0.02, 0.05);
+  const mask = part('last_warden_body_mask', plate, eyeL, eyeR);
+  mask.position.set(0, 0.0, 0.12);
+  const head = part('last_warden_body_head', hood, mask);
+  head.position.set(0, 0.48, 0);
+  const body = part('last_warden_body_body', robe, sash, mantle, head);
+  body.position.set(0, 0.6, 0);
+  root.add(body);
+  return root;
+}
+
+/** Last Warden heart: a floating cage with a core on a chain to its true ground position. */
+export function bossHeartPlaceholder(): Group {
+  const root = part('last_warden_heart');
+  const chain = piece(new CylinderGeometry(0.012, 0.012, 0.6, 4), 'gold_dark', 0, 0.3, 0);
+  const ringA = piece(new TorusGeometry(0.2, 0.018, 4, 14), 'gold', 0, 0, 0);
+  const ringB = piece(new TorusGeometry(0.2, 0.018, 4, 14), 'gold', 0, 0, 0);
+  ringB.rotation.y = Math.PI / 2;
+  const coreGem = piece(new IcosahedronGeometry(0.12, 0), 'vermilion', 0, 0, 0);
+  const core = part('last_warden_heart_core', coreGem);
+  const cage = part('last_warden_heart_cage', ringA, ringB, core);
+  cage.position.set(0, 0.7, 0);
+  root.add(chain, cage);
   return root;
 }
 
@@ -295,6 +333,10 @@ export function placeholderFor(id: ModelId): Group {
       return keeperPlaceholder();
     case 'warden':
       return wardenPlaceholder();
+    case 'last_warden_body':
+      return bossBodyPlaceholder();
+    case 'last_warden_heart':
+      return bossHeartPlaceholder();
     case 'floor_tile':
       return floorTilePlaceholder();
     case 'wall_block':

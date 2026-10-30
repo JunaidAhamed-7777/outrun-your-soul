@@ -12,8 +12,9 @@ import { BufferAttribute, BufferGeometry, Color, Matrix4, Mesh, MeshToonMaterial
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { toonGradient } from './materials';
 
+/** Contract parts (`<id>_<part>`) keep their identity whether they are groups or meshes. */
 function isPart(node: Object3D, id: string): boolean {
-  return node.name.startsWith(`${id}_`) && !(node instanceof Mesh);
+  return node.name.startsWith(`${id}_`) && !node.name.includes(':');
 }
 
 /** Collect meshes owned by `part` (not inside a nested part). */

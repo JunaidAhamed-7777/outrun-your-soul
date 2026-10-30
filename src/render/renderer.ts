@@ -18,14 +18,14 @@ import type { DashPreview, ReturnPreview, RoomDef, SimEvent, SimState } from '..
 import { TUNING } from '../sim/tuning';
 import type { Vec2 } from '../sim/vec';
 import { BodyView, GateView, SentryView, SoulView, approach } from './actors';
-import { BOSS_SCALE, BossLayer, HeartView } from './boss';
+import { BossBodyView, BossLayer, HeartView } from './boss';
 import { RelicLayer } from './relics';
 import { loose, relicView, roleKind, type LooseEvent } from './simext';
 import { WardenView } from './warden';
 import { loadModels, type ModelLibrary } from './assets';
 import { buildBackdrop, type Backdrop } from './backdrop';
 import { fitCamera, type CameraFit } from './camera';
-import { worldToSim } from './contract';
+import { MODEL_IDS, worldToSim } from './contract';
 import { EffectSystem } from './effects';
 import { BOLT_HEIGHT, BoltLayer, LaneLayer } from './hazards';
 import { disposeSharedMaterials } from './materials';
@@ -147,7 +147,7 @@ export async function createRenderer(container: HTMLElement, options: RendererOp
   const lanes = new LaneLayer();
   const effects = new EffectSystem(spot, star);
   effects.reducedMotion = reducedMotion;
-  const sentries = new Map<number, SentryView | WardenView | HeartView>();
+  const sentries = new Map<number, SentryView | WardenView | HeartView | BossBodyView>();
   const relicLayer = new RelicLayer(lib);
   const bossLayer = new BossLayer(lib, spot);
   let cpuMs = 0;
@@ -339,8 +339,8 @@ export async function createRenderer(container: HTMLElement, options: RendererOp
       let view = sentries.get(enemy.id);
       if (!view) {
         if (kind === 'warden') view = new WardenView(lib, spot, enemy);
-        else if (kind === 'boss_body') view = new WardenView(lib, spot, enemy, BOSS_SCALE, true);
-        else if (kind === 'boss_heart') view = new HeartView(spot, enemy.radius);
+        else if (kind === 'boss_body') view = new BossBodyView(lib, spot, enemy.radius);
+        else if (kind === 'boss_heart') view = new HeartView(lib, spot, enemy.radius);
         else view = new SentryView(lib, spot, enemy);
         sentries.set(enemy.id, view);
         scene.add(view.root);
@@ -348,6 +348,9 @@ export async function createRenderer(container: HTMLElement, options: RendererOp
       if (view instanceof HeartView) {
         view.root.visible = enemy.phase !== 'dead';
         view.update(enemy.pos, time, reducedMotion);
+      } else if (view instanceof BossBodyView) {
+        view.root.visible = enemy.phase !== 'dead';
+        view.update(enemy.pos, enemy.facing, body.pos, dt, time, reducedMotion);
       } else {
         view.update(enemy, dt, time, reducedMotion);
       }
@@ -373,7 +376,7 @@ export async function createRenderer(container: HTMLElement, options: RendererOp
     const relics = relicView(state);
     ribbon.update(state, soul.pos, body.pos, dt, reducedMotion, relics.boosting);
     relicLayer.update(state, relics, soul.pos, body.pos, dt, reducedMotion);
-    bossLayer.update(state, alpha, dt, reducedMotion);
+    bossLayer.update(state, alpha, dt, reducedMotion, body.pos);
     preview.update(
       state,
       body.pos,
@@ -512,7 +515,7 @@ export async function createRenderer(container: HTMLElement, options: RendererOp
     },
     stats() {
       const models: Record<string, 'glb' | 'placeholder'> = {};
-      for (const id of ['courier_body', 'soul_mask', 'needler', 'keeper', 'floor_tile', 'wall_block', 'exit_gate', 'distant_engine'] as const) {
+      for (const id of MODEL_IDS) {
         models[id] = lib.source(id);
       }
       return {

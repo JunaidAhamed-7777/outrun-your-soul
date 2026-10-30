@@ -9,7 +9,9 @@ const PARTS: Record<string, string[]> = {
   soul_mask: ['mask', 'wisp'],
   needler: ['base', 'head', 'muzzle'],
   keeper: ['base', 'head', 'muzzle'],
-  warden: ['base', 'head', 'shield', 'core'],
+  warden: ['base', 'body', 'shield', 'core', 'muzzle'],
+  last_warden_body: ['body', 'head', 'mask', 'mantle'],
+  last_warden_heart: ['cage', 'core'],
   exit_gate: ['frame', 'door_left', 'door_right'],
 };
 
@@ -26,7 +28,7 @@ describe('placeholder models honour the asset contract', () => {
   });
 
   it('puts actor pivots on the ground at the collision centre', () => {
-    for (const id of ['courier_body', 'soul_mask', 'needler', 'keeper', 'warden'] as const) {
+    for (const id of ['courier_body', 'soul_mask', 'needler', 'keeper', 'warden', 'last_warden_body'] as const) {
       const box = new Box3().setFromObject(placeholderFor(id));
       expect(box.min.y).toBeGreaterThanOrEqual(-1e-6);
       expect(Math.abs((box.min.x + box.max.x) / 2)).toBeLessThan(0.1);

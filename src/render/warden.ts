@@ -49,15 +49,15 @@ export class WardenView {
   readonly root = new Group();
   readonly id: number;
   private readonly model: Object3D;
-  private readonly head?: Object3D;
+  private readonly body?: Object3D;
   private readonly shield?: Object3D;
+  private readonly shieldRest: number;
   private readonly coreMaterials: MeshToonMaterial[] = [];
   private readonly guard: Mesh<PlaneGeometry, ShaderMaterial>;
   private readonly sweep: Mesh<PlaneGeometry, ShaderMaterial>;
   private readonly ring: Mesh<PlaneGeometry>;
   private readonly shadow: Mesh<PlaneGeometry, MeshBasicMaterial>;
   private readonly coreGlow: Sprite;
-  private headYaw: number;
   private exposed = 0;
   private flash = 0;
   private clang = 0;
@@ -67,24 +67,25 @@ export class WardenView {
     spot: Texture,
     enemy: EnemyState,
     private readonly scale = 1,
-    gilded = false,
   ) {
     this.id = enemy.id;
     this.root.name = `warden_view:${enemy.key}`;
     this.model = lib.instance('warden', true);
-    this.head = findPart(this.model, 'warden', 'head');
+    this.body = findPart(this.model, 'warden', 'body');
     this.shield = findPart(this.model, 'warden', 'shield');
-    this.model.traverse((node) => {
+    this.shieldRest = this.shield?.rotation.x ?? 0;
+    findPart(this.model, 'warden', 'core')?.traverse((node) => {
       if (!(node instanceof Mesh)) return;
       for (const m of Array.isArray(node.material) ? node.material : [node.material]) {
-        if (!(m instanceof MeshToonMaterial)) continue;
-        if (m.name === 'core' || node.name.includes('core')) this.coreMaterials.push(m);
-        if (gilded) m.color.lerp(color('gold'), 0.35);
+        if (m instanceof MeshToonMaterial) {
+          m.emissive.copy(color('gold'));
+          m.emissiveIntensity = 0;
+          this.coreMaterials.push(m);
+        }
       }
     });
     this.model.scale.setScalar(ACTOR_SCALE * scale);
-    this.model.rotation.y = yawForFacing(enemy.facing);
-    this.headYaw = yawForFacing(enemy.aim);
+    if (this.body) this.body.rotation.y = yawForFacing(enemy.facing);
 
     const shadowGeo = new PlaneGeometry(1.3 * scale, 1.3 * scale);
     shadowGeo.rotateX(-Math.PI / 2);
@@ -121,22 +122,20 @@ export class WardenView {
     const exposedNow = isExposed(enemy);
     this.exposed = approach(this.exposed, exposedNow ? 1 : 0, exposedNow ? 10 : 6, dt);
 
-    // Body follows the guard facing (the sim may turn it); head tracks the attack aim.
-    this.model.rotation.y = approachAngle(this.model.rotation.y, yawForFacing(enemy.facing), 8, dt);
-    this.headYaw = enemy.phase === 'locked' ? yawForFacing(enemy.aim) : approachAngle(this.headYaw, yawForFacing(enemy.aim), 10, dt);
-    if (this.head) this.head.rotation.y = this.headYaw - this.model.rotation.y;
-    if (this.head) this.head.rotation.x = enemy.phase === 'dormant' ? 0.4 : 0;
+    // warden_body turns to the guard facing (the sim may rotate it); the base stays put.
+    if (this.body) this.body.rotation.y = approachAngle(this.body.rotation.y, yawForFacing(enemy.facing), 8, dt);
 
-    // Shield drops forward around its lower hinge while exposed; a clang makes it jolt.
+    // Shield drops forward around its lower hinge (~80 degrees) while exposed; a clang jolts it.
     this.clang = Math.max(0, this.clang - dt * 5);
     if (this.shield) {
       const jolt = reducedMotion ? 0 : Math.sin(this.clang * Math.PI * 3) * 0.08 * this.clang;
-      this.shield.rotation.x = -0.12 + this.exposed * 1.35 + jolt;
+      this.shield.rotation.x = this.shieldRest + this.exposed * 1.4 - jolt;
     }
     const pulse = reducedMotion ? 1 : 0.75 + 0.25 * Math.sin(time * 10);
-    for (const m of this.coreMaterials) m.emissiveIntensity = 0.05 + this.exposed * 1.6 * pulse;
+    for (const m of this.coreMaterials) m.emissiveIntensity = this.exposed * 1.4 * pulse;
     const glow = this.coreGlow.material as SpriteMaterial;
     glow.opacity = this.exposed * 0.8 * pulse;
+    this.coreGlow.visible = glow.opacity > 0.01;
     const g = 0.6 * this.scale + this.exposed * 0.5;
     this.coreGlow.scale.set(g, g, 1);
     this.coreGlow.position.set(0, 0.55 * this.scale * ACTOR_SCALE, 0);
