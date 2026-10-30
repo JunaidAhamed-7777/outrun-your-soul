@@ -6,7 +6,7 @@
  */
 import type { CueName } from './cues';
 
-export type VoiceGroup = 'pluck' | 'chime' | 'tick' | 'impact' | 'air' | 'chord' | 'stinger' | 'hum';
+export type VoiceGroup = 'pluck' | 'chime' | 'tick' | 'impact' | 'air' | 'chord' | 'stinger' | 'hum' | 'boss';
 
 export interface VoiceSpec {
   readonly group: VoiceGroup;
@@ -27,6 +27,7 @@ export const GROUP_LIMITS: Readonly<Record<VoiceGroup, number>> = {
   chord: 2,
   stinger: 1,
   hum: 2,
+  boss: 2,
 };
 
 export const GLOBAL_VOICE_LIMIT = 18;
@@ -68,6 +69,19 @@ export const CUE_SPECS: Readonly<Record<CueName, VoiceSpec>> = {
   guardClang: { group: 'impact', duration: 0.6, minInterval: 0.06, priority: 8 },
   sweepWhoosh: { group: 'air', duration: 0.6, minInterval: 0.1, priority: 8 },
   exposedChime: { group: 'chime', duration: 0.9, minInterval: 0.2, priority: 8 },
+  boostEnd: { group: 'air', duration: 0.3, minInterval: 0.2, priority: 2 },
+  haloShimmer: { group: 'tick', duration: 0.3, minInterval: 0.25, priority: 1 },
+  knotMark: { group: 'pluck', duration: 0.5, minInterval: 0.2, priority: 5 },
+  decoyClaim: { group: 'pluck', duration: 0.5, minInterval: 0.15, priority: 6 },
+  wardenWindup: { group: 'air', duration: 0.9, minInterval: 0.2, priority: 8 },
+  bossWake: { group: 'boss', duration: 2.6, minInterval: 1, priority: 9 },
+  bossTelegraph: { group: 'boss', duration: 1.8, minInterval: 0.3, priority: 9 },
+  bossCharge: { group: 'boss', duration: 0.9, minInterval: 0.2, priority: 9 },
+  bossFan: { group: 'boss', duration: 0.7, minInterval: 0.2, priority: 8 },
+  bossHeartHit: { group: 'boss', duration: 3.0, minInterval: 0.2, priority: 10 },
+  bossStagger: { group: 'boss', duration: 1.2, minInterval: 0.3, priority: 8 },
+  bossReunite: { group: 'chord', duration: 1.8, minInterval: 0.5, priority: 6 },
+  bossDefeated: { group: 'stinger', duration: 5.5, minInterval: 2, priority: 10 },
 };
 
 interface ActiveVoice {

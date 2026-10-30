@@ -166,6 +166,7 @@ describe('defensive mapping for new and unknown events', () => {
   it('tolerates missing or bad positions on loose events', () => {
     expect(loose({ type: 'guarded', t: 0 })[0]?.pan).toBe(0);
     expect(loose({ type: 'guarded', t: 0, at: { x: 'a', y: 1 } })[0]?.pan).toBe(0);
-    expect(loose({ type: 'burst', t: 0, pos: { x: 0, y: 0 } })[0]?.pan).toBeCloseTo(-0.65);
+    expect(loose({ type: 'bellBurst', t: 0, pos: { x: 0, y: 0 } })[0]?.pan).toBeCloseTo(-0.65);
+    expect(loose({ type: 'burst', t: 0 })[0]?.pan).toBe(0);
   });
 });

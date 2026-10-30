@@ -6,7 +6,7 @@
  * answered a moment later by the soul's softer, lower chime of the same pitch class.
  * A reunion resolves both into one chord.
  */
-import type { SimEvent, SimEventType, SimState } from '../sim/types';
+import type { EnemyRole, SimEvent, SimEventType, SimState } from '../sim/types';
 import type { Vec2 } from '../sim/vec';
 
 export type CueName =
@@ -47,7 +47,21 @@ export type CueName =
   | 'decoyTake'
   | 'guardClang'
   | 'sweepWhoosh'
-  | 'exposedChime';
+  | 'exposedChime'
+  // Final simulation events (phase 3).
+  | 'boostEnd'
+  | 'haloShimmer'
+  | 'knotMark'
+  | 'decoyClaim'
+  | 'wardenWindup'
+  | 'bossWake'
+  | 'bossTelegraph'
+  | 'bossCharge'
+  | 'bossFan'
+  | 'bossHeartHit'
+  | 'bossStagger'
+  | 'bossReunite'
+  | 'bossDefeated';
 
 export interface CueRequest {
   readonly cue: CueName;
@@ -67,6 +81,8 @@ export interface CueRequest {
 export interface CueContext {
   readonly roomWidth: number;
   readonly dashMax: number;
+  /** Role of an enemy by entity ID (warden windups share the 'telegraph' event with sentries). */
+  readonly roleOf?: (enemyId: number) => EnemyRole | undefined;
 }
 
 /** Small memory carried between events (e.g. the last dash pitch the soul will echo). */
@@ -78,13 +94,18 @@ export function createCueMemory(): CueMemory {
   return { lastDashDegree: 4 };
 }
 
-export function cueContext(state: Pick<SimState, 'room' | 'params'>): CueContext {
-  return { roomWidth: state.room.width, dashMax: state.params.dashMaxDistance };
+export function cueContext(state: Pick<SimState, 'room' | 'params'> & Partial<Pick<SimState, 'enemies'>>): CueContext {
+  const enemies = state.enemies ?? [];
+  return {
+    roomWidth: state.room.width,
+    dashMax: state.params.dashMaxDistance,
+    roleOf: (id) => enemies.find((e) => e.id === id)?.role,
+  };
 }
 
 /** Stereo position from a world x, kept away from hard left/right. */
 export function panFor(p: Vec2 | undefined, ctx: CueContext): number {
-  if (!p || !(ctx.roomWidth > 0)) return 0;
+  if (!p || !(ctx.roomWidth > 0) || typeof p.x !== 'number' || !Number.isFinite(p.x)) return 0;
   const u = (p.x / ctx.roomWidth) * 2 - 1;
   return Math.max(-1, Math.min(1, u)) * 0.65;
 }
@@ -146,14 +167,21 @@ const HANDLERS: { readonly [T in SimEventType]?: Handler<T> } = {
     }),
   ],
   cut: (e, ctx) => [cue('cutTing', { pan: panFor(e.at, ctx), intensity: 0.9 })],
-  kill: (e, ctx) => [cue('killThock', { pan: panFor(e.at, ctx), variant: e.role, intensity: 0.9 })],
+  // A burst kill is part of the bell's toll; keep its own thock small so the toll leads.
+  kill: (e, ctx) =>
+    e.cause === 'burst'
+      ? [cue('killThock', { pan: panFor(e.at, ctx), variant: 'burst', intensity: 0.45, delay: 0.06 })]
+      : [cue('killThock', { pan: panFor(e.at, ctx), variant: e.role, intensity: 0.9 })],
   hit: (e, ctx) => [cue('hitCrunch', { pan: panFor(e.at, ctx), variant: e.endpoint, intensity: 1 })],
   shielded: (e, ctx) => [cue('shieldTick', { pan: panFor(e.at, ctx), variant: e.reason, intensity: 0.5 })],
   wake: () => [cue('wake', { intensity: 0.6 })],
-  telegraph: (e) =>
-    e.phase === 'tracking'
+  telegraph: (e, ctx) => {
+    // A warden's windup is a low metal scrape, never a sentry's high tick.
+    if (ctx.roleOf?.(e.enemyId) === 'warden') return [cue('wardenWindup', { intensity: 0.85 })];
+    return e.phase === 'tracking'
       ? [cue('trackTick', { variant: e.target, intensity: 0.5 })]
-      : [cue('lockTick', { variant: e.target, intensity: 0.9 })],
+      : [cue('lockTick', { variant: e.target, intensity: 0.9 })];
+  },
   fire: (e, ctx) => [cue('fireWhoosh', { pan: panFor(e.at, ctx), intensity: 0.7 })],
   projectileGone: (e, ctx) =>
     e.reason === 'endpoint' ? [] : [cue('fizzle', { pan: panFor(e.at, ctx), intensity: 0.3 })],
@@ -175,6 +203,49 @@ const HANDLERS: { readonly [T in SimEventType]?: Handler<T> } = {
   rejected: () => [cue('rejectClick', { intensity: 0.5 })],
   queued: () => [cue('queuedTick', { intensity: 0.4 })],
   queueExpired: () => [cue('rejectClick', { intensity: 0.3, variant: 'expired' })],
+  guarded: (e, ctx) => [cue('guardClang', { pan: panFor(e.at, ctx), intensity: 0.9 })],
+  sweep: (e, ctx) => [cue('sweepWhoosh', { pan: panFor(e.at, ctx), intensity: 0.9 })],
+  boost: (e, ctx) => [cue('boost', { pan: panFor(e.at, ctx), intensity: 0.7 })],
+  boostEnd: () => [cue('boostEnd', { intensity: 0.4 })],
+  // Halo crossings happen often; they whisper, never compete with threats.
+  haloEnter: (e, ctx) => [cue('haloShimmer', { pan: panFor(e.at, ctx), variant: 'enter', intensity: 0.35 })],
+  haloExit: (e, ctx) => [cue('haloShimmer', { pan: panFor(e.at, ctx), variant: 'exit', intensity: 0.25 })],
+  charge: (e, ctx) => [
+    cue('bellCharge', {
+      pan: panFor(e.at, ctx),
+      variant: e.charged ? 'full' : 'pip',
+      degree: Math.max(0, Math.min(6, e.charge * 2)),
+      intensity: e.charged ? 0.9 : 0.55,
+    }),
+  ],
+  burst: (e, ctx) => [cue('bellBurst', { pan: panFor(e.at, ctx), intensity: 1 })],
+  knotMarked: () => [cue('knotMark', { intensity: 0.6 })],
+  decoyPlaced: (e, ctx) => [cue('decoyPlace', { pan: panFor(e.at, ctx), intensity: 0.7 })],
+  decoyClaimed: (e, ctx) => [cue('decoyClaim', { pan: panFor(e.at, ctx), intensity: 0.7 })],
+  decoyTaken: (e, ctx) => [cue('decoyTake', { pan: panFor(e.at, ctx), intensity: 0.7 })],
+  boss: (e, ctx) => {
+    const pan = panFor(e.at, ctx);
+    switch (e.what) {
+      case 'wake':
+        return [cue('bossWake', { pan, intensity: 1 })];
+      case 'telegraph':
+        return [cue('bossTelegraph', { pan, variant: e.pattern ?? 'charge', intensity: 0.95 })];
+      case 'charge':
+        return [cue('bossCharge', { pan, intensity: 1 })];
+      case 'fan':
+        return [cue('bossFan', { pan, intensity: 0.9 })];
+      case 'heartHit':
+        return [cue('bossHeartHit', { pan, intensity: 1 })];
+      case 'stagger':
+        return [cue('bossStagger', { pan, intensity: 0.9 })];
+      case 'reunited':
+        return [cue('bossReunite', { pan, intensity: 0.75 })];
+      case 'defeated':
+        return [cue('bossDefeated', { intensity: 1 })];
+      default:
+        return [];
+    }
+  },
 };
 
 /** Read a position from an event that may not be typed yet ({ at } or { pos }). */
