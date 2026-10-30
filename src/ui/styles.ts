@@ -342,10 +342,14 @@ export const CSS = /* css */ `
 /* ---------- boss bar (boss room only; never takes input) ---------- */
 .oys-boss {
   position: absolute;
-  top: calc(var(--safe-top) + 54px);
+  /* Below the health + relic column so the two never touch on narrow phones. */
+  top: calc(var(--safe-top) + 68px);
   left: 50%;
   transform: translate(-50%, -4px);
-  width: min(64vw, 260px);
+  width: min(66vw, 270px);
+  padding: 5px 10px 7px;
+  border-radius: 12px;
+  background: ${rgba(p.cobalt_deep, 0.55)};
   pointer-events: none;
   opacity: 0;
   transition: opacity 360ms ease, transform 360ms ease;
@@ -381,8 +385,8 @@ export const CSS = /* css */ `
   transform-origin: center;
 }
 .oys-boss-seg.is-empty { background: ${rgba(p.ivory, 0.14)}; }
-.oys-hud.has-boss .oys-gate { top: calc(var(--safe-top) + 92px); }
-.oys-hud.has-boss ~ .oys-intro { top: calc(var(--safe-top) + 104px); }
+.oys-hud.has-boss .oys-gate { top: calc(var(--safe-top) + 120px); }
+.oys-hud.has-boss ~ .oys-intro { top: calc(var(--safe-top) + 122px); }
 
 /* ---------- room intro card (never takes input) ---------- */
 .oys-intro {
@@ -524,6 +528,10 @@ export const CSS = /* css */ `
   .oys-title.has-continue .oys-vignette-svg { width: min(62vw, 260px); }
   .oys-title.has-continue .oys-title-bottom { gap: 8px; }
   .oys-continue-cap { margin-top: -6px; }
+  .oys-emblem { width: 84px; height: 50px; margin-bottom: -8px; }
+  .oys-ending .oys-stack { gap: 9px; }
+  .oys-ending-line { font-size: 17px; }
+  .oys-ending .oys-slot { min-height: 34px; }
   .oys-panel { gap: 12px; }
   .oys-title-top { margin-top: 0; gap: 8px; }
   .oys-wordmark .w1 { font-size: clamp(36px, 12vw, 64px); }
