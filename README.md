@@ -39,7 +39,22 @@ The foundation is a deterministic 2D combat simulation with an orthographic Thre
 
 ## Development commands
 
-Not available yet: the game toolchain has not been bootstrapped. The first implementation commit must add pinned dependencies, real dev/build/test/typecheck commands and instructions here. Do not expect a runnable game from this documentation-only state.
+Requires Node.js (developed with v26.8.1) and npm. Dependencies are pinned to exact versions in `package-lock.json` (TypeScript 7.0.2, Vite 8.3.5, Vitest 5.0.5, Three.js 0.187.0; release tooling uses fflate 0.8.3 and the Khronos glTF Validator 2.0.0-dev.3.10).
+
+| Command | What it does |
+|---|---|
+| `npm ci` | Install the exact locked dependencies. |
+| `npm run dev` | Vite dev server (also on the LAN via `--host`, for phone testing on the same network). |
+| `npm test` | Vitest unit tests (simulation, tooling). `npm run test:watch` re-runs on change. |
+| `npm run typecheck` | `tsc --noEmit` over `src/`, `tests/` and the Vite config. |
+| `npm run build` | Typecheck, then production build into `dist/` with a relative base (`./`) for itch.io's nested iframe URL. |
+| `npm run preview` | Serve the built `dist/` locally. |
+| `npm run package` | Build, check `dist/` against itch.io's HTML5 ZIP rules and project policy, then write a deterministic `release/outrun-your-soul-<version>-<shortsha>.zip` (`-dirty` suffix if the working tree has uncommitted changes) plus a `.json` manifest; prints the ZIP name, byte size and SHA-256. |
+| `npm run check:nested` | Serve `dist/` (or `-- --zip release/<name>.zip`, or `-- --zip latest`) under an itch-like nested, case-sensitive path inside a cross-origin iframe and crawl every reference; fails on any non-200. `-- --serve` keeps it running so the printed embed URL can be opened in a browser. |
+| `npm run check:models` | Validate `public/assets/models/*.glb` (shipping) and `art/exports/*.glb` (fixtures, never shipped) with the Khronos glTF Validator plus the asset-contract and budget checks; writes `art/reports/models-validation.json`. |
+| `npm run verify` | Typecheck, tests, build, package, model validation and the nested crawl of the exact new ZIP, with a summary. |
+
+These are automated checks only. They do not replace real-phone testing or testing the uploaded itch.io page; record those in [docs/EVIDENCE.md](docs/EVIDENCE.md).
 
 ## Rights and credits
 
