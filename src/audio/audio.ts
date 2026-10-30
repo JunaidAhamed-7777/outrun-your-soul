@@ -12,6 +12,7 @@ import { createCueMemory, cueContext, cuesForEvent, panFor, type CueRequest } fr
 import { degreeHz } from './scale';
 import { SOUL_PARTIALS, Synth, courtyardImpulse, lcg, type SynthVoice } from './synth';
 import { playCue } from './voicing';
+import { PhaseWatch, isOpening } from './watch';
 import { CUE_SPECS, VoiceLimiter } from './voices';
 import { threadMeter } from '../ui/hud-logic';
 
@@ -87,6 +88,7 @@ export function createAudio(): GameAudio {
   let sfxVolume = 0.9;
   let suspended = false;
   const limiter = new VoiceLimiter();
+  const phases = new PhaseWatch();
   const memory = createCueMemory();
   const live = new Map<number, SynthVoice>();
   const decor = lcg(0xbe11);
@@ -307,8 +309,25 @@ export function createAudio(): GameAudio {
         e.lane.gain.gain.setTargetAtTime(0, t, 0.1);
       }
 
+      // A warden opening up has no event of its own: chime the frame it happens.
+      const openings = phases.observe(state.room.id, state.tick, state.enemies).filter(isOpening);
+      if (openings.length > 0) {
+        const live = ready();
+        const ctx = cueContext(state);
+        if (live) {
+          for (const o of openings) {
+            schedule(live, { cue: 'exposedChime', delay: 0, degree: 0, intensity: 0.85, pan: panFor(o.pos, ctx), variant: '' });
+          }
+        }
+      }
+
+      const bossPhase = state.boss?.phase;
       const danger =
-        state.projectiles.some((p) => p.alive) || state.enemies.some((en) => en.phase === 'locked');
+        state.projectiles.some((p) => p.alive) ||
+        state.enemies.some((en) => en.phase === 'locked') ||
+        bossPhase === 'aimCharge' ||
+        bossPhase === 'charge' ||
+        bossPhase === 'aimFan';
       e.musicDuck.gain.setTargetAtTime(danger ? 0.45 : 1, t, danger ? 0.05 : 0.6);
 
       // Sparse distant bells: the funeral railway beyond the wall.
