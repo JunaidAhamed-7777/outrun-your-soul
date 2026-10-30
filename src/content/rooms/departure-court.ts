@@ -4,13 +4,13 @@
  * Layout (8 x 12 tiles, y grows up the screen):
  *
  *   y=12 +--------+
- *        |n3 [EX]k|   exit gate x 3..5, y 11..12; n3 / k1 wake for the finale
+ *        |n3 [EX] |   exit gate x 3..5, y 11..12; n3 wakes for the finale
  *   y=10 |   ##   |   plinth x 3..5, y 9..10 (the route to the gate bends around it)
- *        |        |
- *   y=8  |  #  #  |   pillars at (2..3, 7..8) and (5..6, 7..8): cover from the top shooters
+ *        |       k|   keeper k1 (7, 7.6) wakes with n3 and aims almost at once
+ *   y=8  |  #     |   left pillar (2..3, 7..8): the soul's only cover from k1 on the climb
  *        |        |
  *        |   n1   |   n1 dormant straight ahead: the first strike target
- *   y=4  |n2      |   n2 wakes when n1 dies: first real telegraph
+ *   y=4  |n2    # |   n2 wakes when n1 dies; low block (6..7, 4..5) shades the start
  *        |        |
  *   y=1  |   S    |   spawn (4, 1.5)
  *        +--------+
@@ -20,9 +20,12 @@
  *  - Killing n1 teaches dash-through; the soul visibly trails along the ribbon.
  *  - n2 then announces a body-targeted shot from the side: step off the locked line,
  *    dash through the bolt, or kill n2 (it is within one dash of where n1 fell).
- *  - n2's death wakes the keeper k1 (aims at the soul) and, slightly later, needler n3.
- *    Reaching them needs more thread than one outing allows, so the player chooses
- *    between RETURN, a contact dash, or waiting behind the pillars for the soul.
+ *  - n2's death wakes needler n3 (top left) and keeper k1 (right side). k1 leads the
+ *    soul along its ribbon, and its first shot lands while a player chasing n3 has the
+ *    soul climbing the open left corridor. The dilemma: chain to n3 and expose the soul,
+ *    turn on k1 first, RETURN to gather the soul, or time the soul behind the pillar.
+ *    Bot evidence (tests/sim/departure-finale.test.ts): a danger-blind chaser takes a
+ *    keeper hit on the soul; the planning bots switch to killing k1 first.
  *  - The gate opens only when both selves stand in it.
  */
 import type { RoomDef } from '../../sim/types';
@@ -34,7 +37,7 @@ export const DEPARTURE_COURT: RoomDef = {
   height: 12,
   walls: [
     { x: 2, y: 7, w: 1, h: 1 },
-    { x: 5, y: 7, w: 1, h: 1 },
+    { x: 6, y: 4, w: 1, h: 1 },
     { x: 3, y: 9, w: 2, h: 1 },
   ],
   spawn: { x: 4, y: 1.5 },
@@ -59,10 +62,12 @@ export const DEPARTURE_COURT: RoomDef = {
     {
       id: 'k1',
       role: 'keeper',
-      at: { x: 6.9, y: 10.6 },
-      facing: { x: -1, y: -1 },
+      at: { x: 7, y: 7.6 },
+      facing: { x: -1, y: 0 },
       dormant: true,
       wake: { kind: 'enemyKilled', enemy: 'n2' },
+      // Starts tracking 0.2 s after waking, so its led shot arrives during the climb to n3.
+      phase: 1.8,
     },
     {
       id: 'n3',
