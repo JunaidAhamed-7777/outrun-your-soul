@@ -125,5 +125,5 @@ describe('First Light room', () => {
     expect(r.healthLeft).toBeGreaterThan(0);
     expect(r.killOrder[0]).toBe('dummy');
     expect([...r.killOrder].sort()).toEqual(['dummy', 'keeper', 'needler']);
-  });
+  }, 180_000); // planning bot: ~10 s alone, far longer under full-suite load
 });
