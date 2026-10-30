@@ -56,8 +56,6 @@ export class RibbonView {
   readonly group = new Group();
   private readonly silk: StripMesh<ShaderMaterial>;
   private readonly shade: StripMesh<ShaderMaterial>;
-  private readonly knotA: Mesh<CircleGeometry, MeshBasicMaterial>;
-  private readonly knotB: Mesh<CircleGeometry, MeshBasicMaterial>;
   private readonly pts: Vec2[] = [];
   private readonly shadowPts: { x: number; y: number }[] = [];
   private time = 0;
@@ -67,14 +65,7 @@ export class RibbonView {
   constructor() {
     this.silk = new StripMesh(ribbonMaterial(), RIBBON_POINTS, 12);
     this.shade = new StripMesh(stripShadowMaterial(0.3), RIBBON_POINTS, 11);
-    const knotGeo = new CircleGeometry(0.075, 10);
-    knotGeo.rotateX(-Math.PI / 2);
-    const knotMat = new MeshBasicMaterial({ color: color('vermilion_dark'), depthWrite: false, transparent: true });
-    this.knotA = new Mesh(knotGeo, knotMat);
-    this.knotB = new Mesh(knotGeo, knotMat);
-    this.knotA.renderOrder = 13;
-    this.knotB.renderOrder = 13;
-    this.group.add(this.shade.mesh, this.silk.mesh, this.knotA, this.knotB);
+    this.group.add(this.shade.mesh, this.silk.mesh);
   }
 
   update(state: SimState, soulPos: Vec2, bodyPos: Vec2, dt: number, reducedMotion: boolean, boosting = false): void {
@@ -82,8 +73,6 @@ export class RibbonView {
     if (route.length < 2) {
       this.silk.hide();
       this.shade.hide();
-      this.knotA.visible = false;
-      this.knotB.visible = false;
       return;
     }
     // Endpoints follow the interpolated actors so the thread stays attached between steps.
@@ -109,17 +98,11 @@ export class RibbonView {
       this.shadowPts[i]!.y = this.pts[i]!.y - 0.045;
     }
     this.shade.set(this.shadowPts, 0.12, 0.008);
-    this.knotA.visible = true;
-    this.knotB.visible = true;
-    place(this.knotA, soulPos, 0.036);
-    place(this.knotB, bodyPos, 0.036);
   }
 
   dispose(): void {
     this.silk.dispose();
     this.shade.dispose();
-    this.knotA.geometry.dispose();
-    this.knotA.material.dispose();
     this.group.removeFromParent();
   }
 }

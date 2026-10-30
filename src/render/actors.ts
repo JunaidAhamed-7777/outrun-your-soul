@@ -401,6 +401,7 @@ export class SentryView {
     } else {
       chargeMat.opacity = 0;
     }
+    this.charge.visible = chargeMat.opacity > 0.01;
   }
 
   /** World position of the muzzle socket (for fire flashes). */
@@ -473,9 +474,11 @@ export class GateView {
     this.flare = Math.max(0, this.flare - dt * 1.2);
     const shaftOpacity = this.open * 0.75 + this.ready * (1 - this.open) * 0.18 * (0.6 + 0.4 * pulse) + this.flare;
     (this.shaft.material as SpriteMaterial).opacity = Math.min(1, shaftOpacity);
+    this.shaft.visible = shaftOpacity > 0.01;
     const shaftSize = 2.2 + this.open * 0.8 + this.flare * 3;
     this.shaft.scale.set(shaftSize, shaftSize * 1.15, 1);
     this.exitGlow.material.opacity = this.ready * (1 - this.open) * (0.2 + 0.2 * pulse) + this.open * 0.7;
+    this.exitGlow.visible = this.exitGlow.material.opacity > 0.01;
     if (this.threshold) {
       // Sealed: dim slate. Ready: gold trim breathes. Open: the inlay glows.
       const glow = this.ready * (1 - this.open) * (0.22 + 0.28 * pulse) + this.open * 0.75;

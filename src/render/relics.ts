@@ -7,6 +7,7 @@
  *  - Traveler's Knot: a ghostly courier decoy at the placed point; an earned mark shows as a pip.
  */
 import {
+  BufferGeometry,
   CircleGeometry,
   Color,
   Group,
@@ -16,6 +17,7 @@ import {
   type Object3D,
   type ShaderMaterial,
 } from 'three';
+import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import type { SimState } from '../sim/types';
 import type { Vec2 } from '../sim/vec';
 import { ACTOR_SCALE } from './actors';
@@ -156,16 +158,25 @@ export class RelicLayer {
   }
 
   private makeGhost(): Object3D {
-    const ghost = this.lib.instance('courier_body', true);
-    const mat = new MeshBasicMaterial({ color: new Color('#d9f1ff'), transparent: true, opacity: 0.4, depthWrite: false });
-    ghost.traverse((node) => {
-      if (node instanceof Mesh) {
-        (Array.isArray(node.material) ? node.material : [node.material]).forEach((m) => m.dispose());
-        node.material = mat;
-        node.renderOrder = 28;
-      }
+    // A single translucent silhouette of the courier: every part baked into one geometry.
+    const source = this.lib.instance('courier_body');
+    source.updateMatrixWorld(true);
+    const parts: BufferGeometry[] = [];
+    source.traverse((node) => {
+      if (!(node instanceof Mesh)) return;
+      const g = node.geometry.index ? node.geometry.toNonIndexed() : node.geometry.clone();
+      g.applyMatrix4(node.matrixWorld);
+      for (const name of Object.keys(g.attributes)) if (name !== 'position') g.deleteAttribute(name);
+      parts.push(g);
     });
-    ghost.scale.setScalar(ACTOR_SCALE * 0.95);
+    const merged = mergeGeometries(parts) ?? new BufferGeometry();
+    parts.forEach((g) => g.dispose());
+    const mat = new MeshBasicMaterial({ color: new Color('#d9f1ff'), transparent: true, opacity: 0.4, depthWrite: false });
+    const ghost = new Group();
+    const body = new Mesh(merged, mat);
+    body.renderOrder = 28;
+    body.scale.setScalar(ACTOR_SCALE * 0.95);
+    ghost.add(body);
     const ring = flat(0.7, ringMaterial({ color: new Color('#d9f1ff'), inner: 0.82, outer: 1, opacity: 0.8, segments: 10, gap: 0.45 }), 29);
     ring.position.y = 0.02;
     ghost.add(ring);
@@ -183,7 +194,10 @@ export class RelicLayer {
     for (const pip of this.pips) pip.material.dispose();
     this.knotPip.material.dispose();
     this.decoy?.traverse((node) => {
-      if (node instanceof Mesh) (node.material as { dispose(): void }).dispose();
+      if (node instanceof Mesh) {
+        node.geometry.dispose();
+        (node.material as { dispose(): void }).dispose();
+      }
     });
     this.group.removeFromParent();
   }

@@ -34,7 +34,6 @@ const COOL_EDGE = new Color('#59b8ff');
 class BoltView {
   readonly root = new Group();
   readonly needle: Mesh<OctahedronGeometry, MeshBasicMaterial>;
-  readonly edge: Mesh<OctahedronGeometry, MeshBasicMaterial>;
   readonly trail: Mesh<PlaneGeometry, MeshBasicMaterial>;
   readonly glow: Sprite;
   readonly dot: Mesh<PlaneGeometry, ShaderMaterial>;
@@ -42,12 +41,7 @@ class BoltView {
 
   constructor(shared: { needleGeo: OctahedronGeometry; trailGeo: PlaneGeometry; dotGeo: PlaneGeometry; trailTex: Texture; spot: Texture }) {
     this.needle = new Mesh(shared.needleGeo, new MeshBasicMaterial({ color: color('bolt_core') }));
-    this.needle.scale.set(0.055, 0.055, 0.3);
-    this.edge = new Mesh(
-      shared.needleGeo,
-      new MeshBasicMaterial({ color: color('bolt_edge'), transparent: true, opacity: 0.85, blending: AdditiveBlending, depthWrite: false }),
-    );
-    this.edge.scale.set(0.1, 0.1, 0.42);
+    this.needle.scale.set(0.06, 0.06, 0.32);
     this.trail = new Mesh(
       shared.trailGeo,
       new MeshBasicMaterial({
@@ -64,13 +58,12 @@ class BoltView {
     this.glow.scale.set(0.55, 0.55, 1);
     const head = new Group();
     head.position.y = BOLT_HEIGHT;
-    head.add(this.trail, this.edge, this.needle, this.glow);
+    head.add(this.trail, this.needle, this.glow);
     this.dot = new Mesh(shared.dotGeo, ringMaterial({ color: color('bolt_edge'), inner: 0, outer: 1, opacity: 0.9 }));
     this.dot.material.depthTest = false;
     this.dot.position.y = 0.03;
     this.dot.renderOrder = 34;
     this.needle.renderOrder = 33;
-    this.edge.renderOrder = 32;
     this.trail.renderOrder = 31;
     this.glow.renderOrder = 32;
     this.root.add(head, this.dot);
@@ -86,7 +79,6 @@ class BoltView {
     if (slowed !== this.slowed) {
       this.slowed = slowed;
       this.needle.material.color.copy(slowed ? COOL_CORE : HOT_CORE);
-      this.edge.material.color.copy(slowed ? COOL_EDGE : HOT_EDGE);
       this.trail.material.color.copy(slowed ? COOL_EDGE : HOT_EDGE);
       this.glow.material.color.copy(slowed ? COOL_EDGE : HOT_EDGE);
       this.dot.material.uniforms.uColor!.value.copy(slowed ? COOL_EDGE : HOT_EDGE);
@@ -98,7 +90,6 @@ class BoltView {
 
   dispose(): void {
     this.needle.material.dispose();
-    this.edge.material.dispose();
     this.trail.material.dispose();
     this.glow.material.dispose();
     this.dot.material.dispose();

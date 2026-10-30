@@ -359,6 +359,7 @@ export class EffectSystem {
     }
     this.shards.length = alive;
     this.shardMesh.count = alive;
+    this.shardMesh.visible = alive > 0;
     this.shardMesh.instanceMatrix.needsUpdate = true;
     if (this.shardMesh.instanceColor) this.shardMesh.instanceColor.needsUpdate = true;
 
