@@ -6,3 +6,6 @@ release/
 *.blend1
 .vite/
 coverage/
+.tools/
+art/logs/
+.claude/worktrees/

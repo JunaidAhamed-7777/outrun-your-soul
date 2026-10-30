@@ -26,17 +26,17 @@ Status: **agreed interface, 30 October 2026.** This freezes the handoff between 
 ## Node and material naming
 
 - Each GLB contains exactly one root node named with its asset ID (`courier_body`, `soul_mask`, ...). No lights, cameras or reference planes.
-- Moving parts are named child nodes with their pivots at the real hinge, animated procedurally at runtime (no root motion, no armature required for P0):
-  - `courier_body`: `body`, `head`, `mask`, `scarf`
-  - `soul_mask`: `mask`, `wisp`
-  - `needler`, `keeper`: `base`, `head`, plus an empty `muzzle` socket where bolts spawn visually
-  - `exit_gate`: `frame`, `door_left`, `door_right` (doors open around their outer hinges)
-- Materials use the palette key as their name (`ivory`, `vermilion`, `cobalt`, `gold`, ...) with base colours taken from [`src/content/palette.json`](../src/content/palette.json). Principled BSDF base colour, roughness and metallic only; no procedural nodes, no image textures in P0. The renderer may tint by material name for hit flashes.
+- Moving parts are child nodes named `<asset_id>_<part>` (Blender object names are global across a file, so the asset prefix keeps them unique), with pivots at the real hinge, animated procedurally at runtime (no root motion, no armature required for P0):
+  - `courier_body`: `courier_body_body`, `courier_body_head`, `courier_body_mask`, `courier_body_scarf`
+  - `soul_mask`: `soul_mask_mask`, `soul_mask_wisp`
+  - `needler`, `keeper`: `<id>_base`, `<id>_head`, plus an empty `<id>_muzzle` socket where bolts spawn visually
+  - `exit_gate`: `exit_gate_frame`, `exit_gate_door_left`, `exit_gate_door_right` (doors open around their outer hinges)
+- Materials use the palette key as their name (`ivory`, `vermilion`, `cobalt`, `gold`, ...) with base colours taken from [`src/content/palette.json`](../src/content/palette.json). Principled BSDF base colour, roughness and metallic only (plus emission on the two soul materials); no procedural nodes, no image textures in P0. The renderer may tint by material name for hit flashes.
 
 ## Files
 
 - Source: `art/source/<file>.blend` (one or a few authoring files; record which asset lives where).
-- Authoring scripts: `art/scripts/*.py` (reproducible generation and export, run through the Blender MCP bridge or headless Blender).
+- Authoring scripts: `art/scripts/*.py` (reproducible generation and export through the pinned Blender MCP bridge: `node scripts/blender-launch.mjs --port 9876 --blend <file>.blend`, then `node scripts/blender-mcp.mjs exec art/scripts/<asset>.py`). Shared helpers live in `art/scripts/oys_blender.py`.
 - Reviewed exports: `public/assets/models/<asset_id>.glb` (only assets the game references ship).
 - Proof: `art/previews/<asset_id>-game-camera.png`, `art/reports/<asset_id>.json` (statistics + validator result), `art/provenance.csv`.
 
