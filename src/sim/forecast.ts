@@ -48,15 +48,15 @@ export function forecastSoulPos(state: SimState, t: number): Vec2 {
 
 /** Seconds until a returning body and the following soul meet on a route of `length`. */
 function meetingTime(state: SimState, length: number): number {
-  // Monotone in t: bisect soulTravel(t) + returnSpeed * t = length.
-  let lo = 0;
-  let hi = length / TUNING.returnSpeed;
-  for (let i = 0; i < 40; i++) {
-    const mid = (lo + hi) / 2;
-    if (soulTravel(state, mid) + TUNING.returnSpeed * mid >= length) hi = mid;
-    else lo = mid;
-  }
-  return hi;
+  // soulTravel is piecewise linear (boosted, then base speed): solve each piece directly.
+  const base = state.params.soulSpeed;
+  const fast = base * state.soul.speedMultiplier;
+  const boost = state.soul.boostLeft > 0 && state.soul.speedMultiplier !== 1 ? state.soul.boostLeft : 0;
+  const vr = TUNING.returnSpeed;
+  const first = boost > 0 ? length / (fast + vr) : Infinity;
+  if (first <= boost) return first;
+  const covered = fast * boost + vr * boost;
+  return boost + Math.max(0, length - covered) / (base + vr);
 }
 
 /**

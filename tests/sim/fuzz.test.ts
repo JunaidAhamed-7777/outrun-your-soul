@@ -5,7 +5,7 @@ import { nextRandom, seedRng } from '../../src/sim/rng';
 import { simDiagnostics } from '../../src/sim/step';
 import { simHooksFor } from '../../src/run/relics';
 import type { Command, RoomDef, SimEvent, SimRelicConfig } from '../../src/sim/types';
-import { makeRoom } from './helpers';
+import { makeRoom, serialise } from './helpers';
 
 const ARENA: RoomDef = makeRoom({
   width: 9,
@@ -51,10 +51,10 @@ function fuzz(
     }
     if (roll > 0.97) {
       // Previews must never mutate state.
-      const before = JSON.stringify(s.route) + JSON.stringify(s.body) + s.time;
+      const before = serialise({ ...s, room: null });
       previewDash(s, { x: nextRandom(rng) * 4 - 2, y: nextRandom(rng) * 4 - 2 });
       previewReturn(s);
-      const after = JSON.stringify(s.route) + JSON.stringify(s.body) + s.time;
+      const after = serialise({ ...s, room: null });
       if (before !== after) violations.push(`tick ${s.tick}: preview mutated state`);
     }
     const ev = stepSim(s, cmd ? [cmd] : []);

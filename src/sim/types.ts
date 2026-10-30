@@ -424,8 +424,11 @@ export type SimEvent =
       readonly enemyId: EntityId;
       readonly role: EnemyRole;
       readonly at: Vec2;
-      /** 'dash' for a direct outward-dash kill; 'burst' for a Mourning Bell burst. */
-      readonly cause?: 'dash' | 'burst';
+      /**
+       * 'dash': direct outward-dash kill. 'burst': Mourning Bell burst. 'collapse': the
+       * Last Warden fell and its remaining escorts shattered. Only 'dash' earns relic charge.
+       */
+      readonly cause?: 'dash' | 'burst' | 'collapse';
     }
   | { readonly type: 'hit'; readonly t: number; readonly endpoint: 'body' | 'soul'; readonly attackId: AttackId; readonly at: Vec2; readonly health: number; readonly source: 'bolt' | 'lane' | 'sweep' | 'charge' }
   | { readonly type: 'shielded'; readonly t: number; readonly endpoint: 'body' | 'soul'; readonly attackId: AttackId; readonly at: Vec2; readonly reason: 'grace' | 'dash' | 'spent' }
@@ -466,6 +469,8 @@ export type SimEvent =
       /** Telegraphed bolt directions (for 'telegraph' of a fan). */
       readonly directions?: readonly Vec2[];
       readonly hp?: number;
+      /** For 'heartHit': what struck the heart. */
+      readonly cause?: 'dash' | 'burst';
     }
   /** Needlesong: a cut sped up the soul (refreshes, never stacks). `at` is the soul. */
   | { readonly type: 'boost'; readonly t: number; readonly at: Vec2; readonly multiplier: number; readonly seconds: number }

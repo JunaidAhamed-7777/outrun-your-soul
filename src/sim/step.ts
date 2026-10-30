@@ -23,6 +23,8 @@ import {
   bossAlive,
   bossCollisions,
   bossTimers,
+  burstReachesHeart,
+  strikeHeart,
   buildBossPlan,
   resolveBoss,
   wakeBoss,
@@ -488,12 +490,6 @@ function advance(state: SimState, plan: Plan, bp: BossPlan | null, dt: number): 
       }
       continue;
     }
-    if (e.phase === 'tracking') {
-      const lockIn = Math.max(0, e.phaseDuration - e.phaseTime);
-      e.aimTarget = aimPointFor(state, e, lockIn + sentryTuning(e.role).locked);
-      e.aim = aimToward(e, e.aimTarget);
-      e.facing = e.aim;
-    }
   }
   for (const lane of state.lanes) {
     lane.cycleTime = mod(lane.cycleTime + dt, laneDef(state, lane).period);
@@ -539,7 +535,7 @@ function wakeWhere(state: SimState, events: SimEvent[], test: (spawn: EnemySpawn
  * Kill a sentry. Only direct outward-dash kills earn relic charge; burst kills never do,
  * so a burst cannot cascade into another burst or a decoy.
  */
-function killEnemy(state: SimState, e: EnemyState, cause: 'dash' | 'burst', events: SimEvent[]): void {
+function killEnemy(state: SimState, e: EnemyState, cause: 'dash' | 'burst' | 'collapse', events: SimEvent[]): void {
   const t = state.time;
   e.phase = 'dead';
   e.phaseTime = 0;
@@ -576,6 +572,7 @@ function killEnemy(state: SimState, e: EnemyState, cause: 'dash' | 'burst', even
       events.push({ type: 'knotMarked', t });
     }
   }
+  if (cause === 'collapse') return; // the room is ending: nothing new wakes
   wakeWhere(state, events, (s) => s.wake?.kind === 'enemyKilled' && s.wake.enemy === e.key);
   const bossWake = state.room.boss?.wake;
   if (bossWake?.kind === 'enemyKilled' && bossWake.enemy === e.key) wakeBoss(state, events);
@@ -646,6 +643,8 @@ function arrivalEffects(state: SimState, at: Vec2, events: SimEvent[]): void {
     }
     syncRelicView(relics);
     events.push({ type: 'burst', t: state.time, at, radius: bell.burstRadius, killed });
+    // The Mourner's climax: a burst over the trailing heart is one heart strike (never more).
+    if (burstReachesHeart(state, at, bell.burstRadius)) strikeHeart(state, 'burst', events);
   }
   const knot = relics.config.travelersKnot;
   if (knot && relics.knotMarked) {
@@ -955,6 +954,10 @@ function settle(state: SimState, events: SimEvent[]): void {
   if (state.boss?.phase === 'dormant' && bossWake?.kind === 'bodyWithin' && dist(body.pos, state.boss.body.pos) <= bossWake.radius) {
     wakeBoss(state, events);
   }
+  // The Last Warden's fall shatters any escorts still standing (cause 'collapse').
+  if (state.boss?.phase === 'dead') {
+    for (const e of state.enemies) if (e.phase !== 'dead') killEnemy(state, e, 'collapse', events);
+  }
   const cleared = state.enemies.every((e) => e.phase === 'dead') && !bossAlive(state);
   const gate = !cleared ? 'sealed' : separated ? 'ready' : 'open';
   if (gate !== state.gate) {
@@ -972,6 +975,21 @@ function settle(state: SimState, events: SimEvent[]): void {
     body.recoverLeft = 0;
     state.buffered = null;
     events.push({ type: 'victory', t });
+  }
+}
+
+/**
+ * Tracking warnings follow their target for presentation only: the line that matters is
+ * computed exactly at lock time. Refreshing once per step (not on every event split)
+ * keeps keepers' led aim cheap without changing any outcome.
+ */
+function refreshTrackingAims(state: SimState): void {
+  for (const e of state.enemies) {
+    if (e.phase !== 'tracking' || e.role === 'warden') continue;
+    const lockIn = Math.max(0, e.phaseDuration - e.phaseTime);
+    e.aimTarget = aimPointFor(state, e, lockIn + sentryTuning(e.role).locked);
+    e.aim = aimToward(e, e.aimTarget);
+    e.facing = e.aim;
   }
 }
 
@@ -1021,6 +1039,7 @@ export function stepInternal(state: SimState, commands: readonly Command[], prob
   } else {
     for (const cmd of commands) events.push({ type: 'rejected', t: state.time, command: cmd.kind, reason: 'ended' });
   }
+  refreshTrackingAims(state);
   state.tick += 1;
   state.time = state.tick * STEP_SECONDS;
   return events;

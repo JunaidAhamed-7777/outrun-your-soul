@@ -13,11 +13,62 @@ import type { Vec2 } from './vec';
 /** Generous bound: buffer window + longest dash + recovery, or a full-length RETURN. */
 const MAX_FORECAST_STEPS = Math.ceil(3 / STEP_SECONDS);
 
-/** Deep copy sharing the immutable room definition. */
-export function cloneState(state: SimState): SimState {
-  const { room, ...rest } = state;
-  const copy = structuredClone(rest) as Omit<SimState, 'room'>;
-  return { ...copy, room } as SimState;
+/**
+ * Independent copy for forecasting. Copies every object the step mutates; shares what it
+ * never mutates in place: the room definition, relic config, commands and Vec2 values
+ * (positions are always replaced, never edited). Several times cheaper than
+ * structuredClone, which dominated preview cost in the boss room.
+ */
+export function cloneState(s: SimState): SimState {
+  const b = s.boss;
+  return {
+    ...s,
+    damagedAttackIds: new Set(s.damagedAttackIds),
+    body: { ...s.body, dash: s.body.dash ? { ...s.body.dash } : null },
+    soul: { ...s.soul },
+    route: { points: s.route.points.slice(), length: s.route.length },
+    enemies: s.enemies.map((e) => ({ ...e })),
+    projectiles: s.projectiles.map((p) => ({ ...p })),
+    lanes: s.lanes.map((l) => ({ ...l })),
+    stats: { ...s.stats },
+    ...(s.relicState ? { relicState: { ...s.relicState } } : {}),
+    ...(b
+      ? {
+          boss: {
+            ...b,
+            body: { ...b.body },
+            heart: { ...b.heart },
+            route: { points: b.route.points.slice(), length: b.route.length },
+            path: b.path.slice(),
+            fan: b.fan.slice(),
+            chargeTouched: b.chargeTouched.slice(),
+          },
+        }
+      : {}),
+  };
+}
+
+/**
+ * Copy for a movement forecast, dropping what cannot change the forecast outcome (motion
+ * of body and soul up to the dash end / reunion). Lanes and sentry fire only cause damage,
+ * never movement. Bolts matter only through a Needlesong cut (soul speed), wardens through
+ * their guard, and the boss through its armour. A RETURN with no dash in flight depends on
+ * nothing but the route, the walls and the soul's speed.
+ */
+function forecastCopy(state: SimState, kind: 'dash' | 'return'): SimState {
+  const sim = cloneState(state);
+  const motionOnly = kind === 'return' && state.body.mode !== 'dash';
+  const cutsMatter = !!state.relicState?.config.needlesong;
+  sim.lanes = [];
+  if (motionOnly) {
+    sim.enemies = [];
+    sim.projectiles = [];
+    sim.boss = null;
+  } else if (!cutsMatter) {
+    sim.enemies = sim.enemies.filter((e) => e.role === 'warden');
+    sim.projectiles = [];
+  }
+  return sim;
 }
 
 function invalidDash(plan: DashPlan, reason: RejectReason, state: SimState): DashPreview {
@@ -39,7 +90,7 @@ export function previewDash(state: SimState, aim: Vec2): DashPreview {
   const geometry = planDash(state, aim);
   if (state.outcome !== 'playing') return invalidDash(geometry, 'ended', state);
 
-  const sim = cloneState(state);
+  const sim = forecastCopy(state, 'dash');
   const probe = newProbe();
   let queued = false;
   let startedAt: number | null = null;
@@ -86,7 +137,7 @@ export function previewDash(state: SimState, aim: Vec2): DashPreview {
 export function previewReturn(state: SimState): ReturnPreview {
   if (state.outcome !== 'playing') return { valid: false, reason: 'ended', meetAt: null, seconds: 0 };
   if (!isSeparated(state.route)) return { valid: false, reason: 'notSeparated', meetAt: null, seconds: 0 };
-  const sim = cloneState(state);
+  const sim = forecastCopy(state, 'return');
   // An in-progress RETURN is forecast as-is; otherwise issue one (it may queue while busy).
   const alreadyReturning = state.body.mode === 'return';
   for (let step = 0; step < MAX_FORECAST_STEPS; step++) {
