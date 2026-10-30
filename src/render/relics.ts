@@ -118,21 +118,22 @@ export class RelicLayer {
       });
     }
 
-    // Mourning Bell pips: filled for earned charge, dim for missing, above the body.
+    // Mourning Bell pips: filled for earned charge, dim for missing, just in front of the body
+    // (south, so the courier model never hides them).
     const max = Math.min(MAX_PIPS, Math.max(0, Math.round(relics.bellMax)));
     const showBell = relics.equipped.includes('mourning_bell') || relics.bellCharge > 0;
     this.pips.forEach((pip, i) => {
       pip.visible = showBell && i < max;
       if (!pip.visible) return;
       const x = bodyPos.x + (i - (max - 1) / 2) * 0.17;
-      pip.position.set(x, 0.04, -(bodyPos.y + 0.48));
+      pip.position.set(x, 0.04, -(bodyPos.y - 0.46));
       const full = i < relics.bellCharge;
       pip.material.opacity = full ? 1 : 0.3;
       const ready = relics.bellCharge >= max && max > 0;
       pip.scale.setScalar(full && ready && !reducedMotion ? 1 + 0.2 * Math.sin(this.time * 8) : 1);
     });
     this.knotPip.visible = relics.knotReady;
-    if (relics.knotReady) this.knotPip.position.set(bodyPos.x + (showBell ? (max / 2) * 0.17 + 0.14 : 0), 0.04, -(bodyPos.y + 0.48));
+    if (relics.knotReady) this.knotPip.position.set(bodyPos.x + (showBell ? (max / 2) * 0.17 + 0.14 : 0), 0.04, -(bodyPos.y - 0.46));
 
     // Traveler's Knot decoy: a ghost courier that fades in where it was placed.
     const decoy = relics.decoy;

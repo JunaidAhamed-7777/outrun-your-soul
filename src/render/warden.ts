@@ -94,8 +94,8 @@ export class WardenView {
     this.shadow.renderOrder = 1;
     this.shadow.visible = false;
     this.ring = groundRing(enemy.radius, color('gold'), 0.04, 0.6, 20);
-    this.guard = sector(color('ivory'), { fillOpacity: 0, edgeOpacity: 0.55 }, 24);
-    setUniform(this.guard.material, 'uBaseOpacity', 0.1);
+    this.guard = sector(color('ivory'), { fillOpacity: 0, edgeOpacity: 0.8 }, 24);
+    setUniform(this.guard.material, 'uBaseOpacity', 0.14);
     this.sweep = sector(color('warning_amber'), { fillOpacity: 0.5, edgeOpacity: 0.95 }, 35);
     this.coreGlow = new Sprite(
       new SpriteMaterial({ map: spot, color: color('gold'), transparent: true, opacity: 0, blending: AdditiveBlending, depthWrite: false }),
