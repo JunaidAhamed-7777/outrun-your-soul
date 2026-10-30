@@ -18,6 +18,10 @@ import type { DashPreview, ReturnPreview, RoomDef, SimEvent, SimState } from '..
 import { TUNING } from '../sim/tuning';
 import type { Vec2 } from '../sim/vec';
 import { BodyView, GateView, SentryView, SoulView, approach } from './actors';
+import { BOSS_SCALE, BossLayer, HeartView } from './boss';
+import { RelicLayer } from './relics';
+import { loose, relicView, roleKind, type LooseEvent } from './simext';
+import { WardenView } from './warden';
 import { loadModels, type ModelLibrary } from './assets';
 import { buildBackdrop, type Backdrop } from './backdrop';
 import { fitCamera, type CameraFit } from './camera';
@@ -48,6 +52,10 @@ export interface RendererOptions {
 }
 
 export interface RenderStats {
+  /** Average CPU time of render() in milliseconds (exponential moving average). */
+  cpuMs: number;
+  /** Worst render() CPU time in the last ~2 seconds, milliseconds. */
+  cpuMsMax: number;
   calls: number;
   triangles: number;
   geometries: number;
@@ -78,6 +86,10 @@ export interface GameRenderer {
   debugCloseUp(center: Vec2 | null, zoom?: number): void;
   /** Dev diagnostics only: the live scene graph. */
   debugScene(): Scene;
+  /** Quick iris close on the body (<= 0.35 s; instant in reduced motion). Resolves when covered. */
+  transitionOut(): Promise<void>;
+  /** Quick iris open on the body (<= 0.35 s; instant in reduced motion). Resolves when clear. */
+  transitionIn(): Promise<void>;
 }
 
 export function isWebGL2Available(): boolean {
@@ -135,9 +147,15 @@ export async function createRenderer(container: HTMLElement, options: RendererOp
   const lanes = new LaneLayer();
   const effects = new EffectSystem(spot, star);
   effects.reducedMotion = reducedMotion;
-  const sentries = new Map<number, SentryView>();
+  const sentries = new Map<number, SentryView | WardenView | HeartView>();
+  const relicLayer = new RelicLayer(lib);
+  const bossLayer = new BossLayer(lib, spot);
+  let cpuMs = 0;
+  let cpuMsMax = 0;
+  let cpuWindowMax = 0;
+  let cpuWindowStart = 0;
   const telegraphs = new Map<number, TelegraphView>();
-  scene.add(lanes.group, ribbon.group, soul.root, body.root, bolts.group, preview.group, effects.group);
+  scene.add(lanes.group, ribbon.group, relicLayer.group, bossLayer.group, soul.root, body.root, bolts.group, preview.group, effects.group);
 
   const raycaster = new Raycaster();
   const groundPlane = new Plane(new Vector3(0, 1, 0), 0);
@@ -298,6 +316,7 @@ export async function createRenderer(container: HTMLElement, options: RendererOp
           effects.invalid(state.body.pos);
           break;
         default:
+          handleExtraEvent(loose(e), state);
           break;
       }
     }
@@ -305,6 +324,7 @@ export async function createRenderer(container: HTMLElement, options: RendererOp
 
   function render(state: SimState, alpha: number, overlay: RenderOverlay, realDt: number): void {
     if (contextLost || !room) return;
+    const cpuStart = performance.now();
     const dt = Math.min(0.1, Math.max(0, realDt));
     time += dt;
 
@@ -315,20 +335,32 @@ export async function createRenderer(container: HTMLElement, options: RendererOp
     seen.clear();
     for (const enemy of state.enemies) {
       seen.add(enemy.id);
+      const kind = roleKind(enemy);
       let view = sentries.get(enemy.id);
       if (!view) {
-        view = new SentryView(lib, spot, enemy);
+        if (kind === 'warden') view = new WardenView(lib, spot, enemy);
+        else if (kind === 'boss_body') view = new WardenView(lib, spot, enemy, BOSS_SCALE, true);
+        else if (kind === 'boss_heart') view = new HeartView(spot, enemy.radius);
+        else view = new SentryView(lib, spot, enemy);
         sentries.set(enemy.id, view);
         scene.add(view.root);
       }
-      view.update(enemy, dt, time, reducedMotion);
-      let tele = telegraphs.get(enemy.id);
-      if (!tele) {
-        tele = new TelegraphView(enemy.target);
-        telegraphs.set(enemy.id, tele);
-        scene.add(tele.group);
+      if (view instanceof HeartView) {
+        view.root.visible = enemy.phase !== 'dead';
+        view.update(enemy.pos, time, reducedMotion);
+      } else {
+        view.update(enemy, dt, time, reducedMotion);
       }
-      tele.update(enemy, room, enemy.target === 'body' ? body.pos : soul.pos, dt, reducedMotion);
+      // Line telegraphs belong to the bolt roles; wardens draw their own sweep sector.
+      if (kind === 'needler' || kind === 'keeper' || kind === 'unknown') {
+        let tele = telegraphs.get(enemy.id);
+        if (!tele) {
+          tele = new TelegraphView(enemy.target);
+          telegraphs.set(enemy.id, tele);
+          scene.add(tele.group);
+        }
+        tele.update(enemy, room, enemy.target === 'body' ? body.pos : soul.pos, dt, reducedMotion);
+      }
     }
     for (const [id, view] of sentries) {
       if (seen.has(id)) continue;
@@ -338,7 +370,10 @@ export async function createRenderer(container: HTMLElement, options: RendererOp
       telegraphs.delete(id);
     }
 
-    ribbon.update(state, soul.pos, body.pos, dt, reducedMotion);
+    const relics = relicView(state);
+    ribbon.update(state, soul.pos, body.pos, dt, reducedMotion, relics.boosting);
+    relicLayer.update(state, relics, soul.pos, body.pos, dt, reducedMotion);
+    bossLayer.update(state, alpha, dt, reducedMotion);
     preview.update(
       state,
       body.pos,
@@ -346,7 +381,7 @@ export async function createRenderer(container: HTMLElement, options: RendererOp
       dt,
       reducedMotion,
     );
-    bolts.update(state.projectiles, alpha, time);
+    bolts.update(state.projectiles, alpha, time, soul.pos, relics.haloRadius);
     lanes.update(state.lanes, dt, reducedMotion);
     gate?.update(state.gate, dt, time, reducedMotion);
     effects.update(dt, body.pos);
@@ -358,6 +393,90 @@ export async function createRenderer(container: HTMLElement, options: RendererOp
 
     placeCamera();
     gl.render(scene, camera);
+
+    const spent = performance.now() - cpuStart;
+    cpuMs = cpuMs === 0 ? spent : cpuMs * 0.95 + spent * 0.05;
+    cpuWindowMax = Math.max(cpuWindowMax, spent);
+    if (cpuStart - cpuWindowStart > 2000) {
+      cpuMsMax = cpuWindowMax;
+      cpuWindowMax = 0;
+      cpuWindowStart = cpuStart;
+    }
+  }
+
+  function handleExtraEvent(e: LooseEvent, state: SimState): void {
+    const enemyView = e.enemyId !== undefined ? sentries.get(e.enemyId) : undefined;
+    switch (e.type) {
+      case 'guarded':
+        if (enemyView instanceof WardenView) enemyView.guarded();
+        if (e.at) effects.clang(e.at);
+        break;
+      case 'sweep':
+        if (enemyView instanceof WardenView) enemyView.swept();
+        break;
+      case 'boost':
+        soul.separatedPulse();
+        effects.ring(e.at ?? soul.pos, new Color('#dff6ff'), 0.3, 0.9, 0.3, { thickness: 0.2 });
+        break;
+      case 'charge':
+        effects.sparkle(e.at ?? body.pos, new Color('#d9a43c'), 0.7);
+        break;
+      case 'burst':
+        effects.bellBurst(e.at ?? body.pos, e.radius ?? relicView(state).burstRadius ?? 1.5);
+        break;
+      case 'decoyPlaced':
+        if (e.at) {
+          effects.ring(e.at, new Color('#d9f1ff'), 0.2, 0.8, 0.4, { thickness: 0.2 });
+          effects.sparkle(e.at, new Color('#d9f1ff'));
+        }
+        break;
+      case 'decoyTaken':
+        if (e.at) {
+          effects.ring(e.at, new Color('#ffb21e'), 0.6, 0.15, 0.3, { thickness: 0.35 });
+          effects.burst(e.at, 0.45, new Color('#d9f1ff'), 8, 1.6, 0.04, 0.4);
+        }
+        break;
+      case 'haloEnter':
+      case 'haloExit':
+        if (e.at) effects.ring(e.at, new Color('#59b8ff'), 0.1, 0.35, 0.2, { thickness: 0.3, opacity: 0.7 });
+        break;
+      default:
+        break;
+    }
+  }
+
+  // Room transition iris: a transparent hole whose huge box-shadow covers the rest. CSS
+  // transitions plus timer-based resolution, so a throttled background tab never hangs.
+  const iris = document.createElement('div');
+  iris.style.cssText =
+    'position:absolute;left:50%;top:50%;width:300vmax;height:300vmax;border-radius:50%;pointer-events:none;' +
+    'transform:translate(-50%,-50%);box-shadow:0 0 0 300vmax #0b1233;opacity:0;z-index:5;';
+  if (getComputedStyle(container).position === 'static') container.style.position = 'relative';
+  container.appendChild(iris);
+  const IRIS_MS = 320;
+  function irisTo(open: boolean): Promise<void> {
+    const at = groundToScreen(body.pos) ?? { x: container.clientWidth / 2, y: container.clientHeight / 2 };
+    iris.style.left = `${at.x}px`;
+    iris.style.top = `${at.y}px`;
+    const big = '300vmax';
+    if (reducedMotion) {
+      iris.style.transition = 'none';
+      iris.style.opacity = open ? '0' : '1';
+      iris.style.width = iris.style.height = open ? big : '0px';
+      return Promise.resolve();
+    }
+    iris.style.transition = 'none';
+    iris.style.opacity = '1';
+    iris.style.width = iris.style.height = open ? '0px' : big;
+    void iris.offsetWidth;
+    iris.style.transition = `width ${IRIS_MS}ms ease-in-out, height ${IRIS_MS}ms ease-in-out`;
+    iris.style.width = iris.style.height = open ? big : '0px';
+    return new Promise((resolve) =>
+      setTimeout(() => {
+        if (open) iris.style.opacity = '0';
+        resolve();
+      }, IRIS_MS + 20),
+    );
   }
 
   function screenToGround(clientX: number, clientY: number): Vec2 | null {
@@ -397,6 +516,8 @@ export async function createRenderer(container: HTMLElement, options: RendererOp
         models[id] = lib.source(id);
       }
       return {
+        cpuMs,
+        cpuMsMax: Math.max(cpuMsMax, cpuWindowMax),
         calls: gl.info.render.calls,
         triangles: gl.info.render.triangles,
         geometries: gl.info.memory.geometries,
@@ -407,6 +528,12 @@ export async function createRenderer(container: HTMLElement, options: RendererOp
     },
     debugScene() {
       return scene;
+    },
+    transitionOut() {
+      return irisTo(false);
+    },
+    transitionIn() {
+      return irisTo(true);
     },
     debugCloseUp(center: Vec2 | null, zoom = 3) {
       closeUp = center ? { center, zoom } : null;
@@ -429,6 +556,9 @@ export async function createRenderer(container: HTMLElement, options: RendererOp
       canvas.removeEventListener('webglcontextlost', onContextLost);
       canvas.removeEventListener('webglcontextrestored', onContextRestored);
       clearDynamic();
+      relicLayer.dispose();
+      bossLayer.dispose();
+      iris.remove();
       body.dispose();
       soul.dispose();
       ribbon.dispose();

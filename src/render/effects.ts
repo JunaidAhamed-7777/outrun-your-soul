@@ -269,6 +269,26 @@ export class EffectSystem {
     this.burst(at, 0.34, color('bolt_edge'), 3, 1.2, 0.03, 0.25);
   }
 
+  /** Warden shield deflection: dull ivory clang, no damage colours. */
+  clang(at: Vec2): void {
+    this.sprite(at, 0.5, new Color('#e8e2d4'), this.star, 0.25, 0.9, 0.2, 0.9);
+    this.burst(at, 0.5, new Color('#9ea3b8'), 6, 1.8, 0.035, 0.35);
+    this.ring(at, color('ivory'), 0.2, 0.7, 0.22, { thickness: 0.3, segments: 8 });
+  }
+
+  /** Mourning Bell burst: the ring settles on the TRUE burst radius. */
+  bellBurst(at: Vec2, radius: number): void {
+    this.ring(at, color('gold'), radius * 0.25, radius, 0.55, { thickness: 0.08 });
+    this.ring(at, new Color('#fff1c8'), radius * 0.9, radius, 0.7, { thickness: 0.04, opacity: 0.9 });
+    this.sprite(at, 0.4, color('gold'), this.star, 0.6, 2.2, 0.35, 1);
+    this.burst(at, 0.5, color('gold'), 14, 2.4, 0.05, 0.6);
+    this.addShake(0.08);
+  }
+
+  sparkle(at: Vec2, c: Color, size = 0.6): void {
+    this.sprite(at, 0.45, c, this.star, size * 0.3, size, 0.3, 0.9);
+  }
+
   invalid(at: Vec2): void {
     this.ring(at, new Color('#8b90a8'), 0.35, 0.55, 0.25, { thickness: 0.25, opacity: 0.9, segments: 8 });
   }
