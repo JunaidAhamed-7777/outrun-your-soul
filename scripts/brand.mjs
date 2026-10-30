@@ -9,8 +9,8 @@
  *   public/favicon.svg, public/favicon-32.png, public/favicon-16.png,
  *   public/apple-touch-icon.png (180), public/icon-192.png, public/icon-512.png,
  *   public/icon-maskable-512.png, public/og.jpg (1200x630 social card)
- *   art/brand/banner.png (README header), art/brand/logo-stacked.png,
- *   art/brand/itch-cover.png (630x500), art/brand/mark-1024.png
+ *   art/brand/banner.png (README header), art/brand/logo-stacked.png, art/brand/mark-1024.png
+ *   (the itch.io cover is made by scripts/itch-cover.mjs)
  */
 import { chromium } from 'playwright-core';
 import { copyFileSync, readFileSync, writeFileSync } from 'node:fs';
@@ -131,26 +131,7 @@ jobs.push({
   ),
 });
 
-// itch.io cover (630x500).
-jobs.push({
-  out: 'art/brand/itch-cover.png',
-  w: 630,
-  h: 500,
-  html: PAGE(
-    630,
-    500,
-    `<div class="bg"></div><div class="grain"></div>
-    <img src="${MARK_URI}" style="position:absolute;left:44px;top:58px;width:120px;height:120px">
-    <div style="position:absolute;left:44px;top:208px">
-      <div class="k" style="font-size:13px">A funeral-railway escape</div>
-      <div class="w1" style="margin-top:14px;font-size:64px">OUTRUN</div>
-      <div class="w2" style="margin-top:4px;font-size:33px">YOUR SOUL</div>
-      <div class="thread" style="width:250px;margin:16px 0 12px"></div>
-      <div class="tag" style="font-size:17px">Your body can outrun death.<br>Your soul cannot.</div>
-    </div>
-    ${phone(388, 30, 440)}`,
-  ),
-});
+// The itch.io cover has its own script: scripts/itch-cover.mjs.
 
 const channel = process.env.BRAND_BROWSER ?? 'msedge';
 const browser = await chromium.launch({ channel });

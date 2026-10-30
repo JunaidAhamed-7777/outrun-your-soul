@@ -73,7 +73,7 @@ Levels unlock strictly in order. **Play** on the title screen starts the next on
 | Mark (icon) | [`art/brand/mark.svg`](art/brand/mark.svg) · small-size variant [`mark-small.svg`](art/brand/mark-small.svg) |
 | Banner | [`art/brand/banner.png`](art/brand/banner.png) |
 | Stacked logo | [`art/brand/logo-stacked.png`](art/brand/logo-stacked.png) |
-| itch.io cover (630×500) | [`art/brand/itch-cover.png`](art/brand/itch-cover.png) |
+| itch.io cover (630×500 layout, 2× pixels) | [`art/brand/itch-cover.png`](art/brand/itch-cover.png), from a real gameplay frame by `node scripts/itch-cover.mjs` |
 | Social card (1200×630) | [`public/og.jpg`](public/og.jpg) |
 | Demo video (23 s, 720×1558, H.264 + AAC) | [`art/video/outrun-your-soul-demo.mp4`](art/video/outrun-your-soul-demo.mp4), recorded by `node scripts/demo-video.mjs` |
 | Favicons and app icons | `public/favicon.svg`, `favicon-16/32.png`, `apple-touch-icon.png`, `icon-192/512.png`, `icon-maskable-512.png`, `site.webmanifest` |
