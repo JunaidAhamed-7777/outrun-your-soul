@@ -36,31 +36,7 @@ coll = env.composite_collection(TAG)
 base = ob.PartBuilder()
 base.box((W + 2.4, H + 2.4, 0.05), center=(W / 2, H / 2, -0.06), key='cobalt_deep')
 env.composite_mesh(coll, TAG, 'grout_base', base)
-
-
-def tone_materials():
-    """Composite-only tonal variants of cobalt, standing in for the renderer's per-tile tint."""
-    r, g, b, _ = ob.palette_rgba('cobalt')
-    mats = []
-    for i, k in enumerate((0.86, 0.93, 1.0, 1.07, 1.14)):
-        name = f'composite_cobalt_{i}'
-        mat = bpy.data.materials.get(name) or bpy.data.materials.new(name)
-        mat.use_nodes = True
-        bsdf = mat.node_tree.nodes.get('Principled BSDF')
-        bsdf.inputs['Base Color'].default_value = (r * k, g * k, b * k, 1)
-        bsdf.inputs['Roughness'].default_value = 0.8
-        mats.append(mat)
-    return mats
-
-
-tones = tone_materials()
-for x in range(W):
-    for y in range(H):
-        tile = env.instance_asset('floor_tile', coll, TAG, f'f{x}_{y}', location=(x, y, 0))
-        for child in tile.children:
-            slot = child.material_slots[0]
-            slot.link = 'OBJECT'
-            slot.material = tones[(x * 7 + y * 13 + (x * y) % 5) % len(tones)]
+env.floor_grid(coll, TAG, 0, 0, W, H)
 
 walls = set(INNER_WALLS)
 for x in range(-1, W + 1):
@@ -121,21 +97,8 @@ env.composite_mesh(coll, TAG, 'actor_rings', rings)
 imported = 0
 for asset_id, (x, y), yaw in ACTORS:
     path = ob.ROOT / 'public' / 'assets' / 'models' / f'{asset_id}.glb'
-    if not path.exists():
-        continue
-    before = set(bpy.data.objects)
-    bpy.ops.import_scene.gltf(filepath=str(path))
-    new = [o for o in bpy.data.objects if o not in before]
-    for obj in new:
-        obj[env.COMPOSITE_TAG] = TAG
-        for c in list(obj.users_collection):
-            c.objects.unlink(obj)
-        coll.objects.link(obj)
-    root = next(o for o in new if o.parent is None)
-    root.location = (x, y, 0)
-    root.rotation_mode = 'XYZ'
-    root.rotation_euler = (0, 0, math.radians(yaw))
-    imported += 1
+    if env.import_glb_composite(path, coll, TAG, (x, y, 0), yaw) is not None:
+        imported += 1
 if imported == 0:
     markers = ob.PartBuilder()
     markers.cylinder(0.17, 0.2, 0.62, center=(3.5, 2.5, 0.33), key='ivory', segments=8)

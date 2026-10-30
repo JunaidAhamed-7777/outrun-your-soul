@@ -2,14 +2,14 @@
   "asset_id": "distant_engine",
   "status": "exported",
   "author": "original (script-authored in Blender via the pinned Blender MCP bridge)",
-  "created_at": "2026-10-30T14:54:42+00:00",
+  "created_at": "2026-10-30T15:23:39+00:00",
   "blender_version": "5.2.2 LTS",
   "exporter_version": "5.2.40",
   "source_path": "art/source/environment.blend",
   "export": {
     "path": "public/assets/models/distant_engine.glb",
-    "bytes": 400136,
-    "sha256": "2e2341e0146bde3d1489b61391beecc80aa2544f5c6ef598251cb4d6540b63eb"
+    "bytes": 400152,
+    "sha256": "5a11895bf4a168dc4a8e3937e25006f95776d9206e8ebc135812a81a788b4041"
   },
   "preview": "art/previews/distant_engine-game-camera.png",
   "measured": {
@@ -24,17 +24,17 @@
     "bounds_min": [
       -15.1,
       -1.21,
-      -4
+      -5.9204
     ],
     "bounds_max": [
       15.1,
-      4.65,
-      6.65
+      5.85,
+      6.0843
     ],
     "dimensions": [
       30.2,
-      5.86,
-      10.65
+      7.06,
+      12.0047
     ],
     "parts": [
       "distant_engine",
@@ -49,74 +49,5 @@
     "materials": 4
   },
   "within_budget": true,
-  "notes": "Backdrop outside the playable area. Miniature two-tier gold aqueduct/train/procession in front of two colossal gold gears and a misty cobalt far layer (dome, tower, chimneys, bell) whose bases run down to z=-4. Gears tilted back 30 deg; rotate each gear part about its local Z (Three.js). Train slides along X (pivot at rail top z=2.76, wrap within x=[-17, 17]). Recommended placement: origin at sim (room_w/2, room_h+3.5), z=-3.1.",
-  "glb_verification": {
-    "asset_id": "distant_engine",
-    "file": "public/assets/models/distant_engine.glb",
-    "sha256": "2e2341e0146bde3d1489b61391beecc80aa2544f5c6ef598251cb4d6540b63eb",
-    "bytes": 400136,
-    "generator": "Khronos glTF Blender I/O v5.2.40",
-    "triangles": 7786,
-    "materials": [
-      "cobalt_mist",
-      "gold_dark",
-      "gold",
-      "ivory"
-    ],
-    "bounds_gltf_yup": {
-      "min": [
-        -15.1,
-        -4,
-        -4.65
-      ],
-      "max": [
-        15.1,
-        6.65,
-        1.21
-      ]
-    },
-    "parts": [
-      "distant_engine",
-      "distant_engine_body",
-      "distant_engine_gear_a",
-      "distant_engine_gear_b",
-      "distant_engine_train"
-    ],
-    "checks": [
-      {
-        "name": "single root named distant_engine",
-        "pass": true
-      },
-      {
-        "name": "all part nodes prefixed with the asset id",
-        "pass": true
-      },
-      {
-        "name": "materials are palette keys",
-        "pass": true
-      },
-      {
-        "name": "no cameras or lights",
-        "pass": true
-      },
-      {
-        "name": "parts body/train/gear_a/gear_b",
-        "pass": true
-      },
-      {
-        "name": "gears tilted -30 deg about X (quaternion x ~ -0.2588)",
-        "pass": true
-      },
-      {
-        "name": "train pivot raised onto the rails (+Y)",
-        "pass": true
-      },
-      {
-        "name": "roughly 30 m wide",
-        "pass": true
-      }
-    ],
-    "pass": true,
-    "verified_at": "2026-10-30T14:54:52Z"
-  }
+  "notes": "Backdrop outside the playable area. Miniature two-tier gold aqueduct/train/procession in front of two colossal gold gears and a misty cobalt far layer (dome, tower, chimneys, bell) whose bases run down to z=-4. Gears tilted back 30 deg; rotate each gear part about its local Z (Three.js). Train slides along X (pivot at rail top z=2.76, wrap within x=[-17, 17]). Recommended placement: origin at sim (room_w/2, room_h+3.5), z=-3.1."
 }

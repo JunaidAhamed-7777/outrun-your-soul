@@ -237,6 +237,55 @@ def instance_asset(asset_id: str, coll: bpy.types.Collection, tag: str, label: s
     return root
 
 
+def tone_materials(key: str = 'cobalt', factors=(0.86, 0.93, 1.0, 1.07, 1.14)) -> list[bpy.types.Material]:
+    """Composite-only tonal variants of a palette colour (stand-in for the renderer's per-tile tint)."""
+    r, g, b, _ = ob.palette_rgba(key)
+    mats = []
+    for i, k in enumerate(factors):
+        name = f'composite_{key}_{i}'
+        mat = bpy.data.materials.get(name) or bpy.data.materials.new(name)
+        try:
+            mat.use_nodes = True
+        except AttributeError:
+            pass
+        bsdf = mat.node_tree.nodes.get('Principled BSDF')
+        bsdf.inputs['Base Color'].default_value = (r * k, g * k, b * k, 1)
+        bsdf.inputs['Roughness'].default_value = 0.8
+        mats.append(mat)
+    return mats
+
+
+def floor_grid(coll: bpy.types.Collection, tag: str, x0: int, y0: int, w: int, h: int, label: str = 'f') -> None:
+    """Toned floor_tile copies over [x0, x0+w) x [y0, y0+h)."""
+    tones = tone_materials()
+    for x in range(x0, x0 + w):
+        for y in range(y0, y0 + h):
+            tile = instance_asset('floor_tile', coll, tag, f'{label}{x}_{y}', location=(x, y, 0))
+            for child in tile.children:
+                slot = child.material_slots[0]
+                slot.link = 'OBJECT'
+                slot.material = tones[(x * 7 + y * 13 + (x * y) % 5) % len(tones)]
+
+
+def import_glb_composite(path, coll: bpy.types.Collection, tag: str, location, yaw_deg: float = 0.0):
+    """Import a GLB (e.g. an actor from another kit) as composite-only objects; returns its root or None."""
+    if not path.exists():
+        return None
+    before = set(bpy.data.objects)
+    bpy.ops.import_scene.gltf(filepath=str(path))
+    new = [o for o in bpy.data.objects if o not in before]
+    for obj in new:
+        obj[COMPOSITE_TAG] = tag
+        for c in list(obj.users_collection):
+            c.objects.unlink(obj)
+        coll.objects.link(obj)
+    root = next(o for o in new if o.parent is None)
+    root.location = location
+    root.rotation_mode = 'XYZ'
+    root.rotation_euler = (0, 0, math.radians(yaw_deg))
+    return root
+
+
 def composite_mesh(coll: bpy.types.Collection, tag: str, name: str, pb: ob.PartBuilder,
                    location=(0, 0, 0)) -> bpy.types.Object:
     """One-off composite-only mesh (ground plates, preview dressing)."""
