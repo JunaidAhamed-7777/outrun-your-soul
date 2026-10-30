@@ -236,7 +236,7 @@ export function playCue(s: Synth, r: CueRequest, t: number): SynthVoice {
       ]);
     case 'sweepWhoosh':
       return group([
-        s.sweep(t, { type: 'lowpass', from: 300, to: 2600, q: 1.2, attack: 0.08, dur: 0.42, gain: 0.32 * k, pan, send: 0.2 }),
+        s.sweep(t, { type: 'lowpass', from: 300, to: 2600, q: 1.2, attack: 0.08, dur: 0.42, gain: 0.62 * k, pan, send: 0.2 }),
         s.buzz(t, { freqs: [degreeHz(0, -3)], from: 160, to: 420, attack: 0.08, dur: 0.35, gain: 0.07 * k }),
       ]);
     case 'exposedChime':
