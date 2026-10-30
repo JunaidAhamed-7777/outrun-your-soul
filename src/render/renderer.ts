@@ -20,6 +20,7 @@ import type { Vec2 } from '../sim/vec';
 import { BodyView, GateView, SentryView, SoulView, approach } from './actors';
 import { BossBodyView, BossLayer, HeartView } from './boss';
 import { RelicLayer } from './relics';
+import { buildStation, STATION_SIZE, STATION_SPOT, type StationView } from './station';
 import { loose, relicView, roleKind, type LooseEvent } from './simext';
 import { WardenView } from './warden';
 import { loadModels, type ModelLibrary } from './assets';
@@ -91,6 +92,12 @@ export interface GameRenderer {
   transitionOut(): Promise<void>;
   /** Quick iris open on the body (<= 0.35 s; instant in reduced motion). Resolves when clear. */
   transitionIn(): Promise<void>;
+  /** Swap the room for the "Signal House" station backdrop (courier and soul stand reunited). */
+  showStation(): void;
+  /** Return to the current room view. */
+  hideStation(): void;
+  /** Station feedback: 'pick' swings the bell (draft confirmed), 'depart' lowers the signal arm. */
+  stationSignal(kind: 'pick' | 'depart'): void;
 }
 
 export function isWebGL2Available(): boolean {
@@ -139,6 +146,8 @@ export async function createRenderer(container: HTMLElement, options: RendererOp
   let time = 0;
   let defeat = 0;
   let closeUp: { center: Vec2; zoom: number } | null = null;
+  let station: StationView | null = null;
+  let stationMode = false;
 
   const body = new BodyView(lib, spot);
   const soul = new SoulView(lib, spot);
@@ -182,7 +191,8 @@ export async function createRenderer(container: HTMLElement, options: RendererOp
     if (!room) return;
     const w = Math.max(1, container.clientWidth);
     const h = Math.max(1, container.clientHeight);
-    fit = fitCamera({ roomWidth: room.width, roomHeight: room.height, viewportWidth: w, viewportHeight: h });
+    const size = stationMode ? STATION_SIZE : room;
+    fit = fitCamera({ roomWidth: size.width, roomHeight: size.height, viewportWidth: w, viewportHeight: h });
     const z = closeUp?.zoom ?? 1;
     camera.left = -fit.viewWidth / 2 / z;
     camera.right = fit.viewWidth / 2 / z;
@@ -247,6 +257,8 @@ export async function createRenderer(container: HTMLElement, options: RendererOp
     }
     if (roomView) lanes.setApertures(roomView.laneApertures, spot);
     resize();
+    // A room built while the station is showing stays hidden until hideStation().
+    if (stationMode) setStationMode(true);
   }
 
   function enemyById(state: SimState, id: number) {
@@ -328,6 +340,10 @@ export async function createRenderer(container: HTMLElement, options: RendererOp
   function render(state: SimState, alpha: number, overlay: RenderOverlay, realDt: number): void {
     if (contextLost || !room) return;
     const cpuStart = performance.now();
+    if (stationMode && station) {
+      renderStation(state, Math.min(0.1, Math.max(0, realDt)), cpuStart);
+      return;
+    }
     const dt = Math.min(0.1, Math.max(0, realDt));
     time += dt;
 
@@ -420,6 +436,48 @@ export async function createRenderer(container: HTMLElement, options: RendererOp
       cpuWindowMax = 0;
       cpuWindowStart = cpuStart;
     }
+  }
+
+  /** Station frame: the pair stands reunited at the kiosk; room-only layers are hidden. */
+  function renderStation(state: SimState, dt: number, cpuStart: number): void {
+    time += dt;
+    const posed: SimState = {
+      ...state,
+      body: { ...state.body, pos: STATION_SPOT, prevPos: STATION_SPOT, mode: 'ready', dash: null, facing: { x: 0.35, y: -1 } },
+      soul: { ...state.soul, pos: STATION_SPOT, prevPos: STATION_SPOT },
+      route: { points: [], length: 0 },
+      graceLeft: 0,
+      outcome: 'playing',
+    };
+    body.update(posed, 1, dt, time, reducedMotion);
+    soul.update(posed, 1, dt, time, reducedMotion, body.pos);
+    ground.begin();
+    ground.shadow(STATION_SPOT, 0.85, 0.9);
+    ground.end(time, reducedMotion);
+    station!.update(time, dt, reducedMotion);
+    effects.update(dt, body.pos);
+    placeCamera();
+    gl.render(scene, camera);
+    const spent = performance.now() - cpuStart;
+    cpuMs = cpuMs === 0 ? spent : cpuMs * 0.95 + spent * 0.05;
+  }
+
+  function setStationMode(on: boolean): void {
+    if (on && !station) {
+      station = buildStation(lib);
+      scene.add(station.group);
+    }
+    stationMode = on;
+    if (station) {
+      station.group.visible = on;
+      if (on) station.reset();
+    }
+    const roomLayers = [roomView?.group, backdrop?.group, gate?.root, lanes.group, bolts.group, ribbon.group, preview.group, relicLayer.group, bossLayer.group, ground.rings];
+    for (const layer of roomLayers) if (layer) layer.visible = !on;
+    for (const view of sentries.values()) view.root.visible = !on;
+    for (const tele of telegraphs.values()) tele.group.visible = !on;
+    effects.clear();
+    applyCamera();
   }
 
   function handleExtraEvent(e: LooseEvent, state: SimState): void {
@@ -550,6 +608,15 @@ export async function createRenderer(container: HTMLElement, options: RendererOp
     transitionOut() {
       return irisTo(false);
     },
+    showStation() {
+      setStationMode(true);
+    },
+    hideStation() {
+      setStationMode(false);
+    },
+    stationSignal(kind: 'pick' | 'depart') {
+      station?.signal(kind);
+    },
     transitionIn() {
       return irisTo(true);
     },
@@ -577,6 +644,7 @@ export async function createRenderer(container: HTMLElement, options: RendererOp
       relicLayer.dispose();
       bossLayer.dispose();
       ground.dispose();
+      station?.dispose();
       iris.remove();
       body.dispose();
       soul.dispose();

@@ -111,6 +111,14 @@ if (scene === 'features') {
   button('iris', () => {
     void renderer.transitionOut().then(() => renderer.transitionIn());
   });
+  let stationOn = false;
+  button('station', () => {
+    stationOn = !stationOn;
+    if (stationOn) renderer.showStation();
+    else renderer.hideStation();
+  });
+  button('bell', () => renderer.stationSignal('pick'));
+  button('depart', () => renderer.stationSignal('depart'));
 }
 if (frozen) {
   button('preview', () => {
