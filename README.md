@@ -20,7 +20,7 @@ A dead courier steals their body back from a funeral railway. The body is fast. 
 </p>
 <p align="center"><sub>Captured from the built game in desktop Edge at phone size (375×812). Not phone photos.</sub></p>
 
-<p align="center">🎬 <a href="art/video/outrun-your-soul-demo.mp4"><b>Watch the 23-second demo video</b></a> (title → story → Departure Court → the gate opens)</p>
+<p align="center">🎬 <a href="https://youtube.com/shorts/G66UWlb5-CQ"><b>Watch the 23-second demo video</b></a> (title → story → Departure Court → the gate opens)</p>
 
 ## How to play
 
