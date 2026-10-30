@@ -3,6 +3,7 @@
  * misaligned walls, blocked spawns/enemies/exits, unreachable targets, broken wake
  * chains and impossible lane schedules. Returns readable errors (empty = valid).
  */
+import { BOSS_TUNING } from '../../sim/boss';
 import { ENEMY_TUNING } from '../../sim/enemies';
 import { circleClear, corridorClear, pointInRect } from '../../sim/geom';
 import { TUNING } from '../../sim/tuning';
@@ -10,6 +11,8 @@ import type { RectDef, RoomDef } from '../../sim/types';
 import { dist, type Vec2 } from '../../sim/vec';
 
 const GRID = 0.25;
+/** A boss may not start within this many tiles of the player spawn. */
+const BOSS_MIN_SPAWN_DISTANCE = 3;
 const isInt = (n: number): boolean => Number.isInteger(n);
 
 function rectInside(r: RectDef, room: RoomDef): boolean {
@@ -116,12 +119,24 @@ export function validateRoom(room: RoomDef): string[] {
     if (!h.text.trim()) err(`hint ${h.id} is empty`);
   }
 
+  const boss = room.boss;
+  if (boss) {
+    if (!circleClear(room, boss.at, BOSS_TUNING.bodyRadius + TUNING.wallSkin)) err(`boss ${boss.id} overlaps a wall or bound`);
+    if (dist(boss.at, room.spawn) < BOSS_MIN_SPAWN_DISTANCE) err(`boss ${boss.id} is within ${BOSS_MIN_SPAWN_DISTANCE} tiles of the spawn`);
+    if (boss.wake && !boss.dormant) err(`boss ${boss.id} has a wake trigger but is not dormant`);
+  }
+
   if (errors.length > 0) return errors;
   const reachable = reachablePoints(room);
   if (!reachable.some((p) => pointInRect(p, room.exit))) err('exit is unreachable from spawn');
   for (const e of room.enemies) {
     const reach = ENEMY_TUNING[e.role].radius + TUNING.bodyRadius;
     if (!reachable.some((p) => dist(p, e.at) < reach)) err(`enemy ${e.id} cannot be reached`);
+  }
+  if (boss) {
+    // The heart walks home to the body's spawn; a dash must be able to meet it there.
+    const reach = BOSS_TUNING.bodyRadius + BOSS_TUNING.heartRadius + TUNING.bodyRadius + TUNING.dashMaxDistance;
+    if (!reachable.some((p) => dist(p, boss.at) < reach)) err(`boss ${boss.id} cannot be reached`);
   }
   return errors;
 }
