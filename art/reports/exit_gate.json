@@ -2,7 +2,7 @@
   "asset_id": "exit_gate",
   "status": "exported",
   "author": "original (script-authored in Blender via the pinned Blender MCP bridge)",
-  "created_at": "2026-10-30T14:54:42+00:00",
+  "created_at": "2026-10-30T15:24:55+00:00",
   "blender_version": "5.2.2 LTS",
   "exporter_version": "5.2.40",
   "source_path": "art/source/environment.blend",
@@ -80,6 +80,14 @@
     ],
     "checks": [
       {
+        "name": "triangles within budget (2500)",
+        "pass": true
+      },
+      {
+        "name": "materials within budget (3)",
+        "pass": true
+      },
+      {
         "name": "single root named exit_gate",
         "pass": true
       },
@@ -117,6 +125,6 @@
       }
     ],
     "pass": true,
-    "verified_at": "2026-10-30T14:54:52Z"
+    "verified_at": "2026-10-30T15:25:07Z"
   }
 }

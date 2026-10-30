@@ -14,7 +14,9 @@ import oys_blender as ob
 import oys_env as env
 
 MODE = MCP_ARGS.get('mode', 'show')  # noqa: F821
-TAG = 'courtyard_composite'
+TAG = MCP_ARGS.get('tag', 'courtyard_composite')  # noqa: F821
+VIEW_AT = tuple(float(v) for v in MCP_ARGS.get('at', '4,9.5,0').split(','))  # noqa: F821
+VIEW_DIST = float(MCP_ARGS.get('dist', '13.5'))  # noqa: F821
 
 for obj in bpy.context.view_layer.objects:
     is_composite = obj.get(env.COMPOSITE_TAG) == TAG
@@ -40,8 +42,8 @@ if MODE == 'show':
             r3d = space.region_3d
             r3d.view_perspective = 'ORTHO'
             r3d.view_rotation = Euler((math.radians(90 - 58), 0, 0)).to_quaternion()
-            r3d.view_location = (4.0, 9.5, 0.0)
-            r3d.view_distance = 13.5
+            r3d.view_location = VIEW_AT
+            r3d.view_distance = VIEW_DIST
             space.shading.type = 'MATERIAL'
             space.overlay.show_floor = False
             space.overlay.show_axis_x = False

@@ -133,6 +133,52 @@ def add(pb: ob.PartBuilder, piece: bmesh.types.BMesh, key: str, center=(0, 0, 0)
     return pb.add(piece, key, ob.placement(center, rot))
 
 
+def add_banded_lathe(pb: ob.PartBuilder, profile, keys, center=(0, 0, 0), segments: int = 10,
+                     rot=None) -> ob.PartBuilder:
+    """Revolve [(radius, z), ...] around Z with palette key keys[i] on the band from profile[i]
+    to profile[i + 1] (len(keys) == len(profile) - 1). End caps take the adjacent band's key;
+    zero-radius ends become poles. One closed surface, so material changes cost no extra caps.
+    """
+    if len(keys) != len(profile) - 1:
+        raise ValueError('add_banded_lathe needs one key per band')
+    slots = [pb._slot(k) for k in keys]  # noqa: SLF001 - same toolkit
+    bm = bmesh.new()
+    rings = []
+    for r, z in profile:
+        if r <= 1e-6:
+            rings.append([bm.verts.new((0.0, 0.0, z))])
+        else:
+            rings.append([bm.verts.new((r * math.cos(2 * math.pi * i / segments),
+                                         r * math.sin(2 * math.pi * i / segments), z))
+                          for i in range(segments)])
+    for band, (a, b) in enumerate(zip(rings, rings[1:])):
+        for i in range(segments):
+            j = (i + 1) % segments
+            if len(a) == 1 and len(b) == 1:
+                continue
+            if len(a) == 1:
+                face = bm.faces.new((a[0], b[i], b[j]))
+            elif len(b) == 1:
+                face = bm.faces.new((a[i], b[0], a[j]))
+            else:
+                face = bm.faces.new((a[i], a[j], b[j], b[i]))
+            face.material_index = slots[band]
+    if len(rings[0]) > 1:
+        bm.faces.new(list(reversed(rings[0]))).material_index = slots[0]
+    if len(rings[-1]) > 1:
+        bm.faces.new(rings[-1]).material_index = slots[-1]
+    bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
+    return merge_preassigned(pb, bm, ob.placement(center, rot))
+
+
+def merge_preassigned(pb: ob.PartBuilder, bm: bmesh.types.BMesh, matrix: Matrix | None = None) -> ob.PartBuilder:
+    """Merge a bmesh whose faces already carry PartBuilder slot indices (see add_banded_lathe)."""
+    if matrix is not None:
+        bmesh.ops.transform(bm, matrix=matrix, verts=bm.verts)
+    _merge(pb.bm, bm)
+    return pb
+
+
 # ---------------------------------------------------------------------------
 # Composites (never exported: tagged and kept out of every asset hierarchy)
 # ---------------------------------------------------------------------------
@@ -188,6 +234,55 @@ def instance_asset(asset_id: str, coll: bpy.types.Collection, tag: str, label: s
     root = clone(src_root, None)
     root.location = Vector(location)
     root.rotation_euler = (0, 0, math.radians(rot_z_deg))
+    return root
+
+
+def tone_materials(key: str = 'cobalt', factors=(0.86, 0.93, 1.0, 1.07, 1.14)) -> list[bpy.types.Material]:
+    """Composite-only tonal variants of a palette colour (stand-in for the renderer's per-tile tint)."""
+    r, g, b, _ = ob.palette_rgba(key)
+    mats = []
+    for i, k in enumerate(factors):
+        name = f'composite_{key}_{i}'
+        mat = bpy.data.materials.get(name) or bpy.data.materials.new(name)
+        try:
+            mat.use_nodes = True
+        except AttributeError:
+            pass
+        bsdf = mat.node_tree.nodes.get('Principled BSDF')
+        bsdf.inputs['Base Color'].default_value = (r * k, g * k, b * k, 1)
+        bsdf.inputs['Roughness'].default_value = 0.8
+        mats.append(mat)
+    return mats
+
+
+def floor_grid(coll: bpy.types.Collection, tag: str, x0: int, y0: int, w: int, h: int, label: str = 'f') -> None:
+    """Toned floor_tile copies over [x0, x0+w) x [y0, y0+h)."""
+    tones = tone_materials()
+    for x in range(x0, x0 + w):
+        for y in range(y0, y0 + h):
+            tile = instance_asset('floor_tile', coll, tag, f'{label}{x}_{y}', location=(x, y, 0))
+            for child in tile.children:
+                slot = child.material_slots[0]
+                slot.link = 'OBJECT'
+                slot.material = tones[(x * 7 + y * 13 + (x * y) % 5) % len(tones)]
+
+
+def import_glb_composite(path, coll: bpy.types.Collection, tag: str, location, yaw_deg: float = 0.0):
+    """Import a GLB (e.g. an actor from another kit) as composite-only objects; returns its root or None."""
+    if not path.exists():
+        return None
+    before = set(bpy.data.objects)
+    bpy.ops.import_scene.gltf(filepath=str(path))
+    new = [o for o in bpy.data.objects if o not in before]
+    for obj in new:
+        obj[COMPOSITE_TAG] = tag
+        for c in list(obj.users_collection):
+            c.objects.unlink(obj)
+        coll.objects.link(obj)
+    root = next(o for o in new if o.parent is None)
+    root.location = location
+    root.rotation_mode = 'XYZ'
+    root.rotation_euler = (0, 0, math.radians(yaw_deg))
     return root
 
 

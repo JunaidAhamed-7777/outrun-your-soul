@@ -24,12 +24,86 @@
   ],
   "missingRuntimeModels": [],
   "summary": {
-    "shipping": 8,
+    "shipping": 17,
     "fixtures": 1,
     "failed": 0,
-    "shippingTriangles": 11194
+    "shippingTriangles": 20658
   },
   "models": [
+    {
+      "assetId": "banner_post",
+      "file": "public/assets/models/banner_post.glb",
+      "shipping": true,
+      "bytes": 21348,
+      "sha256": "47b583234aeec0387074264eb6c3a70169643895de8edf3c332ecf8e21b492e4",
+      "status": "pass",
+      "errors": [],
+      "warnings": [
+        "not in MODEL_IDS (src/render/contract.ts): the runtime never requests it; remove it or add it to the contract",
+        "asset ID \"banner_post\" is not in the asset contract"
+      ],
+      "stats": {
+        "assetId": "banner_post",
+        "category": "unknown",
+        "budget": {
+          "label": "Unknown asset ID: no documented budget",
+          "maxTriangles": 60000,
+          "maxMaterials": null
+        },
+        "rootNodes": [
+          "banner_post"
+        ],
+        "childNodes": [
+          "banner_post_cloth",
+          "banner_post_post"
+        ],
+        "triangles": 326,
+        "materials": [
+          "cobalt",
+          "gold",
+          "ivory"
+        ],
+        "materialCount": 3,
+        "meshes": 2,
+        "nodes": 3,
+        "animations": [],
+        "extensionsUsed": [],
+        "bounds": {
+          "min": [
+            -0.14,
+            0,
+            -0.14
+          ],
+          "max": [
+            0.6313,
+            2.12,
+            0.14
+          ],
+          "size": [
+            0.7713,
+            2.12,
+            0.28
+          ]
+        }
+      },
+      "khronos": {
+        "validatorVersion": "2.0.0-dev.3.10",
+        "numErrors": 0,
+        "numWarnings": 0,
+        "numInfos": 0,
+        "numHints": 0,
+        "messages": [],
+        "info": {
+          "generator": "Khronos glTF Blender I/O v5.2.40",
+          "drawCallCount": 4,
+          "totalVertexCount": 664,
+          "totalTriangleCount": 326,
+          "materialCount": 3,
+          "animationCount": 0,
+          "extensionsUsed": []
+        }
+      }
+    },
     {
       "assetId": "courier_body",
       "file": "public/assets/models/courier_body.glb",
@@ -107,8 +181,8 @@
       "assetId": "distant_engine",
       "file": "public/assets/models/distant_engine.glb",
       "shipping": true,
-      "bytes": 400136,
-      "sha256": "2e2341e0146bde3d1489b61391beecc80aa2544f5c6ef598251cb4d6540b63eb",
+      "bytes": 400152,
+      "sha256": "5a11895bf4a168dc4a8e3937e25006f95776d9206e8ebc135812a81a788b4041",
       "status": "pass",
       "errors": [],
       "warnings": [],
@@ -144,18 +218,18 @@
         "bounds": {
           "min": [
             -15.1,
-            -4,
-            -4.65
+            -5.9204,
+            -5.85
           ],
           "max": [
             15.1,
-            6.65,
+            6.1318,
             1.21
           ],
           "size": [
             30.2,
-            10.65,
-            5.86
+            12.0522,
+            7.06
           ]
         }
       },
@@ -399,6 +473,312 @@
       }
     },
     {
+      "assetId": "lamp_post",
+      "file": "public/assets/models/lamp_post.glb",
+      "shipping": true,
+      "bytes": 14336,
+      "sha256": "addaa00c038556de14a00a3ff686c885488119572430847689f3199991f51936",
+      "status": "pass",
+      "errors": [],
+      "warnings": [
+        "not in MODEL_IDS (src/render/contract.ts): the runtime never requests it; remove it or add it to the contract",
+        "asset ID \"lamp_post\" is not in the asset contract"
+      ],
+      "stats": {
+        "assetId": "lamp_post",
+        "category": "unknown",
+        "budget": {
+          "label": "Unknown asset ID: no documented budget",
+          "maxTriangles": 60000,
+          "maxMaterials": null
+        },
+        "rootNodes": [
+          "lamp_post"
+        ],
+        "childNodes": [
+          "lamp_post_lamp"
+        ],
+        "triangles": 206,
+        "materials": [
+          "gold",
+          "gold_dark",
+          "ivory"
+        ],
+        "materialCount": 3,
+        "meshes": 1,
+        "nodes": 2,
+        "animations": [],
+        "extensionsUsed": [],
+        "bounds": {
+          "min": [
+            -0.2,
+            0,
+            -0.1126
+          ],
+          "max": [
+            0.2,
+            1.77,
+            0.1126
+          ],
+          "size": [
+            0.4,
+            1.77,
+            0.2252
+          ]
+        }
+      },
+      "khronos": {
+        "validatorVersion": "2.0.0-dev.3.10",
+        "numErrors": 0,
+        "numWarnings": 0,
+        "numInfos": 0,
+        "numHints": 0,
+        "messages": [],
+        "info": {
+          "generator": "Khronos glTF Blender I/O v5.2.40",
+          "drawCallCount": 3,
+          "totalVertexCount": 432,
+          "totalTriangleCount": 206,
+          "materialCount": 3,
+          "animationCount": 0,
+          "extensionsUsed": []
+        }
+      }
+    },
+    {
+      "assetId": "lane_emitter",
+      "file": "public/assets/models/lane_emitter.glb",
+      "shipping": true,
+      "bytes": 31364,
+      "sha256": "0811eb7ce6428832c29d07b1b7c8ca62f97c436dbd812ac5427cdd46b40d2f81",
+      "status": "pass",
+      "errors": [],
+      "warnings": [
+        "not in MODEL_IDS (src/render/contract.ts): the runtime never requests it; remove it or add it to the contract",
+        "asset ID \"lane_emitter\" is not in the asset contract"
+      ],
+      "stats": {
+        "assetId": "lane_emitter",
+        "category": "unknown",
+        "budget": {
+          "label": "Unknown asset ID: no documented budget",
+          "maxTriangles": 60000,
+          "maxMaterials": null
+        },
+        "rootNodes": [
+          "lane_emitter"
+        ],
+        "childNodes": [
+          "lane_emitter_aperture",
+          "lane_emitter_body"
+        ],
+        "triangles": 564,
+        "materials": [
+          "gold",
+          "gold_dark",
+          "lane_violet"
+        ],
+        "materialCount": 3,
+        "meshes": 1,
+        "nodes": 3,
+        "animations": [],
+        "extensionsUsed": [],
+        "bounds": {
+          "min": [
+            0,
+            0,
+            -1
+          ],
+          "max": [
+            1,
+            0.9,
+            0
+          ],
+          "size": [
+            1,
+            0.9,
+            1
+          ]
+        }
+      },
+      "khronos": {
+        "validatorVersion": "2.0.0-dev.3.10",
+        "numErrors": 0,
+        "numWarnings": 0,
+        "numInfos": 1,
+        "numHints": 0,
+        "messages": [
+          {
+            "code": "NODE_EMPTY",
+            "severity": "info",
+            "message": "Empty node encountered.",
+            "pointer": "/nodes/0"
+          }
+        ],
+        "info": {
+          "generator": "Khronos glTF Blender I/O v5.2.40",
+          "drawCallCount": 3,
+          "totalVertexCount": 1052,
+          "totalTriangleCount": 564,
+          "materialCount": 3,
+          "animationCount": 0,
+          "extensionsUsed": []
+        }
+      }
+    },
+    {
+      "assetId": "last_warden_body",
+      "file": "public/assets/models/last_warden_body.glb",
+      "shipping": true,
+      "bytes": 147436,
+      "sha256": "bb8508223bd2fc8dc8c5af0a3934a88443526227cd10fbed92ac69d2e9c9aa28",
+      "status": "pass",
+      "errors": [],
+      "warnings": [
+        "not in MODEL_IDS (src/render/contract.ts): the runtime never requests it; remove it or add it to the contract",
+        "4 materials exceeds 3 (Warden row applied to the Last Warden boss (no boss row in ART_PIPELINE), docs/ART_PIPELINE.md)"
+      ],
+      "stats": {
+        "assetId": "last_warden_body",
+        "category": "boss",
+        "budget": {
+          "label": "Warden row applied to the Last Warden boss (no boss row in ART_PIPELINE)",
+          "maxTriangles": 4000,
+          "maxMaterials": 3
+        },
+        "rootNodes": [
+          "last_warden_body"
+        ],
+        "childNodes": [
+          "last_warden_body_body",
+          "last_warden_body_head",
+          "last_warden_body_mask",
+          "last_warden_body_mantle"
+        ],
+        "triangles": 2564,
+        "materials": [
+          "gold",
+          "gold_dark",
+          "ivory",
+          "vermilion_dark"
+        ],
+        "materialCount": 4,
+        "meshes": 4,
+        "nodes": 5,
+        "animations": [],
+        "extensionsUsed": [],
+        "bounds": {
+          "min": [
+            -0.54,
+            0,
+            -0.455
+          ],
+          "max": [
+            0.54,
+            1.6096,
+            0.4424
+          ],
+          "size": [
+            1.08,
+            1.6096,
+            0.8975
+          ]
+        }
+      },
+      "khronos": {
+        "validatorVersion": "2.0.0-dev.3.10",
+        "numErrors": 0,
+        "numWarnings": 0,
+        "numInfos": 0,
+        "numHints": 0,
+        "messages": [],
+        "info": {
+          "generator": "Khronos glTF Blender I/O v5.2.40",
+          "drawCallCount": 9,
+          "totalVertexCount": 5207,
+          "totalTriangleCount": 2564,
+          "materialCount": 4,
+          "animationCount": 0,
+          "extensionsUsed": []
+        }
+      }
+    },
+    {
+      "assetId": "last_warden_heart",
+      "file": "public/assets/models/last_warden_heart.glb",
+      "shipping": true,
+      "bytes": 61832,
+      "sha256": "4c1fd618fdf9d01c7b2f1e745b51f483f30fd5d28b53947dfd52c5b84333ed73",
+      "status": "pass",
+      "errors": [],
+      "warnings": [
+        "not in MODEL_IDS (src/render/contract.ts): the runtime never requests it; remove it or add it to the contract",
+        "4 materials exceeds 3 (Warden row applied to the Last Warden boss (no boss row in ART_PIPELINE), docs/ART_PIPELINE.md)"
+      ],
+      "stats": {
+        "assetId": "last_warden_heart",
+        "category": "boss",
+        "budget": {
+          "label": "Warden row applied to the Last Warden boss (no boss row in ART_PIPELINE)",
+          "maxTriangles": 4000,
+          "maxMaterials": 3
+        },
+        "rootNodes": [
+          "last_warden_heart"
+        ],
+        "childNodes": [
+          "last_warden_heart_cage",
+          "last_warden_heart_core"
+        ],
+        "triangles": 1026,
+        "materials": [
+          "gold",
+          "gold_dark",
+          "vermilion",
+          "vermilion_dark"
+        ],
+        "materialCount": 4,
+        "meshes": 2,
+        "nodes": 3,
+        "animations": [],
+        "extensionsUsed": [],
+        "bounds": {
+          "min": [
+            -0.2361,
+            0,
+            -0.19
+          ],
+          "max": [
+            0.2597,
+            1.12,
+            0.19
+          ],
+          "size": [
+            0.4958,
+            1.12,
+            0.38
+          ]
+        }
+      },
+      "khronos": {
+        "validatorVersion": "2.0.0-dev.3.10",
+        "numErrors": 0,
+        "numWarnings": 0,
+        "numInfos": 0,
+        "numHints": 0,
+        "messages": [],
+        "info": {
+          "generator": "Khronos glTF Blender I/O v5.2.40",
+          "drawCallCount": 6,
+          "totalVertexCount": 2112,
+          "totalTriangleCount": 1026,
+          "materialCount": 4,
+          "animationCount": 0,
+          "extensionsUsed": []
+        }
+      }
+    },
+    {
       "assetId": "needler",
       "file": "public/assets/models/needler.glb",
       "shipping": true,
@@ -554,6 +934,227 @@
       }
     },
     {
+      "assetId": "station_kiosk",
+      "file": "public/assets/models/station_kiosk.glb",
+      "shipping": true,
+      "bytes": 88300,
+      "sha256": "989bcb7084d953d4ed7803bdc937a2c7fd434652260e684876290af15856255a",
+      "status": "pass",
+      "errors": [],
+      "warnings": [
+        "not in MODEL_IDS (src/render/contract.ts): the runtime never requests it; remove it or add it to the contract",
+        "asset ID \"station_kiosk\" is not in the asset contract"
+      ],
+      "stats": {
+        "assetId": "station_kiosk",
+        "category": "unknown",
+        "budget": {
+          "label": "Unknown asset ID: no documented budget",
+          "maxTriangles": 60000,
+          "maxMaterials": null
+        },
+        "rootNodes": [
+          "station_kiosk"
+        ],
+        "childNodes": [
+          "station_kiosk_bell",
+          "station_kiosk_house",
+          "station_kiosk_signal_arm"
+        ],
+        "triangles": 1666,
+        "materials": [
+          "cobalt",
+          "gold",
+          "gold_dark",
+          "ivory"
+        ],
+        "materialCount": 4,
+        "meshes": 3,
+        "nodes": 4,
+        "animations": [],
+        "extensionsUsed": [],
+        "bounds": {
+          "min": [
+            -0.95,
+            0,
+            -0.78
+          ],
+          "max": [
+            1.9,
+            3.3,
+            0.98
+          ],
+          "size": [
+            2.85,
+            3.3,
+            1.76
+          ]
+        }
+      },
+      "khronos": {
+        "validatorVersion": "2.0.0-dev.3.10",
+        "numErrors": 0,
+        "numWarnings": 0,
+        "numInfos": 0,
+        "numHints": 0,
+        "messages": [],
+        "info": {
+          "generator": "Khronos glTF Blender I/O v5.2.40",
+          "drawCallCount": 9,
+          "totalVertexCount": 2980,
+          "totalTriangleCount": 1666,
+          "materialCount": 4,
+          "animationCount": 0,
+          "extensionsUsed": []
+        }
+      }
+    },
+    {
+      "assetId": "threshold_inlay",
+      "file": "public/assets/models/threshold_inlay.glb",
+      "shipping": true,
+      "bytes": 29836,
+      "sha256": "a1e7172a5179cacb3f4b2cd8fc2f7cbcff2c9efceae523ad7cb3ad0a67ac5c1b",
+      "status": "pass",
+      "errors": [],
+      "warnings": [
+        "not in MODEL_IDS (src/render/contract.ts): the runtime never requests it; remove it or add it to the contract",
+        "asset ID \"threshold_inlay\" is not in the asset contract"
+      ],
+      "stats": {
+        "assetId": "threshold_inlay",
+        "category": "unknown",
+        "budget": {
+          "label": "Unknown asset ID: no documented budget",
+          "maxTriangles": 60000,
+          "maxMaterials": null
+        },
+        "rootNodes": [
+          "threshold_inlay"
+        ],
+        "childNodes": [
+          "threshold_inlay_inlay"
+        ],
+        "triangles": 644,
+        "materials": [
+          "gold",
+          "gold_dark",
+          "ivory"
+        ],
+        "materialCount": 3,
+        "meshes": 1,
+        "nodes": 2,
+        "animations": [],
+        "extensionsUsed": [],
+        "bounds": {
+          "min": [
+            0,
+            0,
+            -1
+          ],
+          "max": [
+            2,
+            0.002,
+            0
+          ],
+          "size": [
+            2,
+            0.002,
+            1
+          ]
+        }
+      },
+      "khronos": {
+        "validatorVersion": "2.0.0-dev.3.10",
+        "numErrors": 0,
+        "numWarnings": 0,
+        "numInfos": 0,
+        "numHints": 0,
+        "messages": [],
+        "info": {
+          "generator": "Khronos glTF Blender I/O v5.2.40",
+          "drawCallCount": 3,
+          "totalVertexCount": 972,
+          "totalTriangleCount": 644,
+          "materialCount": 3,
+          "animationCount": 0,
+          "extensionsUsed": []
+        }
+      }
+    },
+    {
+      "assetId": "urn",
+      "file": "public/assets/models/urn.glb",
+      "shipping": true,
+      "bytes": 15952,
+      "sha256": "2ecc8c7e58662ee89c844f69a985ac164a02aa71252bbdfe91e10044af56f77f",
+      "status": "pass",
+      "errors": [],
+      "warnings": [
+        "not in MODEL_IDS (src/render/contract.ts): the runtime never requests it; remove it or add it to the contract",
+        "asset ID \"urn\" is not in the asset contract"
+      ],
+      "stats": {
+        "assetId": "urn",
+        "category": "unknown",
+        "budget": {
+          "label": "Unknown asset ID: no documented budget",
+          "maxTriangles": 60000,
+          "maxMaterials": null
+        },
+        "rootNodes": [
+          "urn"
+        ],
+        "childNodes": [
+          "urn_vessel"
+        ],
+        "triangles": 258,
+        "materials": [
+          "gold",
+          "ivory"
+        ],
+        "materialCount": 2,
+        "meshes": 1,
+        "nodes": 2,
+        "animations": [],
+        "extensionsUsed": [],
+        "bounds": {
+          "min": [
+            -0.22,
+            0,
+            -0.2092
+          ],
+          "max": [
+            0.22,
+            0.84,
+            0.2092
+          ],
+          "size": [
+            0.44,
+            0.84,
+            0.4185
+          ]
+        }
+      },
+      "khronos": {
+        "validatorVersion": "2.0.0-dev.3.10",
+        "numErrors": 0,
+        "numWarnings": 0,
+        "numInfos": 0,
+        "numHints": 0,
+        "messages": [],
+        "info": {
+          "generator": "Khronos glTF Blender I/O v5.2.40",
+          "drawCallCount": 2,
+          "totalVertexCount": 520,
+          "totalTriangleCount": 258,
+          "materialCount": 2,
+          "animationCount": 0,
+          "extensionsUsed": []
+        }
+      }
+    },
+    {
       "assetId": "wall_block",
       "file": "public/assets/models/wall_block.glb",
       "shipping": true,
@@ -619,6 +1220,89 @@
           "totalVertexCount": 128,
           "totalTriangleCount": 64,
           "materialCount": 2,
+          "animationCount": 0,
+          "extensionsUsed": []
+        }
+      }
+    },
+    {
+      "assetId": "warden",
+      "file": "public/assets/models/warden.glb",
+      "shipping": true,
+      "bytes": 126936,
+      "sha256": "3c242b4f043f37835d823a99ea04e281e992056ece3d8c91315ddd5e49655f0d",
+      "status": "pass",
+      "errors": [],
+      "warnings": [
+        "not in MODEL_IDS (src/render/contract.ts): the runtime never requests it; remove it or add it to the contract"
+      ],
+      "stats": {
+        "assetId": "warden",
+        "category": "warden",
+        "budget": {
+          "label": "Warden",
+          "maxTriangles": 4000,
+          "maxMaterials": 3
+        },
+        "rootNodes": [
+          "warden"
+        ],
+        "childNodes": [
+          "warden_base",
+          "warden_body",
+          "warden_core",
+          "warden_muzzle",
+          "warden_shield"
+        ],
+        "triangles": 2210,
+        "materials": [
+          "gold",
+          "ivory",
+          "vermilion_dark"
+        ],
+        "materialCount": 3,
+        "meshes": 4,
+        "nodes": 6,
+        "animations": [],
+        "extensionsUsed": [],
+        "bounds": {
+          "min": [
+            -0.4388,
+            0,
+            -0.4388
+          ],
+          "max": [
+            0.4388,
+            1.28,
+            0.4388
+          ],
+          "size": [
+            0.8777,
+            1.28,
+            0.8777
+          ]
+        }
+      },
+      "khronos": {
+        "validatorVersion": "2.0.0-dev.3.10",
+        "numErrors": 0,
+        "numWarnings": 0,
+        "numInfos": 1,
+        "numHints": 0,
+        "messages": [
+          {
+            "code": "NODE_EMPTY",
+            "severity": "info",
+            "message": "Empty node encountered.",
+            "pointer": "/nodes/2"
+          }
+        ],
+        "info": {
+          "generator": "Khronos glTF Blender I/O v5.2.40",
+          "drawCallCount": 9,
+          "totalVertexCount": 4456,
+          "totalTriangleCount": 2210,
+          "materialCount": 3,
           "animationCount": 0,
           "extensionsUsed": []
         }

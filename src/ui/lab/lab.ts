@@ -11,6 +11,7 @@ import { playCue } from '../../audio/voicing';
 import { loadSettings, saveSettings } from '../../save/settings';
 import { createUI } from '../ui';
 import { LAB_ROOM, labState, withThread } from './fixture';
+import { DRAFT_FREE, DRAFT_FULL, LOADOUTS, ROUTES, ending, starterOptions } from './run-fixture';
 
 const stage = document.getElementById('stage') as HTMLElement;
 const panel = document.getElementById('lab') as HTMLElement;
@@ -57,6 +58,19 @@ const ui = createUI(stage, settings, {
     audio.setMuted(s.muted);
     audio.setVolumes(s.musicVolume, s.sfxVolume);
     note(`settings ${JSON.stringify(s)} saved=${saveSettings(s)}`);
+  },
+  onContinue() {
+    void audio.unlock().then(() => audio.ui('start'));
+    ui.showHud(LAB_ROOM);
+    note('onContinue');
+  },
+  onNewRun() {
+    void audio.unlock();
+    note('onNewRun');
+    ui.showStarterSelect(starterOptions(false), (id) => note(`starter: ${id}`));
+  },
+  onSound(name) {
+    void audio.unlock().then(() => audio.ui(name));
   },
 });
 ui.setStorageNotice(storageAvailable);
@@ -141,7 +155,39 @@ groups.push([
 ]);
 groups.push([
   'UI sounds',
-  (['tap', 'open', 'close', 'start'] as const).map((n): Action => [n, () => void audio.unlock().then(() => audio.ui(n))]),
+  (['tap', 'open', 'close', 'start', 'select', 'take', 'roomIntro', 'escaped', 'failed'] as const).map((n): Action => [
+    n,
+    () => void audio.unlock().then(() => audio.ui(n)),
+  ]),
+]);
+
+const picked = (what: string) => (id: string | null, index?: number) => note(`${what}: ${id}${index === undefined ? '' : ` replacing #${index}`}`);
+groups.splice(1, 0, [
+  'Run',
+  [
+    ['Title: continue', () => ui.showTitle({ canContinue: true, continueDetail: 'Needle Gallery · 4 health' })],
+    ['Title: fresh', () => ui.showTitle({ canContinue: false })],
+    ['Starters', () => ui.showStarterSelect(starterOptions(false), picked('starter'))],
+    ['Starters (lock)', () => ui.showStarterSelect(starterOptions(true), picked('starter'))],
+    ['Route', () => ui.showRouteChoice('Choose your road', ROUTES, picked('route'))],
+    ['Draft: free slot', () => ui.showDraft(DRAFT_FREE, picked('draft'))],
+    ['Draft: full', () => ui.showDraft(DRAFT_FULL, picked('draft'))],
+    ['Ending: escaped', () => ui.showEnding(ending(true), () => note('again'))],
+    ['Ending: failed', () => ui.showEnding(ending(false), () => note('again'))],
+    ['Room intro', () => ui.showRoomIntro('Needle Gallery', 'Cover splits a firing line from a longer flank.', 'Room 2 of 6')],
+    ['Onward', () => ui.showResult('victory', { ...state, time: 41.2 }, { primaryLabel: 'Onward', onPrimary: () => note('onward') })],
+    ['Defeat+abandon', () => ui.showResult('defeat', { ...state, health: 0 }, { primaryLabel: 'Retry room', secondaryLabel: 'Abandon expedition', onSecondary: () => note('abandon') })],
+    ['Save off', () => ui.setSaveNotice(false)],
+    ['Save on', () => ui.setSaveNotice(true)],
+    ...Object.keys(LOADOUTS).map((k): Action => [`Loadout ${k}`, () => ui.setLoadout(LOADOUTS[k] ?? [])]),
+  ],
+]);
+groups.splice(2, 0, [
+  'Relic events',
+  ['boost', 'charge', 'burst', 'decoyPlaced', 'decoyTaken', 'guarded', 'sweep', 'exposed', 'unknownThing'].map((type): Action => [
+    type,
+    () => emit({ type, t: 0, at: { x: 6, y: 5 } } as unknown as SimEvent),
+  ]),
 ]);
 
 for (const [title, actions] of groups) {

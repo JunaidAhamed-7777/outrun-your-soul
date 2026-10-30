@@ -193,6 +193,90 @@ export function keeperPlaceholder(): Group {
   return root;
 }
 
+/**
+ * Warden: broad armoured sentry. Parts follow warden.glb: warden_base (static plinth),
+ * warden_body (turns to the guard facing) holding warden_shield (hinged at its lower front
+ * edge; positive local-X rotation lowers it forward), warden_core (glows when exposed) and
+ * warden_muzzle (sweep origin).
+ */
+export function wardenPlaceholder(): Group {
+  const root = part('warden');
+  const plinth = piece(new CylinderGeometry(0.5, 0.56, 0.14, 8), 'cobalt_deep', 0, 0.07, 0);
+  const trim = piece(new CylinderGeometry(0.47, 0.5, 0.05, 8), 'gold', 0, 0.165, 0);
+  const base = part('warden_base', plinth, trim);
+
+  const torso = piece(new CylinderGeometry(0.27, 0.36, 0.5, 6), 'ivory', 0, 0.3, -0.04);
+  const belt = piece(new CylinderGeometry(0.33, 0.34, 0.07, 6), 'gold', 0, 0.16, -0.04);
+  const pauldronL = piece(new OctahedronGeometry(0.15, 0), 'gold', -0.36, 0.52, -0.04);
+  const pauldronR = piece(new OctahedronGeometry(0.15, 0), 'gold', 0.36, 0.52, -0.04);
+  pauldronL.scale.set(1.2, 0.8, 1);
+  pauldronR.scale.set(1.2, 0.8, 1);
+  const helm = piece(new IcosahedronGeometry(0.16, 0), 'ivory', 0, 0.72, -0.04);
+  helm.scale.set(1, 1.15, 1);
+  const visor = piece(new BoxGeometry(0.22, 0.04, 0.05), 'mask_black', 0, 0.73, 0.1);
+  const crest = piece(new ConeGeometry(0.06, 0.24, 4), 'gold', 0, 0.94, -0.06);
+
+  const core = piece(new OctahedronGeometry(0.11, 0), 'gold', 0, 0, 0);
+  const coreGroup = part('warden_core', core);
+  coreGroup.position.set(0, 0.34, 0.2);
+
+  const plate = piece(new BoxGeometry(0.86, 0.66, 0.07), 'ivory_shadow', 0, 0.33, 0);
+  const rimTop = piece(new BoxGeometry(0.9, 0.06, 0.09), 'gold', 0, 0.66, 0);
+  const rimL = piece(new BoxGeometry(0.06, 0.66, 0.09), 'gold', -0.43, 0.33, 0);
+  const rimR = piece(new BoxGeometry(0.06, 0.66, 0.09), 'gold', 0.43, 0.33, 0);
+  const boss = piece(new OctahedronGeometry(0.1, 0), 'gold', 0, 0.36, 0.05);
+  boss.scale.set(1, 1.3, 0.5);
+  const shield = part('warden_shield', plate, rimTop, rimL, rimR, boss);
+  shield.position.set(0, -0.08, 0.37);
+
+  const muzzle = new Object3D();
+  muzzle.name = 'warden_muzzle';
+  muzzle.position.set(0, 0.12, 0.5);
+  const body = part('warden_body', torso, belt, pauldronL, pauldronR, helm, visor, crest, coreGroup, shield, muzzle);
+  body.position.set(0, 0.14, 0);
+
+  root.add(base, body);
+  return root;
+}
+
+/** Last Warden body: tall gilded mirror of the courier. Parts follow last_warden_body.glb. */
+export function bossBodyPlaceholder(): Group {
+  const root = part('last_warden_body');
+  const robe = piece(new ConeGeometry(0.34, 0.72, 8), 'gold', 0, -0.24, 0);
+  const sash = piece(new BoxGeometry(0.4, 0.06, 0.36), 'vermilion_dark', 0, -0.05, 0);
+  const mantleCape = piece(new ConeGeometry(0.42, 0.3, 8), 'gold_dark', 0, 0, -0.02);
+  const mantle = part('last_warden_body_mantle', mantleCape);
+  mantle.position.set(0, 0.4, 0);
+  const hood = piece(new ConeGeometry(0.2, 0.34, 6), 'ivory', 0, 0.1, -0.03);
+  const plate = piece(new SphereGeometry(0.13, 7, 5), 'ivory', 0, 0, 0);
+  plate.scale.set(1, 1.2, 0.42);
+  const eyeL = piece(new BoxGeometry(0.06, 0.02, 0.02), 'vermilion_dark', -0.05, 0.02, 0.05);
+  const eyeR = piece(new BoxGeometry(0.06, 0.02, 0.02), 'vermilion_dark', 0.05, 0.02, 0.05);
+  const mask = part('last_warden_body_mask', plate, eyeL, eyeR);
+  mask.position.set(0, 0.0, 0.12);
+  const head = part('last_warden_body_head', hood, mask);
+  head.position.set(0, 0.48, 0);
+  const body = part('last_warden_body_body', robe, sash, mantle, head);
+  body.position.set(0, 0.6, 0);
+  root.add(body);
+  return root;
+}
+
+/** Last Warden heart: a floating cage with a core on a chain to its true ground position. */
+export function bossHeartPlaceholder(): Group {
+  const root = part('last_warden_heart');
+  const chain = piece(new CylinderGeometry(0.012, 0.012, 0.6, 4), 'gold_dark', 0, 0.3, 0);
+  const ringA = piece(new TorusGeometry(0.2, 0.018, 4, 14), 'gold', 0, 0, 0);
+  const ringB = piece(new TorusGeometry(0.2, 0.018, 4, 14), 'gold', 0, 0, 0);
+  ringB.rotation.y = Math.PI / 2;
+  const coreGem = piece(new IcosahedronGeometry(0.12, 0), 'vermilion', 0, 0, 0);
+  const core = part('last_warden_heart_core', coreGem);
+  const cage = part('last_warden_heart_cage', ringA, ringB, core);
+  cage.position.set(0, 0.7, 0);
+  root.add(chain, cage);
+  return root;
+}
+
 export function gatePlaceholder(): Group {
   const root = part('exit_gate');
   const pillarL = piece(new BoxGeometry(0.32, 1.5, 0.32), 'ivory', -1.16, 0.75, 0);
@@ -237,6 +321,67 @@ export function wallBlockPlaceholder(): Group {
   return root;
 }
 
+/** Lane emitter: replaces a perimeter wall tile; aperture on the -Y (Three +Z) face, 0.2 m up. */
+export function laneEmitterPlaceholder(): Group {
+  const root = part('lane_emitter');
+  const block = piece(new BoxGeometry(1, 0.5, 1), 'gold_dark', 0.5, 0.25, -0.5);
+  const rod = piece(new CylinderGeometry(0.08, 0.08, 0.8, 6), 'lane_violet', 0.5, 0.56, -0.5);
+  rod.rotation.z = Math.PI / 2;
+  const body = part('lane_emitter_body', block, rod);
+  const aperture = new Object3D();
+  aperture.name = 'lane_emitter_aperture';
+  aperture.position.set(0.5, 0.2, 0);
+  root.add(body, aperture);
+  return root;
+}
+
+/** 2 x 1 exit-zone inlay, origin lower-left, top just above the floor. */
+export function thresholdInlayPlaceholder(): Group {
+  const root = part('threshold_inlay');
+  const slab = piece(new BoxGeometry(1.96, 0.02, 0.96), 'ivory_shadow', 1, -0.008, -0.5);
+  const rim = piece(new BoxGeometry(1.7, 0.024, 0.08), 'gold', 1, -0.006, -0.5);
+  root.add(part('threshold_inlay_inlay', slab, rim));
+  return root;
+}
+
+export function urnPlaceholder(): Group {
+  const root = part('urn');
+  root.add(part('urn_vessel', piece(new CylinderGeometry(0.14, 0.1, 0.32, 7), 'ivory', 0, 0.16, 0), piece(new CylinderGeometry(0.15, 0.15, 0.04, 7), 'gold', 0, 0.33, 0)));
+  return root;
+}
+
+export function bannerPostPlaceholder(): Group {
+  const root = part('banner_post');
+  const post = part('banner_post_post', piece(new CylinderGeometry(0.03, 0.04, 1.9, 5), 'gold', 0, 0.95, 0), piece(new BoxGeometry(0.7, 0.04, 0.04), 'gold', 0.33, 1.82, 0));
+  const cloth = part('banner_post_cloth', piece(new BoxGeometry(0.5, 0.8, 0.02), 'cobalt', 0, -0.42, 0));
+  cloth.position.set(0.33, 1.8, 0);
+  root.add(post, cloth);
+  return root;
+}
+
+export function lampPostPlaceholder(): Group {
+  const root = part('lamp_post');
+  root.add(part('lamp_post_lamp', piece(new CylinderGeometry(0.035, 0.05, 1.3, 5), 'gold_dark', 0, 0.65, 0), piece(new IcosahedronGeometry(0.12, 0), 'ivory', 0, 1.4, 0)));
+  return root;
+}
+
+/** "Signal House" station kiosk: house, swinging bell, semaphore arm on a mast at x = +1.2. */
+export function stationKioskPlaceholder(): Group {
+  const root = part('station_kiosk');
+  const house = part(
+    'station_kiosk_house',
+    piece(new BoxGeometry(1.6, 1.2, 1.2), 'ivory', 0, 0.6, 0),
+    piece(new ConeGeometry(1.2, 0.9, 4), 'cobalt', 0, 1.65, 0),
+    piece(new CylinderGeometry(0.04, 0.05, 2.6, 5), 'gold_dark', 1.2, 1.3, 0.07),
+  );
+  const bell = part('station_kiosk_bell', piece(new ConeGeometry(0.16, 0.24, 7), 'gold', 0, -0.12, 0));
+  bell.position.set(0, 2.84, 0);
+  const arm = part('station_kiosk_signal_arm', piece(new BoxGeometry(0.7, 0.07, 0.04), 'ivory', 0.35, 0, 0));
+  arm.position.set(1.2, 2.62, 0.07);
+  root.add(house, bell, arm);
+  return root;
+}
+
 export function placeholderFor(id: ModelId): Group {
   switch (id) {
     case 'courier_body':
@@ -247,6 +392,12 @@ export function placeholderFor(id: ModelId): Group {
       return needlerPlaceholder();
     case 'keeper':
       return keeperPlaceholder();
+    case 'warden':
+      return wardenPlaceholder();
+    case 'last_warden_body':
+      return bossBodyPlaceholder();
+    case 'last_warden_heart':
+      return bossHeartPlaceholder();
     case 'floor_tile':
       return floorTilePlaceholder();
     case 'wall_block':
@@ -255,5 +406,17 @@ export function placeholderFor(id: ModelId): Group {
       return gatePlaceholder();
     case 'distant_engine':
       return part('distant_engine');
+    case 'lane_emitter':
+      return laneEmitterPlaceholder();
+    case 'threshold_inlay':
+      return thresholdInlayPlaceholder();
+    case 'urn':
+      return urnPlaceholder();
+    case 'banner_post':
+      return bannerPostPlaceholder();
+    case 'lamp_post':
+      return lampPostPlaceholder();
+    case 'station_kiosk':
+      return stationKioskPlaceholder();
   }
 }

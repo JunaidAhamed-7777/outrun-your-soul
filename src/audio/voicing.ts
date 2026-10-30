@@ -4,7 +4,15 @@
  */
 import type { CueRequest } from './cues';
 import { degreeHz, REUNION_BRIGHT, REUNION_CHORD } from './scale';
-import { GLASS_PARTIALS, SOUL_PARTIALS, group, type Synth, type SynthVoice } from './synth';
+import { BELL_PARTIALS, GLASS_PARTIALS, SOUL_PARTIALS, group, type Synth, type SynthVoice } from './synth';
+
+/** Low, inharmonic, quickly damped partials: metal struck through armour. */
+const CLANG_PARTIALS: readonly (readonly [number, number, number])[] = [
+  [1, 1, 1],
+  [2.41, 0.55, 0.6],
+  [3.93, 0.3, 0.4],
+  [5.17, 0.16, 0.3],
+];
 
 export function playCue(s: Synth, r: CueRequest, t: number): SynthVoice {
   const k = r.intensity;
@@ -155,6 +163,87 @@ export function playCue(s: Synth, r: CueRequest, t: number): SynthVoice {
       ]);
     case 'queuedTick':
       return s.blip(t, { from: 2093, to: 2093, dur: 0.02, attack: 0.001, gain: 0.05 * k });
+    case 'select':
+      return group([
+        s.pluck(t, degreeHz(4, 0), { gain: 0.22 * k, brightness: 0.6, t60: 0.5, pan, send: 0.2 }),
+        s.bell(t + 0.04, degreeHz(4, 1), { gain: 0.03 * k, decay: 0.4, partials: SOUL_PARTIALS, pan, send: 0.3 }),
+      ]);
+    case 'relicTake':
+      return group([
+        s.bell(t, degreeHz(0, -1), { gain: 0.09 * k, decay: 1.4, attack: 0.01, partials: SOUL_PARTIALS, send: 0.4 }),
+        ...[4, 7, 9, 11].map((deg, i) =>
+          s.bell(t + 0.05 + i * 0.045, degreeHz(deg, 0), { gain: 0.05 * k, decay: 1.1, attack: 0.003, partials: BELL_PARTIALS, pan: (i - 1.5) * 0.25, send: 0.45 }),
+        ),
+      ]);
+    case 'roomSting':
+      return group([
+        s.bell(t, degreeHz(0, -1), { gain: 0.1 * k, decay: 1.3, attack: 0.015, send: 0.5 }),
+        s.bell(t + 0.2, degreeHz(4, -1), { gain: 0.08 * k, decay: 1.1, attack: 0.03, partials: SOUL_PARTIALS, send: 0.55 }),
+        s.sweep(t, { type: 'bandpass', from: 300, to: 900, q: 0.9, attack: 0.25, dur: 0.6, gain: 0.05 * k, swell: true, send: 0.3 }),
+      ]);
+    case 'endingEscaped': {
+      const voices = [0, 2, 4, 6, 7, 9, 11, 14].map((deg, i) =>
+        s.pluck(t + i * 0.085, degreeHz(deg, 0), { gain: 0.26 * k, brightness: 0.75, t60: 1.2, pan: (i / 7 - 0.5) * 0.8, send: 0.3 }),
+      );
+      voices.push(s.bell(t + 0.7, degreeHz(0, 0), { gain: 0.1 * k, decay: 1.2, partials: SOUL_PARTIALS, detuneFrom: 60, glide: 0.2, send: 0.4 }));
+      voices.push(s.bell(t + 0.7, degreeHz(0, -1), { gain: 0.1 * k, decay: 1.2, partials: SOUL_PARTIALS, detuneFrom: -60, glide: 0.2, send: 0.4 }));
+      for (const [i, deg] of [0, 4, 7, 9, 14].entries()) {
+        voices.push(s.bell(t + 0.95 + i * 0.03, degreeHz(deg, 0), { gain: 0.06 * k, decay: 3, attack: 0.02, send: 0.55 }));
+      }
+      return group(voices);
+    }
+    case 'endingFailed': {
+      const fall = [440, 392, 349.23, 293.66, 220, 146.83];
+      const voices = fall.map((hz, i) =>
+        s.bell(t + i * 0.34, hz, { gain: 0.075 * k, decay: 1.4, attack: 0.02, partials: SOUL_PARTIALS, send: 0.55 }),
+      );
+      voices.push(s.blip(t + 0.2, { from: degreeHz(0, 0), to: degreeHz(0, -2), dur: 2.6, attack: 0.1, gain: 0.07 * k }));
+      voices.push(s.sweep(t, { type: 'lowpass', from: 900, to: 160, q: 0.6, attack: 0.4, dur: 2.4, gain: 0.05 * k, send: 0.3 }));
+      return group(voices);
+    }
+    case 'boost':
+      return group([
+        s.blip(t, { from: degreeHz(0, 0), to: degreeHz(4, 1), dur: 0.22, attack: 0.01, gain: 0.08 * k, pan }),
+        s.sweep(t, { type: 'highpass', from: 1800, to: 5200, q: 0.8, attack: 0.03, dur: 0.25, gain: 0.07 * k, pan, send: 0.2 }),
+      ]);
+    case 'bellCharge':
+      return group([
+        s.bell(t, degreeHz(0, 0), { gain: 0.12 * k, decay: 1.2, attack: 0.002, partials: BELL_PARTIALS, pan, send: 0.4 }),
+        s.bell(t + 0.03, degreeHz(4, 0), { gain: 0.05 * k, decay: 0.9, attack: 0.002, partials: BELL_PARTIALS, pan, send: 0.4 }),
+      ]);
+    case 'bellBurst':
+      return group([
+        s.bell(t, degreeHz(0, -1), { gain: 0.22 * k, decay: 1.7, attack: 0.002, partials: BELL_PARTIALS, pan, send: 0.5 }),
+        s.bell(t, degreeHz(0, 0), { gain: 0.12 * k, decay: 1.4, attack: 0.002, partials: BELL_PARTIALS, pan, send: 0.5 }),
+        s.sweep(t, { type: 'lowpass', from: 200, to: 3200, q: 0.9, attack: 0.02, dur: 0.5, gain: 0.25 * k, pan }),
+        s.blip(t, { from: 140, to: 45, dur: 0.35, gain: 0.3 * k, pan }),
+      ]);
+    case 'decoyPlace':
+      return group([
+        s.pluck(t, degreeHz(2, 1), { gain: 0.2 * k, brightness: 0.8, t60: 0.4, pan, send: 0.2 }),
+        s.tick(t + 0.06, { hz: 2200, q: 2, dur: 0.02, gain: 0.08 * k, pan }),
+      ]);
+    case 'decoyTake':
+      return group([
+        s.pluck(t, degreeHz(5, 0), { gain: 0.24 * k, brightness: 0.7, t60: 0.5, pan, send: 0.2 }),
+        s.blip(t + 0.02, { from: degreeHz(5, 0), to: degreeHz(1, 0), dur: 0.18, attack: 0.005, gain: 0.05 * k, pan }),
+      ]);
+    case 'guardClang':
+      return group([
+        s.bell(t, 196, { gain: 0.2 * k, decay: 0.45, attack: 0.001, partials: CLANG_PARTIALS, pan, send: 0.25 }),
+        s.crunch(t, { gain: 0.12 * k, dur: 0.08, lowpass: 1200, pan }),
+        s.blip(t, { from: 110, to: 60, dur: 0.16, gain: 0.25 * k, pan }),
+      ]);
+    case 'sweepWhoosh':
+      return group([
+        s.sweep(t, { type: 'lowpass', from: 300, to: 2600, q: 1.2, attack: 0.08, dur: 0.42, gain: 0.62 * k, pan, send: 0.2 }),
+        s.buzz(t, { freqs: [degreeHz(0, -3)], from: 160, to: 420, attack: 0.08, dur: 0.35, gain: 0.07 * k }),
+      ]);
+    case 'exposedChime':
+      return group([
+        s.bell(t, degreeHz(4, 1), { gain: 0.09 * k, decay: 0.7, attack: 0.002, partials: GLASS_PARTIALS, pan, send: 0.35 }),
+        s.bell(t + 0.09, degreeHz(7, 1), { gain: 0.09 * k, decay: 0.8, attack: 0.002, partials: GLASS_PARTIALS, pan, send: 0.35 }),
+      ]);
     case 'wake':
       return group([
         s.blip(t, { from: 98, to: 87, dur: 0.45, attack: 0.08, gain: 0.16 * k }),

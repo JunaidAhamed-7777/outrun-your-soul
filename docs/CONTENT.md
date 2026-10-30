@@ -148,3 +148,77 @@ Before adding content, demonstrate at least these route/order inversions in the 
 
 If all builds use the same order and path, revise the rules. Six relic names and a theoretical combination count do not satisfy the intended hours-across-days experience.
 
+## Authored templates (implementation record, 30 October 2026)
+
+All playable rooms are 8 × 12 tiles with the gate at x 3..5 on the north wall and the spawn near (4, 1.5). Data lives in `src/content/rooms/`; `roomFor(templateId, variant)` in `src/content/rooms/index.ts` resolves the expedition's `(template, variant)` pair and falls back to variant 0. Variants share the template ID (saves and the expedition graph use template IDs) and differ in layout, schedule and display name. Every variant passes `validateRoom` and the fairness probes in `tests/content/fairness.test.ts`: an idle player is unharmed and nothing fires before 3 s; every lane is quiet for at least twice the time a soul needs to cross it, with at least 0.7 s of warning; no sentry stands in a lane.
+
+| Template | Variant 0 | Variant 1 | Idea it tests |
+|---|---|---|---|
+| `departure_court` | Departure Court | (falls back to 0) | Teaching room: dash, slow follower, RETURN, gate needs both (authored by the simulation agent). |
+| `needle_gallery` | Needle Gallery | Crossfire | Needler bolts aimed at the body fly on down the line the soul walks. Rush the gallery head between cover columns, or flank (the east flank wakes its own guard). Crossfire: two heads whose lines cross over a central block; cut one shot on the way to the other shooter. |
+| `silk_cloister` | Silk Cloister (U) | Arcade (zigzag) | Close in a straight line, far along the thread. Contact through a wall is impossible, so it is RETURN round the corners, a legal outward chain, or the long walk. The pocket needler can only shoot out of the U's mouth. |
+| `glass_crossing` | Glass Crossing | Two Panes | Lane timing for the slow endpoint. Two Panes: two lanes burn alternately with gaps on opposite sides; zigzag the gaps (thread-hungry) or time each pane. |
+| `mourners_garden` | Graves | Vigil | Outer targets around a guarded centre. Until wardens exist the guard is geometry: a grave slab facing the spawn forces a flank. Vigil: an exposed centre keeper and four corner needlers waking in pairs. |
+| `last_platform` | Platform | Long Chain | One limited opening in a platform wall. Platform: the opening holds a glass lane the soul must time. Long Chain: a one-tile gap under a keeper plus a far east gap; distant corner targets demand chains the soul pays for. |
+| `last_warden` (boss) | The Last Warden (arena) | (none) | Open floor, four pillars and a full-width procession lane every route must time. **Placeholder enemies** (two escort waves of existing roles) until the boss mechanics ship. |
+
+### Layouts
+
+```
+Needle Gallery     Crossfire          Silk Cloister (U)  Arcade
++--------+         +--------+         +--------+         +--------+
+|k1 [EX] |         |   [EX] |         |n2 [EX] |         |   [EX] |
+|   n1   |         |nw    ne|         |       k|         |      k1|
+|        |         |#  k1  #|         |  #  #  |         |   #####|
+|  #  #  |         |        |         |  #n1#  |         |n1    n2|
+|  #  #  |         |   ##   |         |  #  #  |         |#####   |
+|  #  # n|         |   ##   |         |  ####  |         |        |
+|   S    |         |   S    |         |   S    |         |   S    |
++--------+         +--------+         +--------+         +--------+
+
+Two Panes          Graves             Vigil              Platform
++--------+         +--------+         +--------+         +--------+
+|k1 [EX] |         |   [EX] |         |nw[EX]ne|         |n1[EX] k|
+|~~~~~~  |         |   n3   |         |  #  #  |         |   ##   |
+|n2  # n1|         | #    # |         |   k1   |         |###~~###|
+|  ~~~~~~|         |   k1   |         |  #  #  |         |        |
+|        |         |n1 ## n2|         |sw    se|         |n2      |
+|   S    |         |   S    |         |   S    |         |   S    |
++--------+         +--------+         +--------+         +--------+
+
+Long Chain         The Last Warden
++--------+         +--------+
+|nw[EX]ne|         |n1[EX]n2|
+|   k1   |         |   k1   |
+|### ### |         | #    # |
+|        |         |~~~~~~~~|
+|      s1|         | #    # |
+|   S    |         |k2 S  n3|
++--------+         +--------+
+```
+
+### Pending warden layouts
+
+`PENDING_WARDEN_ROOMS` in the registry holds `MOURNERS_GARDEN_WARDEN` (a warden at the centre facing the spawn, outer needlers, a keeper that wakes behind it) and `LAST_PLATFORM_WARDEN` (a warden behind the platform opening, facing it). They are **not playable**: the simulation still throws on wardens and `validateRoom` rejects them; a test asserts that the missing warden role is their only validation error. Enable them by appending to `ROOM_VARIANTS` once the warden role ships, then run the bot clears.
+
+### Bot evidence (automated, seed 1)
+
+Produced with `tests/content/navbot.ts`: the planning bot from `src/bot/bot.ts` with its `NOVICE_BOT` (0.4 s aim, 0.35 s reactions) and `EXPERT_BOT` (0.15 s / 0.15 s) profiles, candidate grid, stall pressure and reactive second ply, but scoring progress by **geodesic distance around walls** instead of straight-line distance. The stock straight-line bot is wall-blind: it clears every room except both Silk Cloister variants, where it parks against the wall nearest a target that is only reachable the long way round (last column). Each cell lists outcome, time, health, bolts fired, bolts cut, hits taken, RETURNs and contact reunions, then the kill order. `tests/content/bot-*.test.ts` enforce that both profiles clear every variant with health left and clean invariants.
+
+| Room | Novice | Expert | Kill order differs | Stock bot (novice) |
+|---|---|---|---|---|
+| Departure Court | clear 9.3 s, hp 5/5, fired 1, cut 0, hit 0, RETURN 1, contact 0; n1>n2>n3>k1 | clear 9.2 s, hp 5/5, fired 1, cut 0, hit 0, RETURN 2, contact 1; n1>n2>n3>k1 | no | clear |
+| Needle Gallery | clear 6.9 s, hp 5/5, fired 1, cut 0, hit 0, RETURN 0, contact 1; n2>n1>k1 | clear 7.6 s, hp 5/5, fired 0, cut 0, hit 0, RETURN 0, contact 1; n2>n1>k1 | no | clear |
+| Needle Gallery: Crossfire | clear 8.3 s, hp 5/5, fired 1, cut 1, hit 0, RETURN 0, contact 1; ne>k1>nw | clear 7.6 s, hp 5/5, fired 1, cut 0, hit 0, RETURN 4, contact 0; ne>k1>nw | no | clear |
+| Silk Cloister | clear 9.8 s, hp 5/5, fired 4, cut 0, hit 0, RETURN 1, contact 0; k1>n1>n2 | clear 11.3 s, hp 5/5, fired 3, cut 0, hit 0, RETURN 2, contact 2; k1>n2>n1 | yes | timeout |
+| Silk Cloister: Arcade | clear 9.7 s, hp 5/5, fired 1, cut 0, hit 0, RETURN 0, contact 3; n2>n1>k1 | clear 9.0 s, hp 5/5, fired 2, cut 0, hit 0, RETURN 1, contact 2; n2>n1>k1 | no | timeout |
+| Glass Crossing | clear 8.6 s, hp 5/5, fired 2, cut 0, hit 0, RETURN 1, contact 0; n2>n1>k1 | clear 6.2 s, hp 5/5, fired 1, cut 0, hit 0, RETURN 1, contact 1; n2>k1>n1 | yes | clear |
+| Glass Crossing: Two Panes | clear 12.0 s, hp 5/5, fired 1, cut 0, hit 0, RETURN 2, contact 1; n1>k1>n2 | clear 8.2 s, hp 5/5, fired 0, cut 0, hit 0, RETURN 0, contact 3; n1>n2>k1 | yes | clear |
+| Mourner's Garden | clear 6.1 s, hp 5/5, fired 0, cut 0, hit 0, RETURN 1, contact 0; n2>k1>n1>n3 | clear 8.7 s, hp 5/5, fired 2, cut 0, hit 0, RETURN 0, contact 3; n2>k1>n1>n3 | no | clear |
+| Mourner's Garden: Vigil | clear 11.7 s, hp 5/5, fired 1, cut 0, hit 0, RETURN 1, contact 1; se>k1>sw>nw>ne | clear 12.1 s, hp 5/5, fired 1, cut 0, hit 0, RETURN 2, contact 2; se>k1>sw>nw>ne | no | clear |
+| Last Platform | clear 8.5 s, hp 5/5, fired 3, cut 1, hit 0, RETURN 1, contact 1; n2>k1>n1 | clear 11.3 s, hp 5/5, fired 3, cut 0, hit 0, RETURN 2, contact 1; n2>k1>n1 | no | clear |
+| Last Platform: Long Chain | clear 9.6 s, hp 5/5, fired 2, cut 0, hit 0, RETURN 1, contact 1; s1>k1>nw>ne | clear 8.1 s, hp 5/5, fired 1, cut 0, hit 0, RETURN 4, contact 1; s1>k1>ne>nw | yes | clear |
+| The Last Warden (placeholder) | clear 11.8 s, hp 5/5, fired 4, cut 1, hit 0, RETURN 0, contact 3; n3>k2>k1>n2>n1 | clear 10.1 s, hp 5/5, fired 4, cut 1, hit 0, RETURN 1, contact 3; n3>k2>k1>n2>n1 | no | clear |
+
+**What this shows and does not show.** Every variant is winnable with novice-style aim delay; RETURN and contact reunions both occur across the pool; four variants produce different kill orders between the two timing profiles. That is timing divergence, not build divergence: relic behaviours are not in the simulation yet, so the same-room build-divergence test above remains **not run**. The bots never take damage because they aim perfectly and search ahead, which says nothing about human difficulty; that needs real play. Dormant enemies can be struck before they wake, so wake-on-kill "second waves" placed near the spawn (the Last Warden placeholder) are often cleared pre-emptively. That is acceptable for a placeholder and a known weakness to revisit with the boss. Numbers were measured before the simulation agent's keeper forecast-aim change; re-run them after that merges.
+

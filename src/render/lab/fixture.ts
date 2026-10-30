@@ -54,6 +54,34 @@ export function makeLane(id: number, room: RoomDef, status: LaneState['status'])
   return { id, key: def.id, rect: def.rect, status, attackId: status === 'active' ? 77 : null, cycleTime: 0 };
 }
 
+/**
+ * Phase-2 presentation fixture: warden mid-sweep, relic state (halo, boost, bell, decoy) and a
+ * boss structure. Uses optional fields the simulation is adding; cast because they are not yet
+ * part of SimState.
+ */
+export function makeFeatureState(room: RoomDef = LAB_ROOM): SimState {
+  const s = makeFixtureState(room);
+  const warden = {
+    ...makeEnemy(4, 'w1', 'warden', { x: 5.6, y: 10.2 }, 'locked', { x: -1.2, y: -2.5 }),
+    radius: 0.55,
+    facing: { x: 0, y: -1 },
+    phaseTime: 0.4,
+    phaseDuration: 0.6,
+  } as EnemyState;
+  s.enemies = [...s.enemies, warden];
+  s.soul = { ...s.soul, boostLeft: 0.6 };
+  s.projectiles = [...s.projectiles, makeProjectile(12, { x: 4.6, y: 2.6 }, { x: -3, y: 1.5 })];
+  Object.assign(s, {
+    relicState: { equipped: ['glass_lantern', 'mourning_bell'], haloRadius: 1.25, bellCharge: 1, bellChargeMax: 2, decoy: { x: 6.6, y: 5.6 } },
+    boss: {
+      body: { pos: { x: 1.4, y: 10.6 } },
+      heart: { pos: { x: 1.0, y: 8.2 } },
+      route: { points: [{ x: 1.0, y: 8.2 }, { x: 1.0, y: 9.6 }, { x: 1.4, y: 10.6 }] },
+    },
+  });
+  return s;
+}
+
 /** A separated pair with a cornered route, enemies in several phases, bolts and a lane. */
 export function makeFixtureState(room: RoomDef = LAB_ROOM): SimState {
   const route: Vec2[] = [
@@ -84,7 +112,8 @@ export function makeFixtureState(room: RoomDef = LAB_ROOM): SimState {
     contactArmed: true,
     enemies: [
       makeEnemy(1, 'n1', 'needler', { x: 2, y: 9 }, 'tracking', { x: 1.4, y: -3.6 }),
-      makeEnemy(2, 'k1', 'keeper', { x: 6.5, y: 7.5 }, 'locked', { x: -2.5, y: -5.3 }),
+      // Keeper forecast: locked on the soul's predicted point on the ribbon (optional sim field).
+      { ...makeEnemy(2, 'k1', 'keeper', { x: 6.5, y: 7.5 }, 'locked', { x: -2.5, y: -4.5 }), lockTarget: { x: 4, y: 3 } } as EnemyState,
       makeEnemy(3, 'n2', 'needler', { x: 6.3, y: 2.4 }, 'dormant', { x: -1, y: 0 }),
     ],
     projectiles: [makeProjectile(10, { x: 5.4, y: 6.1 }, { x: -2.5, y: -4.5 }), makeProjectile(11, { x: 1.2, y: 7.6 }, { x: 0.4, y: 5.9 })],

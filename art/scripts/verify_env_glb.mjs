@@ -126,13 +126,49 @@ const CHECKS = {
     ['train pivot raised onto the rails (+Y)', (r.parts.distant_engine_train?.translation[1] ?? 0) > 2],
     ['roughly 30 m wide', r.bounds.max[0] - r.bounds.min[0] > 28 && r.bounds.max[0] - r.bounds.min[0] < 32],
   ],
+  lane_emitter: (r) => [
+    ['footprint x exactly [0,1]', near(r.bounds.min[0], 0) && near(r.bounds.max[0], 1)],
+    ['footprint glTF z exactly [-1,0]', near(r.bounds.min[2], -1) && near(r.bounds.max[2], 0)],
+    ['grounded, height <= 0.9', near(r.bounds.min[1], 0) && r.bounds.max[1] <= 0.9 + EPS],
+    ['parts body + aperture', ['lane_emitter_body', 'lane_emitter_aperture'].every((p) => p in r.parts)],
+    ['aperture on the front (-Y Blender) face centre', near(r.parts.lane_emitter_aperture?.translation[0] ?? NaN, 0.5) && near(r.parts.lane_emitter_aperture?.translation[2] ?? NaN, 0)],
+    ['violet only as the lens (one lane_violet material)', r.materials.filter((m) => m === 'lane_violet').length === 1],
+  ],
+  urn: (r) => [
+    ['grounded and centred on origin', near(r.bounds.min[1], 0) && near(r.bounds.min[0] + r.bounds.max[0], 0)],
+    ['part urn_vessel', 'urn_vessel' in r.parts],
+  ],
+  banner_post: (r) => [
+    ['grounded', near(r.bounds.min[1], 0)],
+    ['parts post + cloth', ['banner_post_post', 'banner_post_cloth'].every((p) => p in r.parts)],
+    ['cloth pivot high on the crossbar (sway hinge)', (r.parts.banner_post_cloth?.translation[1] ?? 0) > 1.6],
+  ],
+  lamp_post: (r) => [
+    ['grounded and centred on origin', near(r.bounds.min[1], 0) && near(r.bounds.min[0] + r.bounds.max[0], 0)],
+    ['part lamp_post_lamp', 'lamp_post_lamp' in r.parts],
+  ],
+  station_kiosk: (r) => [
+    ['grounded', near(r.bounds.min[1], 0)],
+    ['parts house + bell + signal_arm', ['station_kiosk_house', 'station_kiosk_bell', 'station_kiosk_signal_arm'].every((p) => p in r.parts)],
+    ['bell pivot inside the belfry above the roof', (r.parts.station_kiosk_bell?.translation[1] ?? 0) > 2.4],
+    ['signal arm pivot on the mast (x ~ 1.2)', near(r.parts.station_kiosk_signal_arm?.translation[0] ?? NaN, 1.2)],
+    ['faces -Y (front step toward glTF +Z)', r.bounds.max[2] > 0.85],
+  ],
+  threshold_inlay: (r) => [
+    ['footprint x exactly [0,2]', near(r.bounds.min[0], 0) && near(r.bounds.max[0], 2)],
+    ['footprint glTF z exactly [-1,0]', near(r.bounds.min[2], -1) && near(r.bounds.max[2], 0)],
+    ['bottom at 0, top at 0.002', Math.abs(r.bounds.min[1]) < 1e-5 && Math.abs(r.bounds.max[1] - 0.002) < 1e-5],
+    ['part threshold_inlay_inlay', 'threshold_inlay_inlay' in r.parts],
+  ],
 };
 
-export function verify(assetId) {
+export function verify(assetId, budget) {
   const rel = `public/assets/models/${assetId}.glb`;
   const buf = readFileSync(join(ROOT, rel));
   const r = inspect(parseGlb(buf));
   const common = [
+    [`triangles within budget (${budget?.triangles})`, budget !== undefined && r.triangles <= budget.triangles],
+    [`materials within budget (${budget?.materials})`, budget !== undefined && r.materials.length <= budget.materials],
     [`single root named ${assetId}`, r.roots.length === 1 && r.roots[0] === assetId],
     ['all part nodes prefixed with the asset id', Object.keys(r.parts).every((n) => n === assetId || n.startsWith(`${assetId}_`))],
     ['materials are palette keys', r.materials.every((m) => PALETTE.includes(m))],
@@ -157,9 +193,9 @@ export function verify(assetId) {
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   let failed = false;
   for (const id of Object.keys(CHECKS)) {
-    const result = verify(id);
     const reportPath = join(ROOT, 'art/reports', `${id}.json`);
     const report = JSON.parse(readFileSync(reportPath, 'utf8'));
+    const result = verify(id, report.budget);
     report.glb_verification = { ...result, verified_at: new Date().toISOString().replace(/\.\d+Z$/, 'Z') };
     writeFileSync(reportPath, `${JSON.stringify(report, null, 2)}\n`);
     const bad = result.checks.filter((c) => !c.pass).map((c) => c.name);

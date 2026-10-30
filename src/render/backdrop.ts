@@ -180,9 +180,11 @@ export function buildBackdrop(room: RoomDef, pitch: number, lib: ModelLibrary): 
   discShape.absarc(0, 0, 0.55, 0, Math.PI * 2, false);
   addCard(new ShapeGeometry(discShape, 24), sunDisc, -5.9, 'sun_disc').position.set(room.width * 0.22, 3.0, -5.9);
 
-  // Far cliffs, two hazy layers.
-  addCard(ridge(-18, room.width + 18, rand, 1.9, 1.3), basic('#cfa59a'), -5, 'ridge_far').position.x = -cx;
-  addCard(ridge(-18, room.width + 18, rand, 1.0, 1.0), basic('#b98f98'), -4.5, 'ridge_near').position.x = -cx;
+  // Far cliffs, two hazy layers (the Blender engine brings its own misty far layer instead).
+  if (lib.source('distant_engine') !== 'glb') {
+    addCard(ridge(-18, room.width + 18, rand, 1.9, 1.3), basic('#cfa59a'), -5, 'ridge_far').position.x = -cx;
+    addCard(ridge(-18, room.width + 18, rand, 1.0, 1.0), basic('#b98f98'), -4.5, 'ridge_near').position.x = -cx;
+  }
 
   function buildProceduralMachinery(): (dt: number) => void {
     // Golden funeral machinery: towers, domes, spires, chimneys (merged per tone).
