@@ -304,3 +304,25 @@ export function setUniform(material: ShaderMaterial, name: string, value: number
   const uniform = material.uniforms[name];
   if (uniform) uniform.value = value;
 }
+
+/** Fading streak along a strip: opaque at u = 0 (the leading end), clear at uLength. */
+export function streakMaterial(c: Color): ShaderMaterial {
+  return overlay(
+    /* glsl */ `
+uniform vec3 uColor;
+uniform float uOpacity;
+uniform float uLength;
+varying vec2 vUv;
+void main() {
+  float along = clamp(1.0 - vUv.x / max(uLength, 1e-4), 0.0, 1.0);
+  float c = abs(vUv.y - 0.5) * 2.0;
+  float a = along * along * (1.0 - smoothstep(0.35, 1.0, c)) * uOpacity;
+  if (a < 0.01) discard;
+  gl_FragColor = vec4(uColor, a);
+  #include <colorspace_fragment>
+}
+`,
+    { uColor: { value: c.clone() }, uOpacity: { value: 1 }, uLength: { value: 1 } },
+    true,
+  );
+}
