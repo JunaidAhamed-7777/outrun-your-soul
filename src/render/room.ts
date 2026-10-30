@@ -6,6 +6,7 @@
 import {
   AdditiveBlending,
   BoxGeometry,
+  BufferAttribute,
   Color,
   CylinderGeometry,
   Group,
@@ -39,6 +40,20 @@ export function tileHash(x: number, y: number): number {
   return (h >>> 0) / 4294967296;
 }
 
+/** Top-down planar UVs (u = x, v = -z) for meshes exported without UVs. */
+function addPlanarUvs(template: Object3D): void {
+  template.traverse((node) => {
+    if (!(node instanceof Mesh) || node.geometry.getAttribute('uv')) return;
+    const pos = node.geometry.getAttribute('position');
+    const uv = new Float32Array(pos.count * 2);
+    for (let i = 0; i < pos.count; i++) {
+      uv[i * 2] = pos.getX(i);
+      uv[i * 2 + 1] = -pos.getZ(i);
+    }
+    node.geometry.setAttribute('uv', new BufferAttribute(uv, 2));
+  });
+}
+
 export interface RoomView {
   readonly group: Group;
   /** Simulation position of the exit gate model origin. */
@@ -66,62 +81,15 @@ function inRect(x: number, y: number, r: { x: number; y: number; w: number; h: n
   return x + 0.5 > r.x && x + 0.5 < r.x + r.w && y + 0.5 > r.y && y + 0.5 < r.y + r.h;
 }
 
-/** Outer dressing: colonnade with cobalt banners north of the wall, lantern posts by the gate. */
-function buildDressing(room: RoomDef, gateX: number): Object3D[] {
-  const out: Object3D[] = [];
-  const column = new Group();
-  const shaft = new Mesh(faceted(new CylinderGeometry(0.17, 0.2, 2.3, 7)), sharedToon('ivory_shadow'));
-  shaft.position.y = 1.15;
-  const capital = new Mesh(faceted(new BoxGeometry(0.5, 0.14, 0.5)), sharedToon('gold'));
-  capital.position.y = 2.37;
-  const plinth = new Mesh(faceted(new BoxGeometry(0.46, 0.18, 0.46)), sharedToon('wall_body'));
-  plinth.position.y = 0.09;
-  column.add(shaft, capital, plinth);
-  const columns: Placement[] = [];
-  for (let x = -2; x <= room.width + 2; x += 2) {
-    if (Math.abs(x - gateX) < 2.2) continue;
-    columns.push({ matrix: placeAt(x, room.height + 1.9) });
-  }
-  out.push(instanceTemplate(column, columns, 'colonnade'));
-
-  const banner = new Group();
-  const cloth = new Mesh(faceted(new BoxGeometry(0.62, 1.1, 0.03)), sharedToon('cobalt_light'));
-  cloth.position.set(0, 1.6, 0);
-  const trim = new Mesh(faceted(new BoxGeometry(0.66, 0.07, 0.05)), sharedToon('gold'));
-  trim.position.set(0, 2.15, 0);
-  const emblem = new Mesh(faceted(new OctahedronGeometry(0.11)), sharedToon('gold'));
-  emblem.position.set(0, 1.62, 0.03);
-  banner.add(cloth, trim, emblem);
-  const banners: Placement[] = [];
-  for (let x = -1; x <= room.width + 1; x += 2) {
-    if (Math.abs(x - gateX) < 2.2) continue;
-    banners.push({ matrix: placeAt(x, room.height + 1.85) });
-  }
-  out.push(instanceTemplate(banner, banners, 'banners'));
-
-  // Lantern posts flanking the gate; their glow is warm decoration, far from play.
-  for (const side of [-1, 1]) {
-    const post = new Group();
-    const pole = new Mesh(faceted(new CylinderGeometry(0.04, 0.05, 1.5, 5)), sharedToon('gold_dark'));
-    pole.position.y = 0.75;
-    const lamp = new Mesh(faceted(new OctahedronGeometry(0.13)), sharedToon('gold'));
-    lamp.position.y = 1.6;
-    post.add(pole, lamp);
-    post.position.set(gateX + side * 1.85, 0, -(room.height + 0.6));
-    out.push(post);
-  }
-  return out;
-}
-
 export function buildRoomView(room: RoomDef, lib: ModelLibrary): RoomView {
   const group = new Group();
   group.name = `room:${room.id}`;
   const disposables: { dispose(): void }[] = [];
 
   // Outer plaza and grout bed.
-  // The plaza ends at the terrace edge (sim y = height + 3.2); the backdrop lies beyond it.
+  // The plaza ends behind the north perimeter row; the distant engine lies beyond that edge.
   const plazaSouth = -30;
-  const plazaNorth = room.height + 3.2;
+  const plazaNorth = room.height + 1;
   const plazaGeo = new PlaneGeometry(80, plazaNorth - plazaSouth);
   plazaGeo.rotateX(-Math.PI / 2);
   const plaza = new Mesh(plazaGeo, sharedToon('cobalt_deep'));
@@ -148,7 +116,7 @@ export function buildRoomView(room: RoomDef, lib: ModelLibrary): RoomView {
         continue;
       }
       const h = tileHash(x, y);
-      let k = 0.9 + h * 0.16;
+      let k = 0.88 + h * 0.22;
       if (inExitColumn(room, x)) k += 0.1;
       const border = x === 0 || y === 0 || x === room.width - 1 || y === room.height - 1;
       if (border) k -= 0.08;
@@ -157,14 +125,14 @@ export function buildRoomView(room: RoomDef, lib: ModelLibrary): RoomView {
     }
   }
   const floorTemplate = lib.template('floor_tile');
-  let floorMaterial: ReturnType<typeof toon> | undefined;
-  if (lib.source('floor_tile') === 'placeholder') {
-    // Placeholder slabs get a stone face; Blender tiles keep their own material.
-    const stone = stoneTile();
-    floorMaterial = toon('cobalt');
-    floorMaterial.map = stone;
-    disposables.push(stone, floorMaterial);
-  }
+  // Stone mottling on the tile faces. Blender tiles carry their own chamfer (no baked bevel)
+  // and no UVs, so they get top-down planar UVs.
+  const glbFloor = lib.source('floor_tile') === 'glb';
+  if (glbFloor) addPlanarUvs(floorTemplate);
+  const stone = stoneTile(128, 7, !glbFloor);
+  const floorMaterial = toon('cobalt');
+  floorMaterial.map = stone;
+  disposables.push(stone, floorMaterial);
   group.add(instanceTemplate(floorTemplate, floorPlacements, 'floor', floorMaterial));
   group.add(instanceTemplate(floorTemplate, thresholdPlacements, 'threshold', sharedToon('wall_cap')));
 
@@ -236,7 +204,8 @@ export function buildRoomView(room: RoomDef, lib: ModelLibrary): RoomView {
   }
 
   // Exit glow: warm light rising from the threshold toward the gate.
-  const gateAnchor: Vec2 = { x: room.exit.x + room.exit.w / 2, y: room.height + 0.12 };
+  // Gate origin: centre of the 2-tile opening in the north perimeter row (docs/ASSET_CONTRACT.md).
+  const gateAnchor: Vec2 = { x: room.exit.x + room.exit.w / 2, y: room.height + 0.5 };
   const glowGeo = new PlaneGeometry(room.exit.w, room.exit.h);
   glowGeo.rotateX(-Math.PI / 2);
   const glowTex = verticalGradient([
@@ -259,7 +228,6 @@ export function buildRoomView(room: RoomDef, lib: ModelLibrary): RoomView {
   group.add(exitGlow);
   disposables.push(glowGeo, glowTex, glowMat);
 
-  for (const d of buildDressing(room, gateAnchor.x)) group.add(d);
 
   return {
     group,

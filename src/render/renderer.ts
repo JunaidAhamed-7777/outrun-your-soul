@@ -76,6 +76,8 @@ export interface GameRenderer {
   drawBreakdown(): Record<string, number>;
   /** Dev diagnostics only: magnify around a ground point (null restores the game framing). */
   debugCloseUp(center: Vec2 | null, zoom?: number): void;
+  /** Dev diagnostics only: the live scene graph. */
+  debugScene(): Scene;
 }
 
 export function isWebGL2Available(): boolean {
@@ -400,6 +402,9 @@ export async function createRenderer(container: HTMLElement, options: RendererOp
         pixelRatio: gl.getPixelRatio(),
         models,
       };
+    },
+    debugScene() {
+      return scene;
     },
     debugCloseUp(center: Vec2 | null, zoom = 3) {
       closeUp = center ? { center, zoom } : null;

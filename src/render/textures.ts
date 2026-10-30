@@ -51,7 +51,7 @@ export function radialSpot(inner = 0.0, size = 128): CanvasTexture {
  * Stone tile face used as a multiplicative map on the floor: bevelled edges (light top-left,
  * dark bottom-right), soft mottling and a few hairline veins. Deterministic.
  */
-export function stoneTile(size = 128, seed = 7): CanvasTexture {
+export function stoneTile(size = 128, seed = 7, bevel = true): CanvasTexture {
   const [c, ctx] = canvas(size, size);
   let s = seed >>> 0;
   const rand = (): number => {
@@ -82,13 +82,15 @@ export function stoneTile(size = 128, seed = 7): CanvasTexture {
     }
     ctx.stroke();
   }
-  const bevel = Math.max(3, size * 0.045);
-  ctx.fillStyle = 'rgba(255,255,255,0.55)';
-  ctx.fillRect(0, 0, size, bevel);
-  ctx.fillRect(0, 0, bevel, size);
-  ctx.fillStyle = 'rgba(40,40,70,0.35)';
-  ctx.fillRect(0, size - bevel, size, bevel);
-  ctx.fillRect(size - bevel, 0, bevel, size);
+  if (bevel) {
+    const b = Math.max(3, size * 0.045);
+    ctx.fillStyle = 'rgba(255,255,255,0.55)';
+    ctx.fillRect(0, 0, size, b);
+    ctx.fillRect(0, 0, b, size);
+    ctx.fillStyle = 'rgba(40,40,70,0.35)';
+    ctx.fillRect(0, size - b, size, b);
+    ctx.fillRect(size - b, 0, b, size);
+  }
   const t = finish(c);
   t.generateMipmaps = true;
   t.minFilter = LinearMipmapLinearFilter;

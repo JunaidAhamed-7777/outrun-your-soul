@@ -121,7 +121,8 @@ export function buildBackdrop(room: RoomDef, pitch: number, lib: ModelLibrary): 
   const group = new Group();
   group.name = 'backdrop';
   const disposables: { dispose(): void }[] = [];
-  const terraceY = room.height + 3.2;
+  // The courtyard ends behind the north perimeter row; scenery lies beyond that edge.
+  const edgeY = room.height + 1;
   const cx = room.width / 2;
 
   const background = verticalGradient(
@@ -135,24 +136,10 @@ export function buildBackdrop(room: RoomDef, pitch: number, lib: ModelLibrary): 
   );
   disposables.push(background);
 
-  // Terrace balustrade at the edge of the courtyard plateau.
-  const baluster = new Group();
-  const post = new Mesh(faceted(new CylinderGeometry(0.07, 0.09, 0.5, 6)), sharedToon('ivory_shadow'));
-  post.position.y = 0.25;
-  baluster.add(post);
-  const rail = new Mesh(faceted(new BoxGeometry(1, 0.08, 0.16)), sharedToon('wall_cap'));
-  rail.position.set(0.25, 0.54, 0);
-  baluster.add(rail);
-  const balusters: Placement[] = [];
-  for (let x = -14; x <= room.width + 14; x += 0.5) {
-    balusters.push({ matrix: new Matrix4().makeTranslation(x, 0, -terraceY) });
-  }
-  group.add(instanceTemplate(baluster, balusters, 'balustrade'));
-
-  // Camera-facing card stack, anchored on the terrace line.
+  // Camera-facing card stack, anchored just beyond the courtyard edge.
   const cards = new Group();
   cards.name = 'cards';
-  cards.position.set(cx, 0, -(terraceY + 0.6));
+  cards.position.set(cx, 0, -(edgeY + 0.4));
   cards.rotation.x = -pitch;
   // Card content is authored at ~1.6x; scaling it down reads as distance.
   cards.scale.setScalar(0.62);
@@ -196,62 +183,86 @@ export function buildBackdrop(room: RoomDef, pitch: number, lib: ModelLibrary): 
   addCard(ridge(-18, room.width + 18, rand, 1.9, 1.3), basic('#cfa59a'), -5, 'ridge_far').position.x = -cx;
   addCard(ridge(-18, room.width + 18, rand, 1.0, 1.0), basic('#b98f98'), -4.5, 'ridge_near').position.x = -cx;
 
-  // Golden funeral machinery: towers, domes, spires, chimneys (merged per tone).
-  const far: BufferGeometry[] = [];
-  const near: BufferGeometry[] = [];
-  const towerXs = [-7.5, -4.2, -1.2, 2.6, 5.4, 8.8];
-  towerXs.forEach((tx, i) => {
-    const h = 2.6 + rand() * 2.4;
-    const w = 0.7 + rand() * 0.6;
-    const target = i % 2 === 0 ? far : near;
-    target.push(box(w, h, tx, h / 2 - 0.4));
-    target.push(box(w * 1.3, 0.16, tx, h - 0.4));
-    if (i % 3 === 0) target.push(dome(w * 0.62, tx, h - 0.32));
-    else target.push(spire(w * 0.7, 1.1 + rand(), tx, h - 0.32));
-    // Chimney rings.
-    target.push(box(w * 1.12, 0.08, tx, h * 0.55));
-  });
-  // Viaduct deck and arches.
-  const deckY = 1.15;
-  near.push(box(40, 0.22, 0, deckY));
-  for (let x = -19; x <= 19; x += 1.6) {
-    near.push(box(0.26, deckY + 1.5, x, (deckY - 1.5) / 2));
-  }
-  addCard(mergeGeometries(far)!, basic('#e7bf7f'), -3.5, 'machinery_far');
-  addCard(mergeGeometries(near)!, basic('#d9a24f'), -2.5, 'machinery_near');
-  far.forEach((g) => g.dispose());
-  near.forEach((g) => g.dispose());
+  function buildProceduralMachinery(): (dt: number) => void {
+    // Golden funeral machinery: towers, domes, spires, chimneys (merged per tone).
+    const far: BufferGeometry[] = [];
+    const near: BufferGeometry[] = [];
+    const towerXs = [-7.5, -4.2, -1.2, 2.6, 5.4, 8.8];
+    towerXs.forEach((tx, i) => {
+      const h = 2.6 + rand() * 2.4;
+      const w = 0.7 + rand() * 0.6;
+      const target = i % 2 === 0 ? far : near;
+      target.push(box(w, h, tx, h / 2 - 0.4));
+      target.push(box(w * 1.3, 0.16, tx, h - 0.4));
+      if (i % 3 === 0) target.push(dome(w * 0.62, tx, h - 0.32));
+      else target.push(spire(w * 0.7, 1.1 + rand(), tx, h - 0.32));
+      // Chimney rings.
+      target.push(box(w * 1.12, 0.08, tx, h * 0.55));
+    });
+    // Viaduct deck and arches.
+    const deckY = 1.15;
+    near.push(box(40, 0.22, 0, deckY));
+    for (let x = -19; x <= 19; x += 1.6) {
+      near.push(box(0.26, deckY + 1.5, x, (deckY - 1.5) / 2));
+    }
+    addCard(mergeGeometries(far)!, basic('#e7bf7f'), -3.5, 'machinery_far');
+    addCard(mergeGeometries(near)!, basic('#d9a24f'), -2.5, 'machinery_near');
+    far.forEach((g) => g.dispose());
+    near.forEach((g) => g.dispose());
 
-  // Turning gears.
+    // Turning gears.
+    const gearDefs = [
+      { r: 1.25, teeth: 14, x: -5.6, y: 3.0, z: -3.2, hex: '#e2b56a', speed: 0.09 },
+      { r: 0.7, teeth: 10, x: -4.05, y: 2.15, z: -3.1, hex: '#e2b56a', speed: -0.16 },
+      { r: 0.95, teeth: 12, x: 6.7, y: 2.7, z: -2.4, hex: '#d29a45', speed: -0.11 },
+    ];
+    for (const def of gearDefs) {
+      const gear = addCard(new ShapeGeometry(gearShape(def.r, def.teeth, def.r * 0.18)), basic(def.hex), def.z, 'gear');
+      gear.position.set(def.x, def.y, def.z);
+      gear.userData.speed = def.speed;
+      gears.push(gear);
+    }
+
+    // Funeral train crossing the viaduct: dark carriages with gold lanterns, looping slowly.
+    const carriageGeo = mergeGeometries([box(0.9, 0.34, 0, 0.17 + deckY + 0.11), box(0.96, 0.08, 0, 0.38 + deckY + 0.11)])!;
+    disposables.push(carriageGeo);
+    const train = new InstancedMesh(carriageGeo, basic('#3a2b52'), 7);
+    train.name = 'train';
+    train.renderOrder = -12;
+    train.position.z = -2.3;
+    cards.add(train);
+    const lanternGeo = box(0.12, 0.12, 0, 0.55 + deckY + 0.11);
+    disposables.push(lanternGeo);
+    const lanterns = new InstancedMesh(lanternGeo, basic('#ffe2a0'), 7);
+    lanterns.renderOrder = -11.9;
+    lanterns.position.z = -2.28;
+    cards.add(lanterns);
+    let trainX = -14;
+
+    const m = new Matrix4();
+    const updateTrain = (): void => {
+      for (let i = 0; i < 7; i++) {
+        m.makeTranslation(trainX - i * 1.05, 0, 0);
+        train.setMatrixAt(i, m);
+        lanterns.setMatrixAt(i, m);
+      }
+      train.instanceMatrix.needsUpdate = true;
+      lanterns.instanceMatrix.needsUpdate = true;
+    };
+    updateTrain();
+    return (dt: number) => {
+      for (const gear of gears) gear.rotation.z += (gear.userData.speed as number) * dt;
+      trainX += dt * 0.32;
+      if (trainX > 24) trainX = -18;
+      updateTrain();
+    };
+  }
+
+  // The Blender distant engine (if exported) replaces the procedural machinery cards.
+  const engineGlb = lib.source('distant_engine') === 'glb';
   const gears: Mesh[] = [];
-  const gearDefs = [
-    { r: 1.25, teeth: 14, x: -5.6, y: 3.0, z: -3.2, hex: '#e2b56a', speed: 0.09 },
-    { r: 0.7, teeth: 10, x: -4.05, y: 2.15, z: -3.1, hex: '#e2b56a', speed: -0.16 },
-    { r: 0.95, teeth: 12, x: 6.7, y: 2.7, z: -2.4, hex: '#d29a45', speed: -0.11 },
-  ];
-  for (const def of gearDefs) {
-    const gear = addCard(new ShapeGeometry(gearShape(def.r, def.teeth, def.r * 0.18)), basic(def.hex), def.z, 'gear');
-    gear.position.set(def.x, def.y, def.z);
-    gear.userData.speed = def.speed;
-    gears.push(gear);
-  }
-
-  // Funeral train crossing the viaduct: dark carriages with gold lanterns, looping slowly.
-  const carriage = new Object3D();
-  const carriageGeo = mergeGeometries([box(0.9, 0.34, 0, 0.17 + deckY + 0.11), box(0.96, 0.08, 0, 0.38 + deckY + 0.11)])!;
-  disposables.push(carriageGeo);
-  const train = new InstancedMesh(carriageGeo, basic('#3a2b52'), 7);
-  train.name = 'train';
-  train.renderOrder = -12;
-  train.position.z = -2.3;
-  cards.add(train);
-  const lanternGeo = box(0.12, 0.12, 0, 0.55 + deckY + 0.11);
-  disposables.push(lanternGeo);
-  const lanterns = new InstancedMesh(lanternGeo, basic('#ffe2a0'), 7);
-  lanterns.renderOrder = -11.9;
-  lanterns.position.z = -2.28;
-  cards.add(lanterns);
-  let trainX = -14;
+  let updateMachinery: (dt: number) => void = () => undefined;
+  if (!engineGlb) updateMachinery = buildProceduralMachinery();
 
   // Mist band hiding the machinery bases and softening the terrace line.
   const mistTex = verticalGradient([
@@ -267,34 +278,30 @@ export function buildBackdrop(room: RoomDef, pitch: number, lib: ModelLibrary): 
   disposables.push(floorHaze);
   addCard(new PlaneGeometry(60, 6), floorHaze, -1.4, 'haze_floor').position.set(0, -3.3, -1.4);
 
-  // Optional Blender distant engine sits behind the near machinery.
-  if (lib.source('distant_engine') === 'glb') {
+  if (engineGlb) {
+    // Placement and animation per art/environment-kit.md.
     const engine = lib.instance('distant_engine');
-    engine.position.set(cx + 4, -3, -(terraceY + 7));
+    engine.position.set(cx, -3.1, -(room.height + 3.5));
     group.add(engine);
+    const gearA = engine.getObjectByName('distant_engine_gear_a');
+    const gearB = engine.getObjectByName('distant_engine_gear_b');
+    const train = engine.getObjectByName('distant_engine_train');
+    updateMachinery = (dt) => {
+      gearA?.rotateZ(dt * 0.12);
+      gearB?.rotateZ(-dt * 0.16);
+      if (train) {
+        train.position.x += dt * 0.6;
+        if (train.position.x > 17) train.position.x -= 34;
+      }
+    };
   }
-
-  const m = new Matrix4();
-  const updateTrain = (): void => {
-    for (let i = 0; i < 7; i++) {
-      m.makeTranslation(trainX - i * 1.05, 0, 0);
-      train.setMatrixAt(i, m);
-      lanterns.setMatrixAt(i, m);
-    }
-    train.instanceMatrix.needsUpdate = true;
-    lanterns.instanceMatrix.needsUpdate = true;
-  };
-  updateTrain();
 
   return {
     group,
     background,
     update(_time, dt, reducedMotion) {
       if (reducedMotion) return;
-      for (const gear of gears) gear.rotation.z += (gear.userData.speed as number) * dt;
-      trainX += dt * 0.32;
-      if (trainX > 24) trainX = -18;
-      updateTrain();
+      updateMachinery(dt);
     },
     dispose() {
       for (const d of disposables) d.dispose();
