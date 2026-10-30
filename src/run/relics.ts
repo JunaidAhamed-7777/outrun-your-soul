@@ -172,11 +172,15 @@ export function canAdd(loadout: Loadout, pick: RelicId): boolean {
 
 export type DraftResult =
   | { readonly ok: true; readonly loadout: Loadout; readonly replaced: RelicId | null }
-  | { readonly ok: false; readonly reason: 'duplicate' | 'incompatible' | 'slotsFull' | 'badReplaceIndex' | 'unknownRelic' };
+  | {
+      readonly ok: false;
+      readonly reason: 'duplicate' | 'incompatible' | 'slotsFull' | 'slotFree' | 'badReplaceIndex' | 'unknownRelic';
+    };
 
 /**
  * Apply a draft pick. With a free slot the pick is added (replaceIndex must be omitted);
- * with full slots a replaceIndex is required. Never creates a third slot, a duplicate or
+ * with full slots a replaceIndex is required (the first draft fills the empty slot; it
+ * never replaces while a slot is free). Never creates a third slot, a duplicate or
  * an illegal pair: such requests are rejected, leaving the loadout unchanged.
  */
 export function applyDraft(loadout: Loadout, pick: RelicId, replaceIndex?: number): DraftResult {
@@ -187,6 +191,7 @@ export function applyDraft(loadout: Loadout, pick: RelicId, replaceIndex?: numbe
     const next = [...loadout, pick];
     return isLegalLoadout(next) ? { ok: true, loadout: next, replaced: null } : { ok: false, reason: 'incompatible' };
   }
+  if (loadout.length < MAX_RELIC_SLOTS) return { ok: false, reason: 'slotFree' };
   if (!Number.isInteger(replaceIndex) || replaceIndex < 0 || replaceIndex >= loadout.length) {
     return { ok: false, reason: 'badReplaceIndex' };
   }

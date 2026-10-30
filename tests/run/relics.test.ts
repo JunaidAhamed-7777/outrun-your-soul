@@ -76,6 +76,7 @@ describe('applyDraft', () => {
     expect(applyDraft(['needlesong', 'glass_lantern'], 'mourning_bell', 0.5)).toEqual({ ok: false, reason: 'badReplaceIndex' });
     expect(applyDraft(['needlesong'], 'needlesong')).toEqual({ ok: false, reason: 'duplicate' });
     expect(applyDraft(['needlesong'], 'bogus' as RelicId)).toEqual({ ok: false, reason: 'unknownRelic' });
+    expect(applyDraft(['needlesong'], 'mourning_bell', 0)).toEqual({ ok: false, reason: 'slotFree' });
   });
 
   it('never produces an illegal loadout across every pick from every legal state', () => {
