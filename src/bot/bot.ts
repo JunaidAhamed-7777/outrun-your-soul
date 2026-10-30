@@ -14,7 +14,10 @@
  */
 import { createSim, previewDash, stepSim, STEP_SECONDS } from '../sim';
 import type { Command, RoomDef, SimEvent, SimOptions, SimState } from '../sim';
-import { dist, fromAngle } from '../sim/vec';
+import { BOSS_TUNING, heartVulnerable } from '../sim/boss';
+import { TUNING } from '../sim/tuning';
+import { dist, fromAngle, type Vec2 } from '../sim/vec';
+import { navFor } from './nav';
 
 export interface BotConfig {
   /** Seconds between deciding and releasing (aiming time). 0 = superhuman. */
@@ -51,8 +54,10 @@ export interface BotResult {
   readonly seconds: number;
   readonly healthLeft: number;
   readonly decisions: readonly BotDecision[];
-  /** Enemy authored IDs in kill order: the bot's target priority. */
+  /** Enemy authored IDs in kill order (the boss appears as `boss:<id>`): target priority. */
   readonly killOrder: readonly string[];
+  /** Where each outward dash ended, in order: a coarse record of the route taken. */
+  readonly dashEnds: readonly Vec2[];
   readonly stats: SimState['stats'];
   readonly events: readonly SimEvent[];
   readonly final: SimState;
@@ -67,27 +72,40 @@ function aliveEnemies(s: SimState) {
 /**
  * Heuristic value of a state; higher is better. Damage dominates, then progress.
  * `pressure` (>= 1) grows while nothing is achieved, so a cautious plateau (parked out of
- * reach of the last target) eventually yields to committing toward it.
+ * reach of the last target) eventually yields to committing toward it. Distances to
+ * goals are wall-aware (nav.ts): straight-line when a body-wide corridor is clear,
+ * geodesic around walls otherwise.
  */
 export function scoreState(s: SimState, start: SimState, pressure = 1): number {
   if (s.outcome === 'defeat') return -1e6;
   if (s.outcome === 'victory') return 1e6 - s.time;
+  const nav = navFor(s.room);
   let score = 0;
   score -= (start.health - s.health) * 10_000;
   score += (aliveEnemies(start).length - aliveEnemies(s).length) * 600;
   const alive = aliveEnemies(s);
   const separated = s.route.points.length > 0;
-  if (alive.length > 0) {
-    // Approach the nearest awake-or-dormant target, but not at the cost of a long tether.
-    const nearest = Math.min(...alive.map((e) => dist(e.pos, s.body.pos)));
-    score -= nearest * 12 * pressure;
-  } else {
-    const exit = s.room.exit;
-    const cx = exit.x + exit.w / 2;
-    const cy = exit.y + exit.h / 2;
-    score -= dist({ x: cx, y: cy }, s.body.pos) * 25 * pressure;
-    score -= dist({ x: cx, y: cy }, s.soul.pos) * 15 * pressure;
+  const boss = s.boss && s.boss.phase !== 'dead' ? s.boss : null;
+  if (start.boss) {
+    // Heart hits and the kill are the boss room's progress.
+    score += (start.boss.hp - (s.boss?.hp ?? 0)) * 900;
+    if (start.boss.phase !== 'dead' && !boss) score += 1500;
   }
+  // Goals: every living sentry, plus the boss heart while it trails its armoured body
+  // (the heart is the only weak point; the body stops dashes like a wall).
+  const goals: Vec2[] = alive.map((e) => e.pos);
+  if (boss && heartVulnerable(boss)) goals.push(boss.heart.pos);
+  if (goals.length > 0) {
+    // Approach the nearest target, but not at the cost of a long tether.
+    const nearest = Math.min(...goals.map((g) => nav.distance(s.body.pos, g)));
+    score -= nearest * 12 * pressure;
+  } else if (!boss) {
+    const exit = s.room.exit;
+    const c = { x: exit.x + exit.w / 2, y: exit.y + exit.h / 2 };
+    score -= nav.distance(s.body.pos, c) * 25 * pressure;
+    score -= nav.distance(s.soul.pos, c) * 15 * pressure;
+  }
+  if (boss) score -= bossDanger(s, boss);
   // Outstanding tether is exposure: prefer modest debt, strongly prefer some spare capacity.
   score -= s.route.length * 6;
   if (separated) score -= 15;
@@ -100,6 +118,31 @@ export function scoreState(s: SimState, start: SimState, pressure = 1): number {
     }
   }
   return score;
+}
+
+/** Keep both endpoints off the armoured body and its frozen charge route. */
+function bossDanger(s: SimState, boss: NonNullable<SimState['boss']>): number {
+  let danger = 0;
+  const keepOut = BOSS_TUNING.bodyRadius + 1.6;
+  const lane = BOSS_TUNING.bodyRadius + TUNING.bodyRadius + 0.25;
+  const charging = (boss.phase === 'aimCharge' || boss.phase === 'charge') && boss.path.length > 1;
+  for (const p of [s.body.pos, s.soul.pos]) {
+    const d = dist(p, boss.body.pos);
+    if (d < keepOut) danger += (keepOut - d) * 120;
+    if (!charging) continue;
+    for (let i = Math.max(0, boss.legIndex); i + 1 < boss.path.length; i++) {
+      if (segmentDistance(p, boss.path[i]!, boss.path[i + 1]!) < lane) danger += 350;
+    }
+  }
+  return danger;
+}
+
+function segmentDistance(p: Vec2, a: Vec2, b: Vec2): number {
+  const abx = b.x - a.x;
+  const aby = b.y - a.y;
+  const len2 = abx * abx + aby * aby;
+  const t = len2 > 0 ? Math.max(0, Math.min(1, ((p.x - a.x) * abx + (p.y - a.y) * aby) / len2)) : 0;
+  return Math.hypot(p.x - (a.x + abx * t), p.y - (a.y + aby * t));
 }
 
 /** Candidate commands for the current state (null = keep waiting). */
@@ -179,6 +222,7 @@ export function playRoom(room: RoomDef, options: SimOptions, cfg: BotConfig = NO
   const decisions: BotDecision[] = [];
   const events: SimEvent[] = [];
   const killOrder: string[] = [];
+  const dashEnds: Vec2[] = [];
   let nextThink = 0;
   let pending: { command: Command; releaseAt: number } | null = null;
   let lastProgress = 0;
@@ -204,6 +248,9 @@ export function playRoom(room: RoomDef, options: SimOptions, cfg: BotConfig = NO
     for (const e of stepEvents) {
       events.push(e);
       if (e.type === 'kill' || e.type === 'roomCleared') lastProgress = s.time;
+      if (e.type === 'boss' && (e.what === 'heartHit' || e.what === 'defeated')) lastProgress = s.time;
+      if (e.type === 'boss' && e.what === 'defeated' && s.boss) killOrder.push(`boss:${s.boss.key}`);
+      if (e.type === 'dashEnd') dashEnds.push(e.at);
       if (e.type === 'kill') {
         const enemy = s.enemies.find((x) => x.id === e.enemyId);
         if (enemy) killOrder.push(enemy.key);
@@ -216,6 +263,7 @@ export function playRoom(room: RoomDef, options: SimOptions, cfg: BotConfig = NO
     healthLeft: s.health,
     decisions,
     killOrder,
+    dashEnds,
     stats: s.stats,
     events,
     final: s,
