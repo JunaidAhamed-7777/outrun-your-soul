@@ -45,5 +45,117 @@
     "materials": 2
   },
   "within_budget": true,
-  "notes": "Soul: floating hollow mask with inward-curling crescent horns (soul_glow, saturated cyan, emissive 1.2) and open almond eye holes, tipped 30 deg up toward the game camera, over a curling teardrop wisp plus three motes (soul_core, pale, emissive 0.6) that reaches down to the ground point. Cyan (cool) vs the courier ivory (warm) keeps body and soul apart even at a few pixels. Deliberately no body/limbs so it never reads as a second courier. Origin on the ground; mask pivot at z 0.64, wisp pivot just under and behind the chin for runtime sway; the wisp tip touches the ground at the true soul position. Holes are real geometry (scanfill + solidify), so bolts and floor show through the eyes."
+  "notes": "Soul: floating hollow mask with inward-curling crescent horns (soul_glow, saturated cyan, emissive 1.2) and open almond eye holes, tipped 30 deg up toward the game camera, over a curling teardrop wisp plus three motes (soul_core, pale, emissive 0.6) that reaches down to the ground point. Cyan (cool) vs the courier ivory (warm) keeps body and soul apart even at a few pixels. Deliberately no body/limbs so it never reads as a second courier. Origin on the ground; mask pivot at z 0.64, wisp pivot just under and behind the chin for runtime sway; the wisp tip touches the ground at the true soul position. Holes are real geometry (scanfill + solidify), so bolts and floor show through the eyes.",
+  "glb_verification": {
+    "checked_at": "2026-10-30T14:49:50.254Z",
+    "file": "public/assets/models/soul_mask.glb",
+    "bytes": 31572,
+    "sha256": "6a1678490a37adbf05e0a1a6dfbe4ea5a549f72e3e0b25f8aac652135ffb0641",
+    "generator": "Khronos glTF Blender I/O v5.2.40",
+    "triangles": 560,
+    "bounds_yup": {
+      "min": [
+        -0.172,
+        0.006,
+        -0.245
+      ],
+      "max": [
+        0.172,
+        0.875,
+        0.093
+      ]
+    },
+    "muzzle_or_front_pivot_yup": [
+      0,
+      0.64,
+      0
+    ],
+    "checks": [
+      {
+        "name": "single root named after asset",
+        "ok": true,
+        "detail": [
+          "soul_mask"
+        ]
+      },
+      {
+        "name": "no cameras",
+        "ok": true,
+        "detail": 0
+      },
+      {
+        "name": "no lights",
+        "ok": true,
+        "detail": [
+          "KHR_materials_emissive_strength"
+        ]
+      },
+      {
+        "name": "expected part nodes",
+        "ok": true,
+        "detail": {
+          "missing": [],
+          "nodes": [
+            "soul_mask_mask",
+            "soul_mask_wisp",
+            "soul_mask"
+          ]
+        }
+      },
+      {
+        "name": "palette-key materials",
+        "ok": true,
+        "detail": [
+          "soul_glow",
+          "soul_core"
+        ]
+      },
+      {
+        "name": "unit node scale",
+        "ok": true,
+        "detail": []
+      },
+      {
+        "name": "stands on ground (min Y ~ 0, Y up)",
+        "ok": true,
+        "detail": {
+          "minY": 0.0059999823570251465,
+          "maxY": 0.87454854400367
+        }
+      },
+      {
+        "name": "mask faces +Z (chin forward of brow)",
+        "ok": true,
+        "detail": {
+          "chin": [
+            0,
+            0.447,
+            0.046
+          ],
+          "brow": [
+            0.112,
+            0.826,
+            -0.222
+          ]
+        }
+      },
+      {
+        "name": "wisp trails toward -Z",
+        "ok": true,
+        "detail": {
+          "min": [
+            -0.141,
+            0.006,
+            -0.163
+          ],
+          "max": [
+            0.15,
+            0.579,
+            0.015
+          ]
+        }
+      }
+    ],
+    "passed": true
+  }
 }

@@ -23,7 +23,7 @@
     "bounds_min": [
       -0.2273,
       -0.3025,
-      0.0
+      0
     ],
     "bounds_max": [
       0.2832,
@@ -47,5 +47,96 @@
     "materials": 3
   },
   "within_budget": true,
-  "notes": "Keeper: soul-hunting lantern sentry. Static bone-white crooked gallows post standing back-right (+X/+Y) of the enemy position with a gold brace and hook; the rotating head is a broad hexagonal lantern (gold frame, flared roof, pale cobalt_mist glass; 1.25x baked) hung over the centre, with a gold lens spout on its -Y face as the aim cue and keeper_muzzle inside it. Glass uses cobalt_mist (non-emissive periwinkle) so it never matches the emissive cyan soul. Wide/hanging/roofed silhouette vs the narrow pointed needler."
+  "notes": "Keeper: soul-hunting lantern sentry. Static bone-white crooked gallows post standing back-right (+X/+Y) of the enemy position with a gold brace and hook; the rotating head is a broad hexagonal lantern (gold frame, flared roof, pale cobalt_mist glass; 1.25x baked) hung over the centre, with a gold lens spout on its -Y face as the aim cue and keeper_muzzle inside it. Glass uses cobalt_mist (non-emissive periwinkle) so it never matches the emissive cyan soul. Wide/hanging/roofed silhouette vs the narrow pointed needler.",
+  "glb_verification": {
+    "checked_at": "2026-10-30T14:49:50.256Z",
+    "file": "public/assets/models/keeper.glb",
+    "bytes": 27412,
+    "sha256": "79164e620364811b611fed9d9d2c024db2dec8159143f586f9d9c72533b6a15e",
+    "generator": "Khronos glTF Blender I/O v5.2.40",
+    "triangles": 460,
+    "bounds_yup": {
+      "min": [
+        -0.227,
+        0,
+        -0.443
+      ],
+      "max": [
+        0.283,
+        1.07,
+        0.303
+      ]
+    },
+    "muzzle_or_front_pivot_yup": [
+      0,
+      0.488,
+      0.313
+    ],
+    "checks": [
+      {
+        "name": "single root named after asset",
+        "ok": true,
+        "detail": [
+          "keeper"
+        ]
+      },
+      {
+        "name": "no cameras",
+        "ok": true,
+        "detail": 0
+      },
+      {
+        "name": "no lights",
+        "ok": true,
+        "detail": []
+      },
+      {
+        "name": "expected part nodes",
+        "ok": true,
+        "detail": {
+          "missing": [],
+          "nodes": [
+            "keeper_base",
+            "keeper_muzzle",
+            "keeper_head",
+            "keeper"
+          ]
+        }
+      },
+      {
+        "name": "palette-key materials",
+        "ok": true,
+        "detail": [
+          "ivory",
+          "gold",
+          "cobalt_mist"
+        ]
+      },
+      {
+        "name": "unit node scale",
+        "ok": true,
+        "detail": []
+      },
+      {
+        "name": "stands on ground (min Y ~ 0, Y up)",
+        "ok": true,
+        "detail": {
+          "minY": 0,
+          "maxY": 1.0704247951507568
+        }
+      },
+      {
+        "name": "muzzle faces +Z (glTF forward)",
+        "ok": true,
+        "detail": {
+          "pivot": [
+            0,
+            0.488,
+            0.313
+          ]
+        }
+      }
+    ],
+    "passed": true
+  }
 }
