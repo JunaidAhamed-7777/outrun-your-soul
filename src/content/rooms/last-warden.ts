@@ -1,21 +1,27 @@
 /**
  * The Last Warden's arena (boss room, separate from the six-template pool).
  *
- * Geometry is final-intent: a wide open floor with four low pillars for cover and a
- * full-width procession lane that every route north must time. The enemy set is a
- * PLACEHOLDER built from existing roles (two escorts waves) so the expedition is
- * playable end to end; the simulation agent replaces it with the Last Warden boss (a
- * fast armoured body with a slower heart following its route) once that ships.
+ * The boss mirrors the player's flaw: a fast armoured body that charges along a
+ * telegraphed two-leg route (at you, then at your soul) and a slow heart that must walk
+ * that route home afterwards. The armour stops dashes like a wall; the trailing heart is
+ * the only weak point. The player faces their own dilemma from the other side: strike
+ * the heart while it is far from its body, without leaving their own soul in the next
+ * charge's path or under the fan of bolts it leads onto the soul.
  *
  *   y=12 +--------+
- *        |n1 [EX]n2|  wave 1: two needlers over the gate, a keeper at centre-top
- *   y=10 |   k1   |
- *   y=9  | #    # |   pillars (1..2, 8..9) and (6..7, 8..9)
- *   y=7  |~~~~~~~~|   procession lane, full width, y 6..7: burns 1.0 s of every 4.4 s
- *   y=5  | #    # |   pillars (1..2, 4..5) and (6..7, 4..5)
- *        |k2    n3|   wave 2 (behind you): wakes when the keeper k1 falls
+ *        |   [EX] |   the gate stands behind the Warden
+ *   y=9  |    W   |   W: the Last Warden at (4, 8.6), facing the courtyard
+ *        |        |   an open floor: every charge runs its full length, so the heart
+ *        |        |   always has a long walk home (the opening)
  *   y=1  |   S    |
  *        +--------+
+ *
+ * Pillars were tried and removed (bot evidence, 30 Oct): a player sheltering behind a
+ * pillar next to the boss blocks every charge leg, the boss falls back to fans forever
+ * and the heart never leaves home — a stalemate, not a climax.
+ * The Warden sleeps for the first 2.5 s, so its first telegraph comes after ~3.5 s.
+ * No escort sentries: the boss alone carries the finale (stages from BOSS_TUNING:
+ * charge/fan, fan/charge, then a charge-fan-charge remix).
  */
 import type { RoomDef } from '../../sim/types';
 
@@ -25,50 +31,20 @@ export const LAST_WARDEN_ARENA: RoomDef = {
   width: 8,
   height: 12,
   walls: [
-    { x: 1, y: 4, w: 1, h: 1 },
-    { x: 6, y: 4, w: 1, h: 1 },
-    { x: 1, y: 8, w: 1, h: 1 },
-    { x: 6, y: 8, w: 1, h: 1 },
   ],
   spawn: { x: 4, y: 1.5 },
   exit: { x: 3, y: 11, w: 2, h: 1 },
-  enemies: [
-    { id: 'n1', role: 'needler', at: { x: 0.9, y: 10.6 }, facing: { x: 1, y: -1 }, phase: -0.8 },
-    { id: 'n2', role: 'needler', at: { x: 7.1, y: 10.6 }, facing: { x: -1, y: -1 }, phase: -1.7 },
-    { id: 'k1', role: 'keeper', at: { x: 4, y: 9.6 }, facing: { x: 0, y: -1 }, phase: -1.0 },
-    {
-      id: 'k2',
-      role: 'keeper',
-      at: { x: 0.9, y: 2.6 },
-      facing: { x: 1, y: 1 },
-      dormant: true,
-      wake: { kind: 'enemyKilled', enemy: 'k1' },
-      phase: -0.5,
-    },
-    {
-      id: 'n3',
-      role: 'needler',
-      at: { x: 7.1, y: 2.6 },
-      facing: { x: -1, y: 1 },
-      dormant: true,
-      wake: { kind: 'enemyKilled', enemy: 'k1' },
-      phase: -1.2,
-    },
-  ],
-  lanes: [
-    {
-      id: 'procession',
-      rect: { x: 0, y: 6, w: 8, h: 1 },
-      period: 4.4,
-      activeFrom: 2.2,
-      activeTo: 3.2,
-      warnLead: 1.0,
-      // First burn at t = 3.4 s; warning from 2.4 s.
-      phase: 3.2,
-    },
-  ],
+  enemies: [],
+  lanes: [],
+  boss: {
+    id: 'last_warden',
+    at: { x: 4, y: 8.6 },
+    facing: { x: 0, y: -1 },
+    dormant: true,
+    wake: { kind: 'time', seconds: 2.5 },
+  },
   hints: [
-    { id: 'procession', when: 'start', text: 'The procession burns across the whole floor. Your soul must cross it in a quiet moment.' },
+    { id: 'warden', when: 'start', text: 'Its armour turns every blade. Strike the heart while it walks home.' },
     { id: 'gate', when: 'cleared', text: 'The last gate opens. Bring your soul home.' },
     { id: 'both', when: 'gateWaiting', text: 'The gate needs both of you.' },
   ],
