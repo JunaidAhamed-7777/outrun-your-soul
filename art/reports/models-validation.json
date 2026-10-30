@@ -24,10 +24,10 @@
   ],
   "missingRuntimeModels": [],
   "summary": {
-    "shipping": 8,
+    "shipping": 11,
     "fixtures": 1,
     "failed": 0,
-    "shippingTriangles": 11194
+    "shippingTriangles": 16994
   },
   "models": [
     {
@@ -399,6 +399,158 @@
       }
     },
     {
+      "assetId": "last_warden_body",
+      "file": "public/assets/models/last_warden_body.glb",
+      "shipping": true,
+      "bytes": 147436,
+      "sha256": "bb8508223bd2fc8dc8c5af0a3934a88443526227cd10fbed92ac69d2e9c9aa28",
+      "status": "pass",
+      "errors": [],
+      "warnings": [
+        "not in MODEL_IDS (src/render/contract.ts): the runtime never requests it; remove it or add it to the contract",
+        "asset ID \"last_warden_body\" is not in the asset contract"
+      ],
+      "stats": {
+        "assetId": "last_warden_body",
+        "category": "unknown",
+        "budget": {
+          "label": "Unknown asset ID: no documented budget",
+          "maxTriangles": 60000,
+          "maxMaterials": null
+        },
+        "rootNodes": [
+          "last_warden_body"
+        ],
+        "childNodes": [
+          "last_warden_body_body",
+          "last_warden_body_head",
+          "last_warden_body_mask",
+          "last_warden_body_mantle"
+        ],
+        "triangles": 2564,
+        "materials": [
+          "gold",
+          "gold_dark",
+          "ivory",
+          "vermilion_dark"
+        ],
+        "materialCount": 4,
+        "meshes": 4,
+        "nodes": 5,
+        "animations": [],
+        "extensionsUsed": [],
+        "bounds": {
+          "min": [
+            -0.54,
+            0,
+            -0.455
+          ],
+          "max": [
+            0.54,
+            1.6096,
+            0.4424
+          ],
+          "size": [
+            1.08,
+            1.6096,
+            0.8975
+          ]
+        }
+      },
+      "khronos": {
+        "validatorVersion": "2.0.0-dev.3.10",
+        "numErrors": 0,
+        "numWarnings": 0,
+        "numInfos": 0,
+        "numHints": 0,
+        "messages": [],
+        "info": {
+          "generator": "Khronos glTF Blender I/O v5.2.40",
+          "drawCallCount": 9,
+          "totalVertexCount": 5207,
+          "totalTriangleCount": 2564,
+          "materialCount": 4,
+          "animationCount": 0,
+          "extensionsUsed": []
+        }
+      }
+    },
+    {
+      "assetId": "last_warden_heart",
+      "file": "public/assets/models/last_warden_heart.glb",
+      "shipping": true,
+      "bytes": 61832,
+      "sha256": "4c1fd618fdf9d01c7b2f1e745b51f483f30fd5d28b53947dfd52c5b84333ed73",
+      "status": "pass",
+      "errors": [],
+      "warnings": [
+        "not in MODEL_IDS (src/render/contract.ts): the runtime never requests it; remove it or add it to the contract",
+        "asset ID \"last_warden_heart\" is not in the asset contract"
+      ],
+      "stats": {
+        "assetId": "last_warden_heart",
+        "category": "unknown",
+        "budget": {
+          "label": "Unknown asset ID: no documented budget",
+          "maxTriangles": 60000,
+          "maxMaterials": null
+        },
+        "rootNodes": [
+          "last_warden_heart"
+        ],
+        "childNodes": [
+          "last_warden_heart_cage",
+          "last_warden_heart_core"
+        ],
+        "triangles": 1026,
+        "materials": [
+          "gold",
+          "gold_dark",
+          "vermilion",
+          "vermilion_dark"
+        ],
+        "materialCount": 4,
+        "meshes": 2,
+        "nodes": 3,
+        "animations": [],
+        "extensionsUsed": [],
+        "bounds": {
+          "min": [
+            -0.2361,
+            0,
+            -0.19
+          ],
+          "max": [
+            0.2597,
+            1.12,
+            0.19
+          ],
+          "size": [
+            0.4958,
+            1.12,
+            0.38
+          ]
+        }
+      },
+      "khronos": {
+        "validatorVersion": "2.0.0-dev.3.10",
+        "numErrors": 0,
+        "numWarnings": 0,
+        "numInfos": 0,
+        "numHints": 0,
+        "messages": [],
+        "info": {
+          "generator": "Khronos glTF Blender I/O v5.2.40",
+          "drawCallCount": 6,
+          "totalVertexCount": 2112,
+          "totalTriangleCount": 1026,
+          "materialCount": 4,
+          "animationCount": 0,
+          "extensionsUsed": []
+        }
+      }
+    },
+    {
       "assetId": "needler",
       "file": "public/assets/models/needler.glb",
       "shipping": true,
@@ -619,6 +771,89 @@
           "totalVertexCount": 128,
           "totalTriangleCount": 64,
           "materialCount": 2,
+          "animationCount": 0,
+          "extensionsUsed": []
+        }
+      }
+    },
+    {
+      "assetId": "warden",
+      "file": "public/assets/models/warden.glb",
+      "shipping": true,
+      "bytes": 126936,
+      "sha256": "3c242b4f043f37835d823a99ea04e281e992056ece3d8c91315ddd5e49655f0d",
+      "status": "pass",
+      "errors": [],
+      "warnings": [
+        "not in MODEL_IDS (src/render/contract.ts): the runtime never requests it; remove it or add it to the contract"
+      ],
+      "stats": {
+        "assetId": "warden",
+        "category": "warden",
+        "budget": {
+          "label": "Warden",
+          "maxTriangles": 4000,
+          "maxMaterials": 3
+        },
+        "rootNodes": [
+          "warden"
+        ],
+        "childNodes": [
+          "warden_base",
+          "warden_body",
+          "warden_core",
+          "warden_muzzle",
+          "warden_shield"
+        ],
+        "triangles": 2210,
+        "materials": [
+          "gold",
+          "ivory",
+          "vermilion_dark"
+        ],
+        "materialCount": 3,
+        "meshes": 4,
+        "nodes": 6,
+        "animations": [],
+        "extensionsUsed": [],
+        "bounds": {
+          "min": [
+            -0.4388,
+            0,
+            -0.4388
+          ],
+          "max": [
+            0.4388,
+            1.28,
+            0.4388
+          ],
+          "size": [
+            0.8777,
+            1.28,
+            0.8777
+          ]
+        }
+      },
+      "khronos": {
+        "validatorVersion": "2.0.0-dev.3.10",
+        "numErrors": 0,
+        "numWarnings": 0,
+        "numInfos": 1,
+        "numHints": 0,
+        "messages": [
+          {
+            "code": "NODE_EMPTY",
+            "severity": "info",
+            "message": "Empty node encountered.",
+            "pointer": "/nodes/2"
+          }
+        ],
+        "info": {
+          "generator": "Khronos glTF Blender I/O v5.2.40",
+          "drawCallCount": 9,
+          "totalVertexCount": 4456,
+          "totalTriangleCount": 2210,
+          "materialCount": 3,
           "animationCount": 0,
           "extensionsUsed": []
         }
