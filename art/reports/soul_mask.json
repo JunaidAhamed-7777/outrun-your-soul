@@ -1,0 +1,49 @@
+{
+  "asset_id": "soul_mask",
+  "status": "exported",
+  "author": "original (script-authored in Blender via the pinned Blender MCP bridge)",
+  "created_at": "2026-10-30T14:44:54+00:00",
+  "blender_version": "5.2.2 LTS",
+  "exporter_version": "5.2.40",
+  "source_path": "art/source/actors.blend",
+  "export": {
+    "path": "public/assets/models/soul_mask.glb",
+    "bytes": 31572,
+    "sha256": "6a1678490a37adbf05e0a1a6dfbe4ea5a549f72e3e0b25f8aac652135ffb0641"
+  },
+  "preview": "art/previews/soul_mask-game-camera.png",
+  "measured": {
+    "triangles": 560,
+    "materials": [
+      "soul_core",
+      "soul_glow"
+    ],
+    "material_count": 2,
+    "bounds_min": [
+      -0.1721,
+      -0.0669,
+      0.006
+    ],
+    "bounds_max": [
+      0.1721,
+      0.2431,
+      0.826
+    ],
+    "dimensions": [
+      0.3443,
+      0.31,
+      0.82
+    ],
+    "parts": [
+      "soul_mask",
+      "soul_mask_mask",
+      "soul_mask_wisp"
+    ]
+  },
+  "budget": {
+    "triangles": 2000,
+    "materials": 2
+  },
+  "within_budget": true,
+  "notes": "Soul: floating hollow mask with inward-curling crescent horns (soul_glow, saturated cyan, emissive 1.2) and open almond eye holes, tipped 30 deg up toward the game camera, over a curling teardrop wisp plus three motes (soul_core, pale, emissive 0.6) that reaches down to the ground point. Cyan (cool) vs the courier ivory (warm) keeps body and soul apart even at a few pixels. Deliberately no body/limbs so it never reads as a second courier. Origin on the ground; mask pivot at z 0.64, wisp pivot just under and behind the chin for runtime sway; the wisp tip touches the ground at the true soul position. Holes are real geometry (scanfill + solidify), so bolts and floor show through the eyes."
+}
