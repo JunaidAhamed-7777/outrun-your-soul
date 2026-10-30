@@ -443,7 +443,37 @@ def plate_with_holes(outline, holes, thickness: float, plane: str = 'XZ') -> bme
             face.normal_flip()
     bmesh.ops.solidify(bm, geom=list(bm.faces), thickness=thickness)
     bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
-    return bm
+    # Scanfill emits the same triangles in a run-dependent order; canonicalise so the GLB
+    # export is byte-reproducible.
+    return canonicalize(bm)
+
+
+def canonicalize(bm: bmesh.types.BMesh, places: int = 6) -> bmesh.types.BMesh:
+    """Return a copy with deterministic vertex order, face order and face loop start.
+
+    Winding (and therefore normals) is preserved; only ordering changes. Frees ``bm``.
+    """
+    def key(co):
+        return (round(co.x, places), round(co.y, places), round(co.z, places))
+
+    bm.verts.index_update()
+    out = bmesh.new()
+    mapping = {}
+    for v in sorted(bm.verts, key=lambda v: key(v.co)):
+        mapping[v.index] = out.verts.new(v.co)
+    faces = []
+    for f in bm.faces:
+        ring = list(f.verts)
+        start = min(range(len(ring)), key=lambda i: key(ring[i].co))
+        ring = ring[start:] + ring[:start]
+        faces.append((tuple(key(v.co) for v in ring), [mapping[v.index] for v in ring], f.smooth))
+    faces.sort(key=lambda item: item[0])
+    for _, ring, smooth in faces:
+        face = out.faces.new(ring)
+        face.smooth = smooth
+    out.normal_update()
+    bm.free()
+    return out
 
 
 def deform(bm: bmesh.types.BMesh, fn) -> bmesh.types.BMesh:
