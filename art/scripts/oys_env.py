@@ -137,6 +137,19 @@ def add(pb: ob.PartBuilder, piece: bmesh.types.BMesh, key: str, center=(0, 0, 0)
 # Composites (never exported: tagged and kept out of every asset hierarchy)
 # ---------------------------------------------------------------------------
 
+def clear_composites() -> int:
+    """Remove every composite-only object (they share asset meshes via linked copies).
+
+    Generators call this first: otherwise a composite copy keeps the previous mesh
+    datablock alive, the regenerated mesh is renamed '<part>.001', and the exported
+    GLB bytes change between otherwise identical runs.
+    """
+    doomed = [obj for obj in bpy.data.objects if obj.get(COMPOSITE_TAG)]
+    for obj in doomed:
+        bpy.data.objects.remove(obj, do_unlink=True)
+    return len(doomed)
+
+
 def composite_collection(name: str) -> bpy.types.Collection:
     """Fresh collection for a preview composite; removes only objects it previously tagged."""
     for obj in list(bpy.data.objects):

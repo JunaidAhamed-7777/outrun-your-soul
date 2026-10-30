@@ -7,6 +7,7 @@ without textures. One material (cobalt); the renderer varies tone per tile.
 import oys_blender as ob
 import oys_env as env
 
+env.clear_composites()
 asset = ob.Asset('floor_tile')
 pb = ob.PartBuilder()
 # Slab body down to z=-0.1 (hidden below neighbours), chamfer 0.035 wide over the top 0.03.

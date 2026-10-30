@@ -2,14 +2,14 @@
   "asset_id": "wall_block",
   "status": "exported",
   "author": "original (script-authored in Blender via the pinned Blender MCP bridge)",
-  "created_at": "2026-10-30T14:44:25+00:00",
+  "created_at": "2026-10-30T14:54:41+00:00",
   "blender_version": "5.2.2 LTS",
   "exporter_version": "5.2.40",
   "source_path": "art/source/environment.blend",
   "export": {
     "path": "public/assets/models/wall_block.glb",
-    "bytes": 5228,
-    "sha256": "2209ab7b727cfede5626064bdea5d8e05469c8ca9d74b52daf4bc638921a269d"
+    "bytes": 5224,
+    "sha256": "5d52a6e895a510651843dacaab91c281b5fb491d0fa77ba1d6bdd96244a2d604"
   },
   "preview": "art/previews/wall_block-game-camera.png",
   "measured": {
@@ -48,8 +48,8 @@
   "glb_verification": {
     "asset_id": "wall_block",
     "file": "public/assets/models/wall_block.glb",
-    "sha256": "2209ab7b727cfede5626064bdea5d8e05469c8ca9d74b52daf4bc638921a269d",
-    "bytes": 5228,
+    "sha256": "5d52a6e895a510651843dacaab91c281b5fb491d0fa77ba1d6bdd96244a2d604",
+    "bytes": 5224,
     "generator": "Khronos glTF Blender I/O v5.2.40",
     "triangles": 64,
     "materials": [
@@ -107,6 +107,6 @@
       }
     ],
     "pass": true,
-    "verified_at": "2026-10-30T14:52:48Z"
+    "verified_at": "2026-10-30T14:54:52Z"
   }
 }

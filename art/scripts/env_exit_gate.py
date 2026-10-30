@@ -20,6 +20,7 @@ CAP_LO, CAP_HI = 1.26, 1.4
 ARCH_SQUASH = 0.46
 PX = 1.23  # pillar centre |x|
 
+env.clear_composites()
 asset = ob.Asset('exit_gate')
 
 # ---------------------------------------------------------------- frame

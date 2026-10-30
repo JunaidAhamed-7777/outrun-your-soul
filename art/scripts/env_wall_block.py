@@ -21,6 +21,7 @@ H_PLINTH = 0.06
 H_BODY = 0.44
 H_TOP = 0.55
 
+env.clear_composites()
 asset = ob.Asset('wall_block')
 pb = ob.PartBuilder()
 c = (0.5, 0.5, 0.0)

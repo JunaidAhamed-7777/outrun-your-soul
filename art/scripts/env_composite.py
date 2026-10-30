@@ -20,7 +20,7 @@ TAG = 'courtyard_composite'
 W, H = 8, 12
 INNER_WALLS = [(2, 4), (3, 4), (5, 7), (5, 8)]
 GATE_X0, GATE_X1 = 3, 5
-ENGINE_AT = tuple(float(v) for v in MCP_ARGS.get('engine_at', '4,15.5,-5.2').split(','))  # noqa: F821
+ENGINE_AT = tuple(float(v) for v in MCP_ARGS.get('engine_at', '4,15.5,-3.1').split(','))  # noqa: F821
 OUT = MCP_ARGS.get('out', 'art/previews/courtyard-composite-game-camera.png')  # noqa: F821
 
 coll = env.composite_collection(TAG)

@@ -47,6 +47,7 @@ RAIL_Z = TIER2_Z + DECK_T + 0.02
 # Far layer.
 FAR_Y = 2.2
 
+env.clear_composites()
 asset = ob.Asset('distant_engine')
 body = ob.PartBuilder()
 
