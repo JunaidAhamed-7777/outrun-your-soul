@@ -18,6 +18,24 @@ export function modelUrl(id: ModelId, base: string = import.meta.env.BASE_URL): 
 
 export type ModelSource = 'glb' | 'placeholder';
 
+/** Fetches one model file's bytes. Injectable for tests. */
+export type FetchBytes = (url: string) => Promise<ArrayBuffer>;
+
+/**
+ * Fetch a whole model file with a plain body read while holding the Response.
+ *
+ * three's FileLoader re-wraps response bodies in a progress ReadableStream and lets the original
+ * Response go. If a garbage collection runs mid-load (likely while 17 GLBs parse in parallel),
+ * Chromium/Edge cancel that orphaned request after its bytes arrived, which the network log
+ * reports as net::ERR_ABORTED even though the model loads. Reading with arrayBuffer() keeps the
+ * request owned until it completes, and each model is requested exactly once.
+ */
+export const fetchModelBytes: FetchBytes = async (url) => {
+  const response = await fetch(url);
+  if (!response.ok) throw new Error(`${url}: HTTP ${response.status}`);
+  return await response.arrayBuffer();
+};
+
 export interface ModelLibrary {
   /** A fresh instance (deep clone) of the model; materials shared unless `ownMaterials`. */
   instance(id: ModelId, ownMaterials?: boolean): Object3D;
@@ -75,16 +93,22 @@ function cloneMaterials(root: Object3D): void {
 export async function loadModels(
   ids: readonly ModelId[] = MODEL_IDS,
   onProgress?: (loaded: number, total: number) => void,
+  fetchBytes: FetchBytes = fetchModelBytes,
+  base: string = import.meta.env.BASE_URL,
 ): Promise<ModelLibrary> {
   const loader = new GLTFLoader();
+  const resourcePath = modelUrl(ids[0] ?? 'courier_body', base).replace(/[^/]*$/, '');
+  // One request per model URL, even if an ID were listed twice.
+  const unique = [...new Set(ids)];
   const templates = new Map<ModelId, Object3D>();
   const sources = new Map<ModelId, ModelSource>();
   let done = 0;
 
   await Promise.all(
-    ids.map(async (id) => {
+    unique.map(async (id) => {
       try {
-        const gltf = await loader.loadAsync(modelUrl(id));
+        const bytes = await fetchBytes(modelUrl(id, base));
+        const gltf = await loader.parseAsync(bytes, resourcePath);
         const root = gltf.scene.getObjectByName(id) ?? gltf.scene;
         root.removeFromParent();
         root.position.set(0, 0, 0);
@@ -99,7 +123,7 @@ export async function loadModels(
         sources.set(id, 'placeholder');
       } finally {
         done += 1;
-        onProgress?.(done, ids.length);
+        onProgress?.(done, unique.length);
       }
     }),
   );

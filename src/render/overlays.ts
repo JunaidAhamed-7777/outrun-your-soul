@@ -129,6 +129,7 @@ export class PreviewView {
   private time = 0;
   private readonly ivory = color('ivory');
   private readonly grey = new Color('#8b90a8');
+  private readonly gold = color('gold');
 
   constructor() {
     this.path = new StripMesh(dotLineMaterial(color('ivory'), 0.07, 0.24, 0), 2, 40);
@@ -216,7 +217,9 @@ export class PreviewView {
         const k = Math.min(1, 0.7 / cut);
         this.overflow.set([{ x: dash.end.x + dx * k, y: dash.end.y + dy * k }, dash.end], 0.05, 0.044);
       }
-      if (dash.limitedBy === 'wall' && cut > 1e-3) {
+      if ((dash.limitedBy === 'wall' || dash.limitedBy === 'guard') && cut > 1e-3) {
+        // Wall: ivory stop tick. Warden guard: gold tick (the dash will glance off the shield).
+        this.wallTick.material.color.copy(dash.limitedBy === 'guard' ? this.gold : this.ivory);
         this.wallTick.visible = true;
         place(this.wallTick, dash.end, 0.05);
         this.wallTick.rotation.y = Math.atan2(dy, dx) + Math.PI / 2;

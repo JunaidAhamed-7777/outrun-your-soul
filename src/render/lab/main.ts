@@ -10,7 +10,9 @@ import { createRenderer, type RenderOverlay } from '../renderer';
 import { LAB_ROOM, makeFeatureState, makeFixtureState, makeLane } from './fixture';
 import { MiniSim } from './minisim';
 import { RealSim } from './realsim';
-import { ROOMS, DEPARTURE_COURT } from '../../content/rooms';
+import { ROOMS, ROOM_VARIANTS, DEPARTURE_COURT, LAST_WARDEN_ARENA } from '../../content/rooms';
+import { isRelicId, simHooksFor, type RelicId } from '../../run/relics';
+import type { RoomDef } from '../../sim/types';
 
 const params = new URLSearchParams(location.search);
 const scene = params.get('scene') ?? 'live';
@@ -20,11 +22,24 @@ const controls = document.getElementById('controls')!;
 
 let reducedMotion = params.get('rm') === '1';
 const renderer = await createRenderer(app, { reducedMotion, onContextLost: () => (hud.textContent = 'WebGL context lost') });
-// ?scene=sim runs the real simulation (room via ?room=<id>); other scenes use lab fixtures.
-const realRoom = ROOMS[params.get('room') ?? ''] ?? DEPARTURE_COURT;
+// ?scene=sim runs the real simulation (room via ?room=<id>, relics via ?relics=a,b);
+// ?room=boss_test is the Last Warden arena with a boss spawn (as tests/sim/boss.test.ts does).
+const BOSS_TEST: RoomDef = {
+  ...LAST_WARDEN_ARENA,
+  id: 'boss_test',
+  enemies: [],
+  lanes: [],
+  boss: { id: 'lw', at: { x: 4, y: 9 }, facing: { x: 0, y: -1 } },
+};
+const roomParam = params.get('room') ?? '';
+const roomVariants = ROOM_VARIANTS[roomParam];
+const variantRoom = roomVariants?.[Number(params.get('variant') ?? 0)] ?? roomVariants?.[0];
+const realRoom = roomParam === 'boss_test' ? BOSS_TEST : (variantRoom ?? ROOMS[roomParam] ?? DEPARTURE_COURT);
+const loadout = (params.get('relics') ?? '').split(',').filter(isRelicId) as RelicId[];
 renderer.setRoom(scene === 'sim' ? realRoom : LAB_ROOM);
 
-const sim: MiniSim | RealSim = scene === 'sim' ? new RealSim(realRoom) : new MiniSim(makeFixtureState());
+const sim: MiniSim | RealSim =
+  scene === 'sim' ? new RealSim(realRoom, Number(params.get('seed') ?? 1), loadout.length ? simHooksFor(loadout as never) : undefined) : new MiniSim(makeFixtureState());
 // Frozen scenes: 'still' (phase-1 overlays) and 'features' (warden, relics, boss, forecast).
 const frozen = scene === 'still' || scene === 'features';
 const still = scene === 'features' ? makeFeatureState() : makeFixtureState();
