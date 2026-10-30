@@ -381,7 +381,8 @@ export function createUI(container: HTMLElement, initialSettings: Settings, call
   }
 
   function showPause(reason: 'user' | 'interrupted'): void {
-    if (fatalVisible || titleVisible) return;
+    // Title, results and fatal screens are already static; never stack a pause over them.
+    if (fatalVisible || titleVisible || resultVisible) return;
     pauseReason.textContent = reason === 'interrupted' ? INTERRUPTED_NOTE : 'The courtyard waits.';
     if (pauseVisible) return;
     pauseVisible = true;
