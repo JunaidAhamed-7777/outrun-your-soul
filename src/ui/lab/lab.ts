@@ -6,6 +6,8 @@ import type { SimEvent, SimState } from '../../sim/types';
 import { createAudio } from '../../audio/audio';
 import type { CueName } from '../../audio/cues';
 import { CUE_SPECS } from '../../audio/voices';
+import { Synth, courtyardImpulse } from '../../audio/synth';
+import { playCue } from '../../audio/voicing';
 import { loadSettings, saveSettings } from '../../save/settings';
 import { createUI } from '../ui';
 import { LAB_ROOM, labState, withThread } from './fixture';
@@ -179,6 +181,45 @@ requestAnimationFrame(frame);
 (window as unknown as { labStep: (seconds: number) => void }).labStep = (seconds: number) => {
   for (let t = 0; t < seconds; t += 1 / 60) advance(1 / 60);
 };
+/** Render every cue offline and report loudness, so voicing is verified without a gesture. */
+(window as unknown as { labRenderCues: () => Promise<unknown[]> }).labRenderCues = async () => {
+  const results: unknown[] = [];
+  for (const cue of cueNames) {
+    for (const variant of variants[cue] ?? ['']) {
+      const sr = 44100;
+      const ctx = new OfflineAudioContext(2, Math.floor(sr * 3.6), sr);
+      const out = ctx.createGain();
+      out.connect(ctx.destination);
+      const reverb = ctx.createConvolver();
+      reverb.buffer = courtyardImpulse(ctx);
+      const ret = ctx.createGain();
+      ret.gain.value = 0.32;
+      reverb.connect(ret).connect(out);
+      const synth = new Synth(ctx, out, reverb);
+      const voice = playCue(synth, { cue, variant, delay: 0, degree: 4, intensity: 1, pan: 0.3 }, 0.01);
+      const buffer = await ctx.startRendering();
+      let peak = 0;
+      let sum = 0;
+      let bad = 0;
+      let lastLoud = 0;
+      for (let ch = 0; ch < buffer.numberOfChannels; ch++) {
+        const d = buffer.getChannelData(ch);
+        for (let i = 0; i < d.length; i++) {
+          const x = d[i] ?? 0;
+          if (!Number.isFinite(x)) bad++;
+          const a = Math.abs(x);
+          peak = Math.max(peak, a);
+          sum += x * x;
+          if (a > 0.002) lastLoud = Math.max(lastLoud, i / sr);
+        }
+      }
+      const rms = Math.sqrt(sum / (buffer.length * buffer.numberOfChannels));
+      results.push({ cue: variant ? `${cue}:${variant}` : cue, peak: +peak.toFixed(3), rms: +rms.toFixed(4), audibleUntil: +lastLoud.toFixed(2), declaredEnd: +voice.end.toFixed(2), bad });
+    }
+  }
+  return results;
+};
+(window as unknown as { labAudio: typeof audio }).labAudio = audio;
 (window as unknown as { labClick: (label: string) => void }).labClick = (label: string) => {
   [...document.querySelectorAll<HTMLButtonElement>('#lab button')].find((b) => b.textContent === label)?.click();
 };
