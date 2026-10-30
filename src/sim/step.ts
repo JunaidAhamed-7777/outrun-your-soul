@@ -19,7 +19,7 @@
  */
 import { applyCommand, executeBuffered, type StepProbe } from './actions';
 import { applyDamage } from './combat';
-import { aimToward, BOLT_MAX_AGE, isActive, sentryTuning, wakeEnemy } from './enemies';
+import { aimPointFor, aimToward, BOLT_MAX_AGE, isActive, sentryTuning, wakeEnemy } from './enemies';
 import {
   circleEntersRect,
   circleTimeOfImpact,
@@ -350,10 +350,6 @@ function findCollision(state: SimState, plan: Plan, span: number): Candidate | n
 // Advancing time
 // ---------------------------------------------------------------------------
 
-function targetPos(state: SimState, e: EnemyState): Vec2 {
-  return e.target === 'body' ? state.body.pos : state.soul.pos;
-}
-
 function advance(state: SimState, plan: Plan, dt: number): void {
   if (dt <= 0) return;
   const body = state.body;
@@ -383,7 +379,9 @@ function advance(state: SimState, plan: Plan, dt: number): void {
     if (!isActive(e.phase)) continue;
     e.phaseTime += dt;
     if (e.phase === 'tracking') {
-      e.aim = aimToward(e, targetPos(state, e));
+      const lockIn = Math.max(0, e.phaseDuration - e.phaseTime);
+      e.aimTarget = aimPointFor(state, e, lockIn + sentryTuning(e.role).locked);
+      e.aim = aimToward(e, e.aimTarget);
       e.facing = e.aim;
     }
   }
@@ -497,18 +495,23 @@ function enemyTransition(state: SimState, e: EnemyState, events: SimEvent[]): vo
     case 'idle':
       e.phase = 'tracking';
       e.phaseDuration = tune.tracking;
-      e.aim = aimToward(e, targetPos(state, e));
+      e.aimTarget = aimPointFor(state, e, tune.tracking + tune.locked);
+      e.aim = aimToward(e, e.aimTarget);
       e.facing = e.aim;
       events.push({ type: 'telegraph', t, enemyId: e.id, phase: 'tracking', target: e.target });
       return;
-    case 'tracking':
+    case 'tracking': {
       e.phase = 'locked';
       e.phaseDuration = tune.locked;
-      e.aim = aimToward(e, targetPos(state, e));
+      const point = aimPointFor(state, e, tune.locked);
+      e.aim = aimToward(e, point);
       e.facing = e.aim;
+      e.aimTarget = point;
+      e.lockTarget = point;
       e.attackId = state.nextId++;
       events.push({ type: 'telegraph', t, enemyId: e.id, phase: 'locked', target: e.target });
       return;
+    }
     case 'locked': {
       const attackId = e.attackId ?? state.nextId++;
       const pos = add(e.pos, scale(e.aim, e.radius));
@@ -522,9 +525,14 @@ function enemyTransition(state: SimState, e: EnemyState, events: SimEvent[]): vo
         radius: tune.boltRadius,
         age: 0,
         alive: true,
+        aimPoint: e.lockTarget ?? null,
+        speedScale: 1,
+        inHalo: false,
       };
       state.projectiles.push(bolt);
       e.attackId = null;
+      e.aimTarget = null;
+      e.lockTarget = null;
       e.phase = 'recover';
       e.phaseDuration = tune.recover;
       events.push({ type: 'fire', t, enemyId: e.id, projectileId: bolt.id, attackId, at: pos });
@@ -558,6 +566,8 @@ function resolve(state: SimState, ev: Candidate, events: SimEvent[], probe: Step
       e.phaseTime = 0;
       e.phaseDuration = Infinity;
       e.attackId = null;
+      e.aimTarget = null;
+      e.lockTarget = null;
       state.stats.kills += 1;
       events.push({ type: 'kill', t, enemyId: e.id, role: e.role, at: e.pos });
       wakeWhere(state, events, (s) => s.wake?.kind === 'enemyKilled' && s.wake.enemy === e.key);

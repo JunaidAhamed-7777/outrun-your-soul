@@ -75,6 +75,7 @@ export function checkInvariants(state: SimState): string[] {
     if (e.phase === 'locked' && e.attackId === null) errors.push(`enemy ${e.key} locked without attack ID`);
     if (!isActive(e.phase) && e.attackId !== null) errors.push(`inactive enemy ${e.key} holds attack ID`);
     if (Math.abs(Math.hypot(e.aim.x, e.aim.y) - 1) > 1e-6) errors.push(`enemy ${e.key} aim is not unit`);
+    if (e.lockTarget != null && e.phase !== 'locked') errors.push(`enemy ${e.key} holds a lock target while ${e.phase}`);
   }
   for (const lane of state.lanes) {
     if ((lane.status === 'active') !== (lane.attackId !== null)) {

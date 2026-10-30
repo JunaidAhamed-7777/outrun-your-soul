@@ -5,7 +5,8 @@
  *
  * Timings are paper values from COMBAT_SPEC/CONTENT, not validated difficulty.
  */
-import type { EnemyPhase, EnemyRole, EnemySpawn, EnemyState, EntityId } from './types';
+import { leadSoul } from './forecast';
+import type { EnemyPhase, EnemyRole, EnemySpawn, EnemyState, EntityId, SimState } from './types';
 import { normalize, sub, type Vec2 } from './vec';
 
 export interface SentryTuning {
@@ -34,13 +35,16 @@ export const ENEMY_TUNING: Readonly<Record<Exclude<EnemyRole, 'warden'>, SentryT
     boltRadius: 0.15,
     target: 'body',
   },
+  // Keepers lead the soul along its route, so their lock and flight are longer than a
+  // needler's: the reticle sits well ahead of the soul, leaving a novice RETURN or contact
+  // dash time to stop the soul short of it, and a slower bolt to cut.
   keeper: {
     radius: 0.42,
     cooldown: 2.0,
     tracking: 1.1,
-    locked: 0.6,
+    locked: 0.8,
     recover: 0.35,
-    boltSpeed: 4.5,
+    boltSpeed: 4.0,
     boltRadius: 0.17,
     target: 'soul',
   },
@@ -77,6 +81,8 @@ export function createEnemy(spawn: EnemySpawn, id: EntityId): EnemyState {
     target: tune.target,
     attackId: null,
     facing,
+    aimTarget: null,
+    lockTarget: null,
   };
 }
 
@@ -97,4 +103,15 @@ export function aimToward(enemy: EnemyState, point: Vec2): Vec2 {
   const d = sub(point, enemy.pos);
   const n = normalize(d);
   return n.x === 0 && n.y === 0 ? enemy.aim : n;
+}
+
+/**
+ * The point a sentry aims at if its shot left `delay` seconds from now. Needlers take the
+ * body's current position (stepping off the line is the counterplay). Keepers lead the
+ * soul: its forecast position along the committed route when the bolt would arrive.
+ */
+export function aimPointFor(state: SimState, enemy: EnemyState, delay: number): Vec2 {
+  if (enemy.target === 'body') return state.body.pos;
+  const tune = sentryTuning(enemy.role);
+  return leadSoul(state, enemy.pos, enemy.radius, tune.boltSpeed, delay);
 }

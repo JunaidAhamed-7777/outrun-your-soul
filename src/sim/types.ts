@@ -147,6 +147,14 @@ export interface EnemyState {
   /** Activation ID reserved when the warning locks; carried by the fired bolt. */
   attackId: AttackId | null;
   facing: Vec2;
+  /**
+   * Live point the warning is following while 'tracking': the body for needlers, the
+   * soul's forecast position on its route for keepers, or a Traveler's Knot decoy.
+   * Null when not aiming. Always populated by the simulation (optional for fixtures).
+   */
+  aimTarget?: Vec2 | null;
+  /** Point the locked shot was aimed at (where the reticle sits); null outside 'locked'. */
+  lockTarget?: Vec2 | null;
 }
 
 export interface ProjectileState {
@@ -155,11 +163,17 @@ export interface ProjectileState {
   readonly sourceId: EntityId;
   pos: Vec2;
   prevPos: Vec2;
-  /** Tiles per second. Glass Lantern may scale effective speed inside its halo. */
+  /** Base velocity in tiles per second. Effective velocity is vel * speedScale. */
   readonly vel: Vec2;
   readonly radius: number;
   age: number;
   alive: boolean;
+  /** Point the source locked onto when it fired (keeper forecast, needler body, decoy). */
+  aimPoint?: Vec2 | null;
+  /** Glass Lantern: 1 outside the soul halo, slowFactor inside. Missing means 1. */
+  speedScale?: number;
+  /** Glass Lantern: whether the bolt centre is inside the soul halo. */
+  inHalo?: boolean;
 }
 
 export type LaneStatus = 'idle' | 'warning' | 'active';
