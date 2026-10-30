@@ -34,3 +34,16 @@ export const MODEL_IDS = [
   'distant_engine',
 ] as const;
 export type ModelId = (typeof MODEL_IDS)[number];
+
+/** Named animated parts per asset (node `<asset_id>_<part>`), from docs/ASSET_CONTRACT.md and the art notes. */
+export const CONTRACT_PARTS: Readonly<Record<string, readonly string[]>> = {
+  courier_body: ['body', 'head', 'mask', 'scarf'],
+  soul_mask: ['mask', 'wisp'],
+  needler: ['base', 'head', 'muzzle'],
+  keeper: ['base', 'head', 'muzzle'],
+  warden: ['base', 'body', 'shield', 'core', 'muzzle'],
+  last_warden_body: ['body', 'head', 'mask', 'mantle'],
+  last_warden_heart: ['cage', 'core'],
+  exit_gate: ['frame', 'door_left', 'door_right'],
+  distant_engine: ['body', 'gear_a', 'gear_b', 'train'],
+};

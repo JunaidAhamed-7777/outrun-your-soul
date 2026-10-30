@@ -10,11 +10,18 @@
  */
 import { BufferAttribute, BufferGeometry, Color, Matrix4, Mesh, MeshToonMaterial, Object3D, type Material } from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
+import { CONTRACT_PARTS } from './contract';
 import { toonGradient } from './materials';
 
-/** Contract parts (`<id>_<part>`) keep their identity whether they are groups or meshes. */
+/**
+ * Parts keep their identity: exact contract part nodes (group or mesh), plus any non-mesh
+ * `<id>_*` pivot group (placeholder sub-parts such as courier_body_scarf_tail). Primitive child
+ * meshes that GLTFLoader names `<part>_1`, `<part>_2` are NOT parts and get merged.
+ */
 function isPart(node: Object3D, id: string): boolean {
-  return node.name.startsWith(`${id}_`) && !node.name.includes(':');
+  if (node.name.includes(':')) return false;
+  if ((CONTRACT_PARTS[id] ?? []).some((p) => node.name === `${id}_${p}`)) return true;
+  return node.name.startsWith(`${id}_`) && !(node instanceof Mesh);
 }
 
 /** Collect meshes owned by `part` (not inside a nested part). */
