@@ -51,6 +51,8 @@ export interface RendererOptions {
   maxPixelRatio?: number;
   /** Called once when the WebGL context is lost; rendering stops until it is restored. */
   onContextLost?: () => void;
+  /** Model loading progress for the boot screen (models parsed so far, total). */
+  onLoadProgress?: (loaded: number, total: number) => void;
 }
 
 export interface RenderStats {
@@ -132,7 +134,7 @@ export async function createRenderer(container: HTMLElement, options: RendererOp
   const sun = new DirectionalLight(new Color('#fff0d6'), 2.6);
   scene.add(hemi, sun, sun.target);
 
-  const lib: ModelLibrary = await loadModels();
+  const lib: ModelLibrary = await loadModels(undefined, options.onLoadProgress);
   const spot = radialSpot(0.0);
   const star = starSpot();
 

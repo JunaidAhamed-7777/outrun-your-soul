@@ -29,6 +29,7 @@ import {
 } from '../sim';
 import { BOSS_INTRO_SUBTITLE, createUI, type GameUI } from '../ui/ui';
 import { AimTracker } from './aim';
+import { bootFraction, bootScreen, SCRIPT_SHARE } from './boot';
 import { Director, type Screen } from './director';
 import { roomMeta } from './room-meta';
 import { continueDetail, draftView, endingView, loadoutChips, routeChoices, starterOptions } from './views';
@@ -65,6 +66,8 @@ export interface GameHandle {
 }
 
 export async function startGame(container: HTMLElement): Promise<GameHandle | null> {
+  const boot = bootScreen();
+  boot.progress(SCRIPT_SHARE, 'Loading the courtyard…');
   const params = new URLSearchParams(window.location.search);
   const debug = params.has('debug');
   const fixedSeed = params.get('seed');
@@ -127,12 +130,18 @@ export async function startGame(container: HTMLElement): Promise<GameHandle | nu
   audio.setVolumes(settings.musicVolume, settings.sfxVolume);
 
   if (!isWebGL2Available()) {
+    boot.done();
     ui.showFatal('WebGL 2 is not available', 'This game needs a browser with WebGL 2 enabled. Try a current Chrome, Safari or Firefox.');
     return null;
   }
   try {
-    renderer = await createRenderer(container, { reducedMotion: settings.reducedMotion });
+    renderer = await createRenderer(container, {
+      reducedMotion: settings.reducedMotion,
+      onLoadProgress: (loaded, total) =>
+        boot.progress(bootFraction(loaded, total), loaded >= total ? 'Lighting the lamps…' : `Raising the courtyard · ${loaded}/${total}`),
+    });
   } catch (err) {
+    boot.done();
     ui.showFatal('The renderer could not start', String((err as Error)?.message ?? err));
     return null;
   }
@@ -365,6 +374,8 @@ export async function startGame(container: HTMLElement): Promise<GameHandle | nu
   loop.start();
   window.addEventListener('resize', () => activeRenderer.resize());
   showTitle();
+  boot.progress(1, 'Ready');
+  boot.done();
 
   const handle: GameHandle = { state: () => sim, phase: () => phase };
   if (debug) {
