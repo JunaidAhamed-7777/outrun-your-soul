@@ -3,7 +3,8 @@ import { DEPARTURE_COURT, GLASS_CROSSING } from '../../src/content/rooms';
 import { checkInvariants, createSim, previewDash, previewReturn, stepSim } from '../../src/sim';
 import { nextRandom, seedRng } from '../../src/sim/rng';
 import { simDiagnostics } from '../../src/sim/step';
-import type { Command, RoomDef, SimEvent } from '../../src/sim/types';
+import { simHooksFor } from '../../src/run/relics';
+import type { Command, RoomDef, SimEvent, SimRelicConfig } from '../../src/sim/types';
 import { makeRoom } from './helpers';
 
 const ARENA: RoomDef = makeRoom({
@@ -28,9 +29,14 @@ const ARENA: RoomDef = makeRoom({
   ],
 });
 
-function fuzz(room: RoomDef, seed: number, steps: number): { events: SimEvent[]; violations: string[] } {
+function fuzz(
+  room: RoomDef,
+  seed: number,
+  steps: number,
+  relics?: SimRelicConfig,
+): { events: SimEvent[]; violations: string[] } {
   const rng = { rng: seedRng(seed) };
-  const s = createSim(room, { seed });
+  const s = createSim(room, { seed, relics });
   const events: SimEvent[] = [];
   const violations: string[] = [];
   for (let i = 0; i < steps; i++) {
@@ -60,7 +66,7 @@ function fuzz(room: RoomDef, seed: number, steps: number): { events: SimEvent[];
     if (violations.length > 5) break;
     if (s.outcome !== 'playing') {
       // Restart the room to keep exploring (Continue restarts this room).
-      Object.assign(s, createSim(room, { seed: seed + i }));
+      Object.assign(s, createSim(room, { seed: seed + i, relics }));
     }
   }
   return { events, violations };
@@ -87,6 +93,19 @@ describe('seeded fuzz: invariants hold after every step', () => {
     it(`Glass Crossing (seed ${seed})`, () => {
       const { violations } = fuzz(GLASS_CROSSING, seed, 4000);
       expect(violations).toEqual([]);
+    });
+  }
+
+  for (const [seed, loadout] of [
+    [21, ['needlesong', 'glass_lantern']],
+    [22, ['mourning_bell', 'travelers_knot']],
+    [23, ['glass_lantern', 'mourning_bell']],
+    [24, ['needlesong', 'travelers_knot']],
+  ] as const) {
+    it(`arena with relics ${loadout.join(' + ')} (seed ${seed})`, () => {
+      const { events, violations } = fuzz(ARENA, seed, 4000, simHooksFor(loadout));
+      expect(violations).toEqual([]);
+      expect(events.some((e) => e.type === 'kill')).toBe(true);
     });
   }
 

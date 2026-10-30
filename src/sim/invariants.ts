@@ -77,6 +77,27 @@ export function checkInvariants(state: SimState): string[] {
     if (Math.abs(Math.hypot(e.aim.x, e.aim.y) - 1) > 1e-6) errors.push(`enemy ${e.key} aim is not unit`);
     if (e.lockTarget != null && e.phase !== 'locked') errors.push(`enemy ${e.key} holds a lock target while ${e.phase}`);
   }
+  const relics = state.relicState;
+  if (relics) {
+    const bell = relics.config.mourningBell;
+    if (!bell && (relics.bellKills !== 0 || relics.bellCharged)) errors.push('bell state without Mourning Bell');
+    if (bell && (relics.bellKills < 0 || relics.bellKills >= Math.max(1, bell.killsPerCharge))) {
+      errors.push(`bell kill count ${relics.bellKills} out of range`);
+    }
+    if (!relics.config.travelersKnot && (relics.knotMarked || relics.decoy)) errors.push("knot state without Traveler's Knot");
+    if (relics.knotMarked && relics.decoy) errors.push('a knot mark and an active decoy at once');
+    const claimer = relics.decoy?.claimedBy;
+    if (claimer != null && state.enemies.find((e) => e.id === claimer)?.phase !== 'tracking') {
+      errors.push('decoy claimed by a sentry that is not tracking');
+    }
+    if (state.soul.boostLeft > 0 && !relics.config.needlesong) errors.push('soul boost without Needlesong');
+  }
+  if ((state.soul.boostLeft > 0) !== (state.soul.speedMultiplier !== 1)) errors.push('soul boost timer and multiplier disagree');
+  for (const p of state.projectiles) {
+    const scale = p.speedScale ?? 1;
+    const expected = p.inHalo ? (relics?.config.glassLantern?.slowFactor ?? 1) : 1;
+    if (Math.abs(scale - expected) > 1e-12) errors.push(`bolt ${p.id} speed scale ${scale} does not match halo state`);
+  }
   for (const lane of state.lanes) {
     if ((lane.status === 'active') !== (lane.attackId !== null)) {
       errors.push(`lane ${lane.key} attack ID inconsistent with status`);

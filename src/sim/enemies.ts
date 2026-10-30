@@ -106,11 +106,14 @@ export function aimToward(enemy: EnemyState, point: Vec2): Vec2 {
 }
 
 /**
- * The point a sentry aims at if its shot left `delay` seconds from now. Needlers take the
- * body's current position (stepping off the line is the counterplay). Keepers lead the
- * soul: its forecast position along the committed route when the bolt would arrive.
+ * The point a sentry aims at if its shot left `delay` seconds from now. A sentry that
+ * claimed a Traveler's Knot decoy aims at the decoy. Otherwise needlers take the body's
+ * current position (stepping off the line is the counterplay) and keepers lead the soul:
+ * its forecast position along the committed route when the bolt would arrive.
  */
 export function aimPointFor(state: SimState, enemy: EnemyState, delay: number): Vec2 {
+  const decoy = state.relicState?.decoy;
+  if (decoy && decoy.claimedBy === enemy.id) return decoy.pos;
   if (enemy.target === 'body') return state.body.pos;
   const tune = sentryTuning(enemy.role);
   return leadSoul(state, enemy.pos, enemy.radius, tune.boltSpeed, delay);
