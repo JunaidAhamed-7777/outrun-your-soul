@@ -1,0 +1,53 @@
+{
+  "asset_id": "last_warden_body",
+  "status": "exported",
+  "author": "original (script-authored in Blender via the pinned Blender MCP bridge)",
+  "created_at": "2026-10-30T15:19:28+00:00",
+  "blender_version": "5.2.2 LTS",
+  "exporter_version": "5.2.40",
+  "source_path": "art/source/actors.blend",
+  "export": {
+    "path": "public/assets/models/last_warden_body.glb",
+    "bytes": 147436,
+    "sha256": "bb8508223bd2fc8dc8c5af0a3934a88443526227cd10fbed92ac69d2e9c9aa28"
+  },
+  "preview": "art/previews/last_warden_body-game-camera.png",
+  "measured": {
+    "triangles": 2564,
+    "materials": [
+      "gold",
+      "gold_dark",
+      "ivory",
+      "vermilion_dark"
+    ],
+    "material_count": 4,
+    "bounds_min": [
+      -0.54,
+      -0.4424,
+      0.0
+    ],
+    "bounds_max": [
+      0.54,
+      0.455,
+      1.6096
+    ],
+    "dimensions": [
+      1.08,
+      0.8975,
+      1.6096
+    ],
+    "parts": [
+      "last_warden_body",
+      "last_warden_body_body",
+      "last_warden_body_head",
+      "last_warden_body_mantle",
+      "last_warden_body_mask"
+    ]
+  },
+  "budget": {
+    "triangles": 4000,
+    "materials": 4
+  },
+  "within_budget": true,
+  "notes": "Last Warden boss body: a dark mirror of the courier. Tall gold_dark robe with gold armour (belt, breastplate, pauldrons, gauntlets, sabatons), crowned gold_dark cowl (seven-spike ring), ivory mask in a gold frame with vermilion_dark eye slits tipped 32 deg toward the camera, a vermilion_dark mantle (curved grid cape) pivoting at the shoulders, and a gold funeral staff with ring and bell. Parts: body pivot at hips (z 0.60), head pivot at neck (z 1.08), mask child of head, mantle pivot at shoulders (z 1.00)."
+}
