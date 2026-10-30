@@ -216,6 +216,12 @@ class PartBuilder:
     def prism(self, outline, depth, center=(0, 0, 0), key='ivory', plane='XZ', rot=None) -> 'PartBuilder':
         return self.add(prism(outline, depth, plane), key, placement(center, rot))
 
+    def tube(self, path, radii, key='ivory', segments=6, center=(0, 0, 0), rot=None) -> 'PartBuilder':
+        return self.add(tube(path, radii, segments), key, placement(center, rot))
+
+    def strip(self, path, widths, thickness, key='vermilion', center=(0, 0, 0), rot=None) -> 'PartBuilder':
+        return self.add(strip(path, widths, thickness), key, placement(center, rot))
+
 
 def placement(center, rot=None) -> Matrix:
     m = Matrix.Translation(Vector(center))
@@ -299,6 +305,103 @@ def prism(outline, depth: float, plane: str = 'XZ') -> bmesh.types.BMesh:
         j = (i + 1) % n
         bm.faces.new((front[j], front[i], back[i], back[j]))
     bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
+    return bm
+
+
+def _path_frames(path, up=(0.0, 0.0, 1.0)):
+    """Tangents and parallel-transported normals along a polyline (no sudden twists)."""
+    pts = [Vector(p) for p in path]
+    n = len(pts)
+    tangents = []
+    for i in range(n):
+        a = pts[max(i - 1, 0)]
+        b = pts[min(i + 1, n - 1)]
+        t = b - a
+        tangents.append(t.normalized() if t.length > 1e-9 else Vector((0, 1, 0)))
+    ref = Vector(up)
+    if abs(tangents[0].dot(ref)) > 0.95:
+        ref = Vector((1, 0, 0))
+    normals = [(ref - tangents[0] * tangents[0].dot(ref)).normalized()]
+    for t in tangents[1:]:
+        prev = normals[-1]
+        cand = prev - t * t.dot(prev)
+        normals.append(cand.normalized() if cand.length > 1e-9 else prev)
+    return pts, tangents, normals
+
+
+def tube(path, radii, segments: int = 6) -> bmesh.types.BMesh:
+    """Tapered tube along a polyline. radii per point; a zero radius end becomes a point."""
+    if len(radii) != len(path):
+        raise ValueError('tube needs one radius per path point')
+    pts, tangents, normals = _path_frames(path)
+    bm = bmesh.new()
+    rings = []
+    for p, t, nrm, r in zip(pts, tangents, normals, radii):
+        if r <= 1e-6:
+            rings.append([bm.verts.new(p)])
+            continue
+        b = t.cross(nrm)
+        rings.append([bm.verts.new(p + (nrm * math.cos(2 * math.pi * k / segments)
+                                        + b * math.sin(2 * math.pi * k / segments)) * r)
+                      for k in range(segments)])
+    for a, c in zip(rings, rings[1:]):
+        for k in range(segments):
+            j = (k + 1) % segments
+            if len(a) == 1 and len(c) == 1:
+                continue
+            if len(a) == 1:
+                bm.faces.new((a[0], c[j], c[k]))
+            elif len(c) == 1:
+                bm.faces.new((a[k], a[j], c[0]))
+            else:
+                bm.faces.new((a[k], a[j], c[j], c[k]))
+    if len(rings[0]) > 1:
+        bm.faces.new(list(reversed(rings[0])))
+    if len(rings[-1]) > 1:
+        bm.faces.new(rings[-1])
+    bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
+    return bm
+
+
+def strip(path, widths, thickness: float, up=(0.0, 0.0, 1.0)) -> bmesh.types.BMesh:
+    """Tapered flat ribbon (closed box section) along a polyline; width stays horizontal-ish.
+
+    Useful for scarves, banners and cloth tails. widths per point (0 allowed at the end).
+    """
+    if len(widths) != len(path):
+        raise ValueError('strip needs one width per path point')
+    pts = [Vector(p) for p in path]
+    n = len(pts)
+    upv = Vector(up)
+    bm = bmesh.new()
+    sections = []
+    for i, (p, w) in enumerate(zip(pts, widths)):
+        t = pts[min(i + 1, n - 1)] - pts[max(i - 1, 0)]
+        t = t.normalized() if t.length > 1e-9 else Vector((0, 1, 0))
+        side = t.cross(upv)
+        if side.length < 1e-6:
+            side = Vector((1, 0, 0))
+        side.normalize()
+        normal = side.cross(t).normalized()
+        hw = max(w, 1e-4) / 2
+        ht = thickness / 2
+        sections.append([bm.verts.new(p + side * sx * hw + normal * nz * ht)
+                         for sx, nz in ((-1, -1), (1, -1), (1, 1), (-1, 1))])
+    for a, c in zip(sections, sections[1:]):
+        for k in range(4):
+            j = (k + 1) % 4
+            bm.faces.new((a[k], a[j], c[j], c[k]))
+    bm.faces.new(list(reversed(sections[0])))
+    bm.faces.new(sections[-1])
+    bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
+    return bm
+
+
+def deform(bm: bmesh.types.BMesh, fn) -> bmesh.types.BMesh:
+    """Apply fn(Vector) -> Vector to every vertex (bends, tapers, shear) and return bm."""
+    for vert in bm.verts:
+        vert.co = Vector(fn(vert.co.copy()))
+    bm.normal_update()
     return bm
 
 
