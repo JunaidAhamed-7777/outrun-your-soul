@@ -1,7 +1,7 @@
 {
   "note": "Desktop browser with phone emulation. Not phone evidence: no real touch hardware, mobile GPU, iOS Safari or itch.io page involved.",
-  "source": "ZIP C:\\Github\\outrun-your-soul\\.claude\\worktrees\\agent-a3967bf4c2c29b0ed\\release\\outrun-your-soul-0.1.0-2dd1e69.zip",
-  "gameUrl": "http://127.0.0.1:64501/html/1234567/index.html",
+  "source": "ZIP C:\\Github\\outrun-your-soul\\.claude\\worktrees\\agent-a3967bf4c2c29b0ed\\release\\outrun-your-soul-0.1.0-a2d9668.zip",
+  "gameUrl": "http://127.0.0.1:59874/html/1234567/index.html",
   "viewport": {
     "width": 375,
     "height": 812,
@@ -22,26 +22,37 @@
     {
       "id": "A3 title Begin button visible",
       "ok": true,
-      "detail": "499 ms after navigation start"
+      "detail": "953 ms after navigation start"
+    },
+    {
+      "id": "A5 title scene renders packaged GLBs, not placeholders (triangle counts match)",
+      "ok": true,
+      "detail": "verified courier_body, distant_engine, exit_gate, keeper, needler, soul_mask, threshold_inlay"
     },
     {
       "id": "A4 no console errors, page errors or failed requests (production load)",
       "ok": true,
-      "detail": "ignored 1 browser-initiated /favicon.ico 404(s) at the origin root (no <link rel=\"icon\"> in index.html; not requested inside the itch iframe)"
+      "detail": "noted 1 net::ERR_ABORTED report(s) for resources that finished with HTTP 200 or render from their GLB: courier_body.glb"
     },
     {
-      "id": "B1 real tap on Begin starts the room",
-      "ok": true
+      "id": "B1b room 1 scene renders packaged GLBs for every named model root (courier, soul, sentries, gate, engine)",
+      "ok": true,
+      "detail": "verified courier_body, distant_engine, exit_gate, keeper, needler, soul_mask, threshold_inlay across 9 roots"
+    },
+    {
+      "id": "B1 Begin -> starter select (Threadkeeper open, Long Reach locked on fresh storage) -> room 1 with intro card",
+      "ok": true,
+      "detail": "starters {\"threadkeeperEnabled\":true,\"longReachEnabled\":false}; room departure_court at n0; loadout [\"needlesong\"]; intro \"Departure Court · stop 1 of 7Departure CourtOpen stone and an obvious gate. Learn to leave yourself behind.\""
     },
     {
       "id": "B2 draw calls per frame within the 60-call room budget",
       "ok": true,
-      "detail": "p50 52, max 52"
+      "detail": "p50 42, max 42"
     },
     {
       "id": "B3 real touch drag (130 px up) dashes",
       "ok": true,
-      "detail": "dashes 0 -> 1; body (4.00, 1.50) -> (4.00, 4.00); kills 0"
+      "detail": "dashes 0 -> 1; body (4.00, 1.50) -> (4.00, 4.38); kills 1"
     },
     {
       "id": "B4 real short tap RETURNs when separated",
@@ -51,25 +62,25 @@
     {
       "id": "B5 visibilitychange(hidden) pauses, shows the pause panel and freezes sim time",
       "ok": true,
-      "detail": "phase paused, panel true, sim t 3.175 -> 3.175 over 1 s"
+      "detail": "phase paused, panel true, sim t 3.4833333333333334 -> 3.4833333333333334 over 1 s"
     },
     {
       "id": "B6 explicit Resume continues the same in-memory state",
       "ok": true,
-      "detail": "sim t 3.175 -> 3.4833333333333334"
+      "detail": "sim t 3.4833333333333334 -> 3.783333333333333"
     },
     {
       "id": "B7 window blur pauses and freezes sim time",
       "ok": true,
-      "detail": "phase paused, sim t 3.4833333333333334 -> 3.4833333333333334"
+      "detail": "phase paused, sim t 3.8 -> 3.8"
     },
     {
       "id": "B8 scripted Departure Court clear reaches victory",
       "ok": true,
-      "detail": "sim 11.44 s, health 5/5, stats {\"dashes\":23,\"returns\":1,\"cuts\":0,\"kills\":4,\"hits\":0,\"contactReunions\":0,\"exhaustionReunions\":2}"
+      "detail": "sim 11.56 s, health 5, stats {\"dashes\":21,\"returns\":1,\"cuts\":0,\"kills\":4,\"hits\":0,\"contactReunions\":0,\"exhaustionReunions\":2}"
     },
     {
-      "id": "B9 result panel shows \"The gate opens.\"",
+      "id": "B9 result panel shows \"The gate opens.\" with an Onward button",
       "ok": true
     },
     {
@@ -78,66 +89,114 @@
       "detail": "k1"
     },
     {
-      "id": "B11 no console errors, page errors or failed requests (debug session)",
+      "id": "B11 Onward -> \"Choose your line\" with two cards -> first card starts room 2 with its intro card",
       "ok": true,
-      "detail": "ignored 1 browser-initiated /favicon.ico 404(s) at the origin root (no <link rel=\"icon\"> in index.html; not requested inside the itch iframe)"
+      "detail": "cards [\"Silk Cloister\",\"Needle Gallery\"]; at n0 -> n1a (template silk_cloister, room data silk_cloister); intro \"Silk Cloister · stop 2 of 7Silk Cloister: ArcadeClose as the crow flies, far along the thread.\""
+    },
+    {
+      "id": "B12 after a reload the title offers Continue with \"Continue restarts this room.\"",
+      "ok": true,
+      "detail": "caption \"Continue restarts this room.\"; detail \"Silk Cloister · 5 health\"; New expedition button true"
+    },
+    {
+      "id": "B13 Continue restarts the same room (node, room, entry health) from its start",
+      "ok": true,
+      "detail": "at n1a -> n1a; room silk_cloister -> silk_cloister; health 5 -> 5; sim t 0.37 s after Continue"
+    },
+    {
+      "id": "B14 deliberately walking into firing lines (no kills) loses the room and offers Retry room / Abandon expedition",
+      "ok": true,
+      "detail": "outcome defeat at sim 18.95 s after 2 dashes, health 0, kills 0"
+    },
+    {
+      "id": "B15 Retry room restarts the same room as attempt 2 at entry health",
+      "ok": true,
+      "detail": "at n1a; failed attempts 0 -> 1; health 5; intro \"Silk Cloister · stop 2 of 7Silk Cloister: ArcadeAttempt 2 — the room is as you entered it.\""
+    },
+    {
+      "id": "B16 no console errors, page errors or failed requests (UI session incl. reload)",
+      "ok": true,
+      "detail": "noted 2 net::ERR_ABORTED report(s) for resources that finished with HTTP 200 or render from their GLB: courier_body.glb, courier_body.glb"
+    },
+    {
+      "id": "C1 full expedition via __oys.start() + bot + DOM panel clicks reaches \"Escaped.\"",
+      "ok": true,
+      "detail": "5 room attempts over nodes n0 > n1a > n2 > n3a > n4 > n5 > n6 > n7; relics taken [\"Mourning Bell\",\"Long Silk\"]; final loadout [\"long_silk\",\"mourning_bell\"]; 47.67 s sim; failures 0"
+    },
+    {
+      "id": "C2 after the run, the title offers Begin again and Long Reach is unlocked on the starter panel",
+      "ok": true,
+      "detail": "Long Reach enabled true"
+    },
+    {
+      "id": "C3 no console errors, page errors or failed requests (full expedition)",
+      "ok": true,
+      "detail": "noted 1 net::ERR_ABORTED report(s) for resources that finished with HTTP 200 or render from their GLB: courier_body.glb"
     }
   ],
   "measurements": {
     "coldLoad": {
-      "domContentLoadedMs": 99,
-      "loadMs": 100,
-      "firstWebGLDrawMs": 319,
-      "transferBytes": 1408784,
+      "domContentLoadedMs": 186,
+      "loadMs": 191,
+      "firstWebGLDrawMs": 585,
+      "transferBytes": 2052413,
       "canvas": true,
       "webgl2": true,
       "renderer": "ANGLE (AMD, AMD Radeon(TM) Graphics (0x00001638) Direct3D11 vs_5_0 ps_5_0, D3D11)",
       "debugHook": false,
-      "beginVisibleMs": 499,
+      "beginVisibleMs": 953,
       "label": "desktop headless browser, local server, cold cache; not phone evidence"
     },
     "livePlay": {
       "label": "desktop headless browser rAF over 2 s of live play; not phone frame pacing",
-      "frames": 258,
+      "frames": 319,
       "frameIntervalMs": {
-        "p50": 7.5,
-        "p95": 8.2,
-        "max": 8.6
+        "p50": 6.1,
+        "p95": 6.2,
+        "max": 18.3
       },
       "drawCallsPerFrame": {
-        "p50": 52,
-        "max": 52
+        "p50": 42,
+        "max": 42
       },
       "trianglesPerFrame": {
-        "p50": 16930,
-        "max": 16930,
+        "p50": 21155,
+        "max": 21155,
         "note": "TRIANGLES-mode draws only, counted from draw call arguments"
       }
     },
     "afterPlaythrough": {
-      "label": "desktop Chromium-family metrics after one full clear; not phone memory evidence",
-      "jsHeapUsedBytes": 12814020,
-      "jsHeapTotalBytes": 21372928,
-      "domNodes": 210,
-      "jsEventListeners": 175
+      "label": "desktop Chromium-family metrics after clearing room 1; not phone memory evidence",
+      "jsHeapUsedBytes": 12878368,
+      "jsHeapTotalBytes": 20586496,
+      "domNodes": 284,
+      "jsEventListeners": 192
     }
   },
   "screenshots": [
     "art/previews/e2e-title.png",
+    "art/previews/e2e-starter.png",
     "art/previews/e2e-first-dash.png",
     "art/previews/e2e-paused.png",
     "art/previews/e2e-telegraph.png",
-    "art/previews/e2e-victory.png"
+    "art/previews/e2e-victory.png",
+    "art/previews/e2e-route.png",
+    "art/previews/e2e-room2-intro.png",
+    "art/previews/e2e-continue.png",
+    "art/previews/e2e-defeat.png",
+    "art/previews/e2e-station.png",
+    "art/previews/e2e-ending.png"
   ],
   "playthrough": {
     "method": "tests/sim/bot.ts botCommand() run in Node on page state each 0.05 s sim; commands via window.__oys.push; time via __oys.advance(0.05) plus the live rAF loop",
     "outcome": "victory",
-    "simSeconds": 11.44,
-    "wallSeconds": 1.1,
-    "healthStartOfScript": 5,
+    "roomData": "departure_court",
+    "simSeconds": 11.56,
+    "wallSeconds": 1.41,
+    "healthStart": 5,
     "healthLeft": 5,
     "stats": {
-      "dashes": 23,
+      "dashes": 21,
       "returns": 1,
       "cuts": 0,
       "kills": 4,
@@ -145,6 +204,7 @@
       "contactReunions": 0,
       "exhaustionReunions": 2
     },
+    "fallbackCommands": 0,
     "lockedTelegraphsSeen": [
       "k1"
     ]
@@ -154,8 +214,205 @@
     "version": "156.0.4314.50"
   },
   "notes": [
-    "ignored 1 browser-initiated /favicon.ico 404(s) at the origin root (no <link rel=\"icon\"> in index.html; not requested inside the itch iframe)",
-    "ignored 1 browser-initiated /favicon.ico 404(s) at the origin root (no <link rel=\"icon\"> in index.html; not requested inside the itch iframe)"
+    "noted 1 net::ERR_ABORTED report(s) for resources that finished with HTTP 200 or render from their GLB: courier_body.glb",
+    "noted 2 net::ERR_ABORTED report(s) for resources that finished with HTTP 200 or render from their GLB: courier_body.glb, courier_body.glb",
+    "noted 1 net::ERR_ABORTED report(s) for resources that finished with HTTP 200 or render from their GLB: courier_body.glb"
   ],
+  "consoleWarnings": [],
+  "expedition": {
+    "seed": 11,
+    "starter": "threadkeeper",
+    "rooms": [
+      {
+        "node": "n0",
+        "kind": "encounter",
+        "template": "departure_court",
+        "attempt": 1,
+        "outcome": "victory",
+        "roomData": "departure_court",
+        "simSeconds": 9.96,
+        "wallSeconds": 0.99,
+        "healthStart": 5,
+        "healthLeft": 5,
+        "stats": {
+          "dashes": 30,
+          "returns": 0,
+          "cuts": 0,
+          "kills": 4,
+          "hits": 0,
+          "contactReunions": 0,
+          "exhaustionReunions": 1
+        },
+        "fallbackCommands": 0
+      },
+      {
+        "node": "n1a",
+        "kind": "encounter",
+        "template": "needle_gallery",
+        "attempt": 1,
+        "outcome": "victory",
+        "roomData": "needle_gallery",
+        "simSeconds": 8.12,
+        "wallSeconds": 0.8,
+        "healthStart": 5,
+        "healthLeft": 5,
+        "stats": {
+          "dashes": 17,
+          "returns": 1,
+          "cuts": 0,
+          "kills": 3,
+          "hits": 0,
+          "contactReunions": 0,
+          "exhaustionReunions": 2
+        },
+        "fallbackCommands": 0
+      },
+      {
+        "node": "n3a",
+        "kind": "encounter",
+        "template": "mourners_garden",
+        "attempt": 1,
+        "outcome": "victory",
+        "roomData": "mourners_garden",
+        "simSeconds": 9.43,
+        "wallSeconds": 0.73,
+        "healthStart": 5,
+        "healthLeft": 5,
+        "stats": {
+          "dashes": 32,
+          "returns": 0,
+          "cuts": 1,
+          "kills": 4,
+          "hits": 0,
+          "contactReunions": 1,
+          "exhaustionReunions": 1
+        },
+        "fallbackCommands": 0
+      },
+      {
+        "node": "n5",
+        "kind": "encounter",
+        "template": "last_platform",
+        "attempt": 1,
+        "outcome": "victory",
+        "roomData": "last_platform",
+        "simSeconds": 10.13,
+        "wallSeconds": 0.69,
+        "healthStart": 5,
+        "healthLeft": 5,
+        "stats": {
+          "dashes": 13,
+          "returns": 2,
+          "cuts": 0,
+          "kills": 4,
+          "hits": 0,
+          "contactReunions": 0,
+          "exhaustionReunions": 3
+        },
+        "fallbackCommands": 0
+      },
+      {
+        "node": "n6",
+        "kind": "boss",
+        "template": "last_warden",
+        "attempt": 1,
+        "outcome": "victory",
+        "roomData": "last_warden",
+        "simSeconds": 10.03,
+        "wallSeconds": 0.8,
+        "healthStart": 5,
+        "healthLeft": 5,
+        "stats": {
+          "dashes": 12,
+          "returns": 2,
+          "cuts": 1,
+          "kills": 5,
+          "hits": 0,
+          "contactReunions": 0,
+          "exhaustionReunions": 3
+        },
+        "fallbackCommands": 0
+      }
+    ],
+    "choices": [
+      {
+        "panel": "route",
+        "offered": [
+          "Needle Gallery",
+          "Silk Cloister"
+        ],
+        "picked": "Needle Gallery"
+      },
+      {
+        "panel": "draft",
+        "offered": [
+          "Mourning Bell",
+          "Traveler's Knot",
+          "Short Stitch"
+        ],
+        "picked": "Mourning Bell",
+        "action": "Take Mourning Bell",
+        "loadoutAfter": [
+          "needlesong",
+          "mourning_bell"
+        ]
+      },
+      {
+        "panel": "route",
+        "offered": [
+          "Mourner's Garden",
+          "Glass Crossing"
+        ],
+        "picked": "Mourner's Garden"
+      },
+      {
+        "panel": "draft",
+        "offered": [
+          "Long Silk",
+          "Short Stitch",
+          "Traveler's Knot"
+        ],
+        "picked": "Long Silk",
+        "action": "Set down Needlesong",
+        "loadoutAfter": [
+          "long_silk",
+          "mourning_bell"
+        ]
+      }
+    ],
+    "relicsTaken": [
+      "Mourning Bell",
+      "Long Silk"
+    ],
+    "failures": [],
+    "ending": "Escaped.",
+    "totalSimSeconds": 47.67,
+    "wallSeconds": 16.12,
+    "history": [
+      "n0",
+      "n1a",
+      "n2",
+      "n3a",
+      "n4",
+      "n5",
+      "n6",
+      "n7"
+    ],
+    "finalLoadout": [
+      "long_silk",
+      "mourning_bell"
+    ],
+    "runOutcome": "victory",
+    "runTotals": {
+      "roomsCleared": 5,
+      "failedAttempts": 0,
+      "hitsTaken": 0,
+      "cuts": 2,
+      "kills": 20,
+      "contactReunions": 1,
+      "roomSeconds": 47.65833333333334
+    },
+    "notAuthoredWarnings": []
+  },
   "result": "PASS"
 }

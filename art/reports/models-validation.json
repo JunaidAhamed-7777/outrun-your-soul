@@ -17,10 +17,19 @@
     "soul_mask",
     "needler",
     "keeper",
+    "warden",
+    "last_warden_body",
+    "last_warden_heart",
     "floor_tile",
     "wall_block",
     "exit_gate",
-    "distant_engine"
+    "distant_engine",
+    "lane_emitter",
+    "threshold_inlay",
+    "urn",
+    "banner_post",
+    "lamp_post",
+    "station_kiosk"
   ],
   "missingRuntimeModels": [],
   "summary": {
@@ -39,16 +48,15 @@
       "status": "pass",
       "errors": [],
       "warnings": [
-        "not in MODEL_IDS (src/render/contract.ts): the runtime never requests it; remove it or add it to the contract",
-        "asset ID \"banner_post\" is not in the asset contract"
+        "3 materials exceeds 1 (Small prop / modular wall, docs/ART_PIPELINE.md)"
       ],
       "stats": {
         "assetId": "banner_post",
-        "category": "unknown",
+        "category": "module",
         "budget": {
-          "label": "Unknown asset ID: no documented budget",
-          "maxTriangles": 60000,
-          "maxMaterials": null
+          "label": "Small prop / modular wall",
+          "maxTriangles": 800,
+          "maxMaterials": 1
         },
         "rootNodes": [
           "banner_post"
@@ -481,16 +489,15 @@
       "status": "pass",
       "errors": [],
       "warnings": [
-        "not in MODEL_IDS (src/render/contract.ts): the runtime never requests it; remove it or add it to the contract",
-        "asset ID \"lamp_post\" is not in the asset contract"
+        "3 materials exceeds 1 (Small prop / modular wall, docs/ART_PIPELINE.md)"
       ],
       "stats": {
         "assetId": "lamp_post",
-        "category": "unknown",
+        "category": "module",
         "budget": {
-          "label": "Unknown asset ID: no documented budget",
-          "maxTriangles": 60000,
-          "maxMaterials": null
+          "label": "Small prop / modular wall",
+          "maxTriangles": 800,
+          "maxMaterials": 1
         },
         "rootNodes": [
           "lamp_post"
@@ -554,16 +561,15 @@
       "status": "pass",
       "errors": [],
       "warnings": [
-        "not in MODEL_IDS (src/render/contract.ts): the runtime never requests it; remove it or add it to the contract",
-        "asset ID \"lane_emitter\" is not in the asset contract"
+        "3 materials exceeds 1 (Small prop / modular wall, docs/ART_PIPELINE.md)"
       ],
       "stats": {
         "assetId": "lane_emitter",
-        "category": "unknown",
+        "category": "module",
         "budget": {
-          "label": "Unknown asset ID: no documented budget",
-          "maxTriangles": 60000,
-          "maxMaterials": null
+          "label": "Small prop / modular wall",
+          "maxTriangles": 800,
+          "maxMaterials": 1
         },
         "rootNodes": [
           "lane_emitter"
@@ -635,7 +641,6 @@
       "status": "pass",
       "errors": [],
       "warnings": [
-        "not in MODEL_IDS (src/render/contract.ts): the runtime never requests it; remove it or add it to the contract",
         "4 materials exceeds 3 (Warden row applied to the Last Warden boss (no boss row in ART_PIPELINE), docs/ART_PIPELINE.md)"
       ],
       "stats": {
@@ -712,7 +717,6 @@
       "status": "pass",
       "errors": [],
       "warnings": [
-        "not in MODEL_IDS (src/render/contract.ts): the runtime never requests it; remove it or add it to the contract",
         "4 materials exceeds 3 (Warden row applied to the Last Warden boss (no boss row in ART_PIPELINE), docs/ART_PIPELINE.md)"
       ],
       "stats": {
@@ -941,15 +945,12 @@
       "sha256": "989bcb7084d953d4ed7803bdc937a2c7fd434652260e684876290af15856255a",
       "status": "pass",
       "errors": [],
-      "warnings": [
-        "not in MODEL_IDS (src/render/contract.ts): the runtime never requests it; remove it or add it to the contract",
-        "asset ID \"station_kiosk\" is not in the asset contract"
-      ],
+      "warnings": [],
       "stats": {
         "assetId": "station_kiosk",
-        "category": "unknown",
+        "category": "setPiece",
         "budget": {
-          "label": "Unknown asset ID: no documented budget",
+          "label": "No per-asset budget documented; counts toward the <=60,000-triangle visible room",
           "maxTriangles": 60000,
           "maxMaterials": null
         },
@@ -1018,16 +1019,15 @@
       "status": "pass",
       "errors": [],
       "warnings": [
-        "not in MODEL_IDS (src/render/contract.ts): the runtime never requests it; remove it or add it to the contract",
-        "asset ID \"threshold_inlay\" is not in the asset contract"
+        "3 materials exceeds 1 (Small prop / modular wall, docs/ART_PIPELINE.md)"
       ],
       "stats": {
         "assetId": "threshold_inlay",
-        "category": "unknown",
+        "category": "module",
         "budget": {
-          "label": "Unknown asset ID: no documented budget",
-          "maxTriangles": 60000,
-          "maxMaterials": null
+          "label": "Small prop / modular wall",
+          "maxTriangles": 800,
+          "maxMaterials": 1
         },
         "rootNodes": [
           "threshold_inlay"
@@ -1091,16 +1091,15 @@
       "status": "pass",
       "errors": [],
       "warnings": [
-        "not in MODEL_IDS (src/render/contract.ts): the runtime never requests it; remove it or add it to the contract",
-        "asset ID \"urn\" is not in the asset contract"
+        "2 materials exceeds 1 (Small prop / modular wall, docs/ART_PIPELINE.md)"
       ],
       "stats": {
         "assetId": "urn",
-        "category": "unknown",
+        "category": "module",
         "budget": {
-          "label": "Unknown asset ID: no documented budget",
-          "maxTriangles": 60000,
-          "maxMaterials": null
+          "label": "Small prop / modular wall",
+          "maxTriangles": 800,
+          "maxMaterials": 1
         },
         "rootNodes": [
           "urn"
@@ -1233,9 +1232,7 @@
       "sha256": "3c242b4f043f37835d823a99ea04e281e992056ece3d8c91315ddd5e49655f0d",
       "status": "pass",
       "errors": [],
-      "warnings": [
-        "not in MODEL_IDS (src/render/contract.ts): the runtime never requests it; remove it or add it to the contract"
-      ],
+      "warnings": [],
       "stats": {
         "assetId": "warden",
         "category": "warden",

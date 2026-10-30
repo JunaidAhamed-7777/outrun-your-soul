@@ -64,6 +64,15 @@ export const ASSET_RULES = Object.freeze({
   wall_block: { category: 'module', parts: [], tile: true },
   exit_gate: { category: 'setPiece', parts: ['frame', 'door_left', 'door_right'], grounded: true, gateWidth: 2 },
   distant_engine: { category: 'setPiece', parts: [] },
+  // Nonblocking courtyard dress and runtime props (ASSET_MANIFEST `courtyard_dress`):
+  // held to the "Small prop" row, without the tile-footprint rule.
+  urn: { category: 'module', parts: [] },
+  banner_post: { category: 'module', parts: [] },
+  lamp_post: { category: 'module', parts: [] },
+  lane_emitter: { category: 'module', parts: [] },
+  threshold_inlay: { category: 'module', parts: [] },
+  // Signal House station backdrop: a set piece like the distant engine.
+  station_kiosk: { category: 'setPiece', parts: [] },
   calibration_tile: { category: 'fixture', parts: [] },
 });
 
