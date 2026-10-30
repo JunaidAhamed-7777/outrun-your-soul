@@ -97,6 +97,45 @@ export function stoneTile(size = 128, seed = 7, bevel = true): CanvasTexture {
   return t;
 }
 
+/**
+ * Exit threshold inlay: dark slate stone with a gold border and a central gold lozenge.
+ * Clearly not floor and not wall coping; the renderer adds a gold glow when the gate is usable.
+ */
+export function thresholdInlay(size = 128): CanvasTexture {
+  const [c, ctx] = canvas(size, size);
+  ctx.fillStyle = '#3b3f62';
+  ctx.fillRect(0, 0, size, size);
+  const g = ctx.createRadialGradient(size / 2, size / 2, size * 0.1, size / 2, size / 2, size * 0.7);
+  g.addColorStop(0, 'rgba(255,255,255,0.10)');
+  g.addColorStop(1, 'rgba(0,0,0,0.18)');
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, size, size);
+  const gold = '#e2b252';
+  const inset = size * 0.08;
+  ctx.strokeStyle = gold;
+  ctx.lineWidth = size * 0.045;
+  ctx.strokeRect(inset, inset, size - inset * 2, size - inset * 2);
+  ctx.lineWidth = size * 0.015;
+  const inner = size * 0.17;
+  ctx.strokeRect(inner, inner, size - inner * 2, size - inner * 2);
+  ctx.fillStyle = gold;
+  ctx.beginPath();
+  ctx.moveTo(size / 2, size * 0.3);
+  ctx.lineTo(size * 0.7, size / 2);
+  ctx.lineTo(size / 2, size * 0.7);
+  ctx.lineTo(size * 0.3, size / 2);
+  ctx.closePath();
+  ctx.fill();
+  ctx.fillStyle = '#3b3f62';
+  ctx.beginPath();
+  ctx.arc(size / 2, size / 2, size * 0.07, 0, Math.PI * 2);
+  ctx.fill();
+  const t = finish(c);
+  t.generateMipmaps = true;
+  t.minFilter = LinearMipmapLinearFilter;
+  return t;
+}
+
 /** Soft-edged box (contact and cast shadows). White in the alpha channel; tint by material. */
 export function softBox(size = 64, steps = 10): CanvasTexture {
   const [c, ctx] = canvas(size, size);

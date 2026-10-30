@@ -5,6 +5,7 @@
  */
 import {
   AdditiveBlending,
+  Box3,
   BoxGeometry,
   BufferAttribute,
   Color,
@@ -14,6 +15,7 @@ import {
   Matrix4,
   Mesh,
   MeshBasicMaterial,
+  MeshToonMaterial,
   OctahedronGeometry,
   PlaneGeometry,
   Quaternion,
@@ -21,6 +23,7 @@ import {
   RingGeometry,
   Vector3,
   type BufferGeometry,
+  type Texture,
   type Object3D,
 } from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
@@ -28,10 +31,11 @@ import type { RoomDef } from '../sim/types';
 import type { Vec2 } from '../sim/vec';
 import type { ModelLibrary } from './assets';
 import { instanceTemplate, type Placement } from './instancing';
+import { buildKit, PERIMETER_SCALE } from './kit';
 import { sharedToon, toon } from './materials';
 import { color } from './palette';
 import { faceted } from './placeholders';
-import { softBox, stoneTile, verticalGradient } from './textures';
+import { softBox, stoneTile, thresholdInlay, verticalGradient } from './textures';
 
 /** Deterministic per-tile hash in [0, 1). Decorative only. */
 export function tileHash(x: number, y: number): number {
@@ -61,6 +65,12 @@ export interface RoomView {
   readonly gateAnchor: Vec2;
   /** Additive floor glow over the exit rect (opacity driven by gate state). */
   readonly exitGlow: Mesh<PlaneGeometry, MeshBasicMaterial>;
+  /** Threshold inlay materials; their emissive gold is driven by the gate state. */
+  readonly thresholdMaterials: MeshToonMaterial[];
+  /** Lane emitter aperture world positions per lane key. */
+  readonly laneApertures: ReadonlyMap<string, Vector3[]>;
+  /** Decorative animation (banner sway). */
+  update(time: number, reducedMotion: boolean): void;
   dispose(): void;
 }
 
@@ -82,7 +92,7 @@ function inRect(x: number, y: number, r: { x: number; y: number; w: number; h: n
   return x + 0.5 > r.x && x + 0.5 < r.x + r.w && y + 0.5 > r.y && y + 0.5 < r.y + r.h;
 }
 
-export function buildRoomView(room: RoomDef, lib: ModelLibrary): RoomView {
+export function buildRoomView(room: RoomDef, lib: ModelLibrary, spot: Texture): RoomView {
   const group = new Group();
   group.name = `room:${room.id}`;
   const disposables: { dispose(): void }[] = [];
@@ -104,14 +114,13 @@ export function buildRoomView(room: RoomDef, lib: ModelLibrary): RoomView {
   const plaza = new Mesh(plazaGeo, plazaMat);
   plaza.position.set(room.width / 2, -0.1, -(plazaSouth + plazaNorth) / 2);
   plaza.name = 'plaza';
-  const groutGeo = new PlaneGeometry(room.width, room.height);
-  groutGeo.rotateX(-Math.PI / 2);
-  const groutMat = new MeshBasicMaterial({ color: new Color('#0d1640') });
-  const grout = new Mesh(groutGeo, groutMat);
-  grout.position.set(room.width / 2, -0.07, -room.height / 2);
-  grout.name = 'grout';
-  group.add(plaza, grout);
-  disposables.push(plazaGeo, groutGeo, groutMat);
+  // The dark plaza shows through the tile gaps as grout.
+  group.add(plaza);
+  disposables.push(plazaGeo);
+
+  const wallHeight = new Box3().setFromObject(lib.template('wall_block')).max.y;
+  const kit = buildKit(room, lib, wallHeight, spot);
+  group.add(kit.group);
 
   // Floor tiles: subtle deterministic variation, a lighter processional path to the gate,
   // darker border tiles framing the room, ivory threshold stones in the exit zone.
@@ -145,24 +154,38 @@ export function buildRoomView(room: RoomDef, lib: ModelLibrary): RoomView {
   floorMaterial.map = stone;
   disposables.push(stone, floorMaterial);
   group.add(instanceTemplate(floorTemplate, floorPlacements, 'floor', floorMaterial));
-  group.add(instanceTemplate(floorTemplate, thresholdPlacements, 'threshold', sharedToon('wall_cap')));
+  // Exit threshold: the Blender inlay when present, else a gold-trimmed slate fallback inlay.
+  const thresholdMaterials: MeshToonMaterial[] = [...kit.thresholdMaterials];
+  if (!kit.hasInlay) {
+    const inlay = thresholdInlay();
+    const thresholdMaterial = toon(new Color('#ffffff'));
+    thresholdMaterial.map = inlay;
+    thresholdMaterial.emissive = color('gold');
+    thresholdMaterial.emissiveIntensity = 0;
+    disposables.push(inlay, thresholdMaterial);
+    thresholdMaterials.push(thresholdMaterial);
+    group.add(instanceTemplate(floorTemplate, thresholdPlacements, 'threshold', thresholdMaterial));
+  }
 
   // Interior walls and perimeter.
   const wallPlacements: Placement[] = [];
-  // Interior obstacles: warm sand caps, a step below the ivory of the courier.
-  const sand = new Color(0.88, 0.84, 0.8);
+  // Interior obstacles: warm stone caps a clear step below the ivory courier, deep cobalt sides.
+  const sand = new Color(0.8, 0.74, 0.7);
   for (const w of room.walls) {
     for (let y = w.y; y < w.y + w.h; y++) for (let x = w.x; x < w.x + w.w; x++) wallPlacements.push({ matrix: placeAt(x, y), tint: sand });
   }
   // Perimeter stone is tinted down so interior obstacles stay the brightest architecture.
   const rim = new Color(0.6, 0.64, 0.8);
+  const perimeter = (x: number, y: number, scale: number): void => {
+    if (!kit.emitterTiles.has(`${x},${y}`)) wallPlacements.push({ matrix: placeAt(x, y, scale), tint: rim });
+  };
   for (let y = -1; y <= room.height; y++) {
-    wallPlacements.push({ matrix: placeAt(-1, y, 1.4), tint: rim });
-    wallPlacements.push({ matrix: placeAt(room.width, y, 1.4), tint: rim });
+    perimeter(-1, y, PERIMETER_SCALE.side);
+    perimeter(room.width, y, PERIMETER_SCALE.side);
   }
   for (let x = 0; x < room.width; x++) {
-    if (!inExitColumn(room, x)) wallPlacements.push({ matrix: placeAt(x, room.height, 1.7), tint: rim });
-    wallPlacements.push({ matrix: placeAt(x, -1, 0.34), tint: rim });
+    if (!inExitColumn(room, x)) perimeter(x, room.height, PERIMETER_SCALE.north);
+    perimeter(x, -1, PERIMETER_SCALE.south);
   }
   group.add(instanceTemplate(lib.template('wall_block'), wallPlacements, 'walls'));
 
@@ -170,6 +193,7 @@ export function buildRoomView(room: RoomDef, lib: ModelLibrary): RoomView {
   const shadowRects: { x: number; y: number; w: number; h: number; o: number }[] = [];
   for (const w of room.walls) {
     shadowRects.push({ x: w.x - 0.2, y: w.y - 0.12, w: w.w + 0.32, h: w.h + 0.5, o: 1 });
+    shadowRects.push({ x: w.x - 0.16, y: w.y - 0.16, w: w.w + 0.32, h: w.h + 0.32, o: 0.85 });
   }
   shadowRects.push({ x: room.width - 0.55, y: -0.2, w: 0.75, h: room.height + 0.4, o: 0.9 });
   shadowRects.push({ x: -0.2, y: room.height - 0.35, w: room.width + 0.4, h: 0.55, o: 0.6 });
@@ -201,17 +225,53 @@ export function buildRoomView(room: RoomDef, lib: ModelLibrary): RoomView {
     ray.rotateZ((k / 12) * Math.PI * 2);
     goldParts.push(ray);
   }
-  const goldGeo = mergeGeometries(goldParts.map((g) => g.toNonIndexed()))!;
-  goldParts.forEach((g) => g.dispose());
-  goldGeo.rotateX(-Math.PI / 2);
-  const discGeo = new RingGeometry(0.7, 1.05, 40);
-  discGeo.rotateX(-Math.PI / 2);
-  const emblemGold = new Mesh(goldGeo, new MeshBasicMaterial({ color: new Color('#a7803a') }));
-  const emblemDisc = new Mesh(discGeo, new MeshBasicMaterial({ color: new Color('#1f3486') }));
-  for (const m of [emblemGold, emblemDisc]) {
-    m.position.set(room.width / 2, -0.095, 2.6);
-    group.add(m);
-    disposables.push(m.geometry, m.material);
+  // One mesh: gold rays/rings and the cobalt disc carry their colours as vertex colours.
+  const tinted = (g: BufferGeometry, hex: string): BufferGeometry => {
+    const flat = g.toNonIndexed();
+    g.dispose();
+    const c = new Color(hex);
+    const n = flat.getAttribute('position').count;
+    const cols = new Float32Array(n * 3);
+    for (let i = 0; i < n; i++) cols.set([c.r, c.g, c.b], i * 3);
+    flat.setAttribute('color', new BufferAttribute(cols, 3));
+    return flat;
+  };
+  const emblemParts = [...goldParts.map((g) => tinted(g, '#a7803a')), tinted(new RingGeometry(0.7, 1.05, 40), '#1f3486')];
+  const emblemGeo = mergeGeometries(emblemParts)!;
+  emblemParts.forEach((g) => g.dispose());
+  emblemGeo.rotateX(-Math.PI / 2);
+  const emblem = new Mesh(emblemGeo, new MeshBasicMaterial({ vertexColors: true }));
+  emblem.position.set(room.width / 2, -0.095, 2.6);
+  emblem.name = 'plaza_emblem';
+  group.add(emblem);
+  disposables.push(emblemGeo, emblem.material);
+
+  // Ink outline around every interior wall cap so obstacles read as solid blocks at phone size.
+  const capTop = new Box3().setFromObject(lib.template('wall_block')).max.y + 0.004;
+  const ink: BufferGeometry[] = [];
+  const lineW = 0.05;
+  for (const w of room.walls) {
+    const edges: [number, number, number, number][] = [
+      [w.x, w.y, w.w, lineW],
+      [w.x, w.y + w.h - lineW, w.w, lineW],
+      [w.x, w.y, lineW, w.h],
+      [w.x + w.w - lineW, w.y, lineW, w.h],
+    ];
+    for (const [ex, ey, ew, eh] of edges) {
+      const g = new PlaneGeometry(ew, eh);
+      g.rotateX(-Math.PI / 2);
+      g.translate(ex + ew / 2, capTop, -(ey + eh / 2));
+      ink.push(g);
+    }
+  }
+  if (ink.length) {
+    const inkGeo = mergeGeometries(ink)!;
+    ink.forEach((g) => g.dispose());
+    const inkMat = new MeshBasicMaterial({ color: new Color('#0c1440') });
+    const inkMesh = new Mesh(inkGeo, inkMat);
+    inkMesh.name = 'wall_ink';
+    group.add(inkMesh);
+    disposables.push(inkGeo, inkMat);
   }
 
   // Exit glow: warm light rising from the threshold toward the gate.
@@ -244,7 +304,13 @@ export function buildRoomView(room: RoomDef, lib: ModelLibrary): RoomView {
     group,
     gateAnchor,
     exitGlow,
+    thresholdMaterials,
+    laneApertures: kit.apertures,
+    update(time, reducedMotion) {
+      kit.update(time, reducedMotion);
+    },
     dispose() {
+      kit.dispose();
       for (const d of disposables) d.dispose();
       group.removeFromParent();
     },
