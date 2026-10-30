@@ -5,17 +5,21 @@
 //   node scripts/e2e.mjs --no-build     (test the existing dist/)
 //   node scripts/e2e.mjs --zip latest   (test the newest release ZIP: the exact upload bytes)
 //   node scripts/e2e.mjs --browser chrome --headed
+//   node scripts/e2e.mjs --seed 7       (run seed for the UI session; the full expedition uses seed + 4)
 //
 // Uses pinned playwright-core with an ALREADY-INSTALLED system browser (Edge, then
 // Chrome). It never downloads a browser. Exit codes: 0 pass, 1 fail, 2 blocked (no browser).
 //
 // What it covers (emulated phone viewport 375x812, DPR 2, touch, isMobile):
-//  - production URL exposes no debug hook; title + Begin render; no console errors
-//  - WebGL2 canvas present; real touch tap on Begin
-//  - one REAL touch drag (CDP touch events -> Pointer Events) dashes; a REAL short tap RETURNs
-//  - visibilitychange(hidden) and window blur pause, freeze simulation time and show the pause panel
-//  - a scripted Departure Court clear (tests/sim/bot.ts greedy bot planning in Node from
-//    page state, commands sent through the ?debug hook) to victory and the result panel
+//  A production URL exposes no debug hook; WebGL2 canvas; title + Begin; no console errors
+//  B the real UI path with taps: Begin -> starter select -> room 1 (intro card); one REAL touch
+//    drag dash (CDP touch events -> Pointer Events) and a REAL short tap RETURN; pause on
+//    visibilitychange(hidden) and window blur; a scripted clear of room 1 (tests/sim/bot.ts
+//    planning in Node from page state, commands through the ?debug hook) -> Onward -> route
+//    choice -> room 2; reload -> Continue restarts that room at entry health; a deliberate
+//    defeat -> Retry room restarts it as attempt 2
+//  C a full expedition from __oys.start() through every route/draft panel (DOM taps, first
+//    offered relic) to the ending, then the lateral Long Reach unlock on the starter panel
 //  - load timing, JS heap, and WebGL draw calls/frame measured by instrumenting the context
 // Numbers come from a desktop browser (headless, desktop GPU or SwiftShader): they are
 // NOT phone evidence. Real-device checks belong in docs/EVIDENCE.md layer C.
@@ -38,6 +42,9 @@ const option = (name) => {
 const previewsDir = join(root, 'art', 'previews');
 const VIEWPORT = { width: 375, height: 812 };
 const SIM_LIMIT_SECONDS = 150;
+/** Run seeds (?seed=N) for the UI-path session and the full expedition; override with --seed. */
+const SEED_UI = Number(option('seed') ?? 7) >>> 0;
+const SEED_RUN = (SEED_UI + 4) >>> 0;
 
 const checks = [];
 const record = (id, ok, detail) => {
@@ -110,6 +117,65 @@ const vite = await createViteServer({
   optimizeDeps: { noDiscovery: true, include: [] },
 });
 const { botCommand } = await vite.ssrLoadModule('/tests/sim/bot.ts');
+const { previewDash, TUNING } = await vite.ssrLoadModule('/src/sim/index.ts');
+
+/**
+ * Walls-aware distance to `goal` on a 0.25-tile grid (4-neighbour BFS over cells whose
+ * centre keeps the body radius clear of walls and bounds). Used only by the e2e stall
+ * fallback below; the greedy test bot steers by straight-line distance and can park
+ * behind a wall (observed: below Departure Court's plinth with the gate open).
+ */
+function distanceField(room, goal) {
+  const cell = 0.25;
+  const r = TUNING.bodyRadius + 0.02;
+  const cols = Math.ceil(room.width / cell);
+  const rows = Math.ceil(room.height / cell);
+  const centre = (i, j) => ({ x: (i + 0.5) * cell, y: (j + 0.5) * cell });
+  const free = (p) =>
+    p.x >= r && p.y >= r && p.x <= room.width - r && p.y <= room.height - r &&
+    !room.walls.some((w) => p.x > w.x - r && p.x < w.x + w.w + r && p.y > w.y - r && p.y < w.y + w.h + r);
+  const dist = new Float64Array(cols * rows).fill(Infinity);
+  const clampIdx = (v, n) => Math.max(0, Math.min(n - 1, v));
+  const gi = clampIdx(Math.floor(goal.x / cell), cols);
+  const gj = clampIdx(Math.floor(goal.y / cell), rows);
+  const queue = [[gi, gj]];
+  dist[gj * cols + gi] = 0;
+  for (let q = 0; q < queue.length; q++) {
+    const [i, j] = queue[q];
+    for (const [di, dj] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+      const ni = i + di;
+      const nj = j + dj;
+      if (ni < 0 || nj < 0 || ni >= cols || nj >= rows || dist[nj * cols + ni] !== Infinity || !free(centre(ni, nj))) continue;
+      dist[nj * cols + ni] = dist[j * cols + i] + cell;
+      queue.push([ni, nj]);
+    }
+  }
+  return (p) => dist[clampIdx(Math.floor(p.y / cell), rows) * cols + clampIdx(Math.floor(p.x / cell), cols)];
+}
+
+/** Fallback when the greedy bot idles: the previewed dash that best shortens the walls-aware path to its goal. */
+function fallbackCommand(s) {
+  const alive = s.enemies.filter((e) => e.phase !== 'dead');
+  const exit = s.room.exit;
+  const goal = alive.length
+    ? alive.reduce((a, b) => (Math.hypot(a.pos.x - s.body.pos.x, a.pos.y - s.body.pos.y) <= Math.hypot(b.pos.x - s.body.pos.x, b.pos.y - s.body.pos.y) ? a : b)).pos
+    : { x: exit.x + exit.w / 2, y: exit.y + exit.h / 2 };
+  const field = distanceField(s.room, goal);
+  const here = field(s.body.pos);
+  let best = null;
+  for (let k = 0; k < 24; k++) {
+    for (const d of [1, 2, 3]) {
+      const a = (k / 24) * Math.PI * 2;
+      const aim = { x: Math.cos(a) * d, y: Math.sin(a) * d };
+      const preview = previewDash(s, aim);
+      if (!preview.valid) continue;
+      const score = field(preview.end);
+      if (!best || score < best.score) best = { score, aim };
+    }
+  }
+  if (best && best.score < here - 0.2) return { kind: 'dash', aim: best.aim };
+  return s.route.points.length > 0 ? { kind: 'return' } : null;
+}
 
 const servers = await startNestedServers(new Map(files.map((f) => [f.path, f.data])));
 mkdirSync(previewsDir, { recursive: true });
@@ -157,9 +223,10 @@ const revive = (json) =>
 async function newPhoneContext() {
   const context = await browser.newContext({ viewport: VIEWPORT, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
   const page = await context.newPage();
-  const problems = { console: [], pageErrors: [], failedRequests: [], aborted: [], finishedOk: new Set() };
+  const problems = { console: [], warnings: [], pageErrors: [], failedRequests: [], aborted: [], finishedOk: new Set() };
   page.on('console', (m) => {
     if (m.type() === 'error') problems.console.push(m.text());
+    else if (m.type() === 'warning') problems.warnings.push(m.text());
   });
   page.on('pageerror', (e) => problems.pageErrors.push(String(e?.message ?? e)));
   page.on('requestfailed', (r) => {
@@ -210,7 +277,8 @@ function problemsOf(problems, logStart) {
 
 async function shot(page, name) {
   const path = join(previewsDir, `e2e-${name}.png`);
-  await page.screenshot({ path });
+  // Finish CSS fades/transitions so panels are captured in their settled state.
+  await page.screenshot({ path, animations: 'disabled' });
   return `art/previews/e2e-${name}.png`;
 }
 
@@ -224,6 +292,85 @@ const report = {
   screenshots: [],
   playthrough: null,
 };
+
+/** Debug-hook helpers for one page (re-run install() after every navigation or reload). */
+function hooks(page) {
+  return {
+    install: async () => {
+      await page.waitForFunction(() => typeof window.__oys?.advance === 'function', null, { timeout: 20000 });
+      await page.evaluate(`window.__e2eSerialise = ${SERIALISE}`);
+    },
+    state: async () => revive(await page.evaluate(() => window.__e2eSerialise(window.__oys.state()))),
+    run: () => page.evaluate(() => JSON.parse(JSON.stringify(window.__oys.run()))),
+    phase: () => page.evaluate(() => window.__oys.phase()),
+  };
+}
+
+/**
+ * Play the current room with the tested greedy bot (tests/sim/bot.ts) until the room ends,
+ * then advance past the ending beat so the result panel is shown.
+ */
+async function botPlayRoom(page, onState) {
+  let s = revive(await page.evaluate(() => window.__e2eSerialise(window.__oys.state())));
+  const startHealth = s.health;
+  const wallStart = Date.now();
+  let iterations = 0;
+  let lastCommandAt = s.time;
+  let fallbacks = 0;
+  const inExit = (st) => st.body.pos.x >= st.room.exit.x && st.body.pos.x <= st.room.exit.x + st.room.exit.w && st.body.pos.y >= st.room.exit.y && st.body.pos.y <= st.room.exit.y + st.room.exit.h;
+  while (s.outcome === 'playing' && s.time < SIM_LIMIT_SECONDS && iterations < 6000) {
+    iterations += 1;
+    let command = botCommand(s);
+    if (!command && s.body.mode === 'ready' && !inExit(s) && s.time - lastCommandAt > 1) {
+      command = fallbackCommand(s);
+      if (command) fallbacks += 1;
+    }
+    if (command) lastCommandAt = s.time;
+    const json = await page.evaluate((cmd) => {
+      if (cmd) window.__oys.push(cmd);
+      window.__oys.advance(0.05, 0.05);
+      return window.__e2eSerialise(window.__oys.state());
+    }, command);
+    s = revive(json);
+    if (onState) await onState(s);
+  }
+  await page.evaluate(() => window.__oys.advance(1.8, 0.05));
+  return {
+    outcome: s.outcome,
+    roomData: s.room.id,
+    simSeconds: round(s.time),
+    wallSeconds: round((Date.now() - wallStart) / 1000),
+    healthStart: startHealth,
+    healthLeft: s.health,
+    stats: s.stats,
+    fallbackCommands: fallbacks,
+  };
+}
+
+/** Deliberately lose: stand still at spawn while awake sentries shoot the body. */
+async function idleUntilOver(page) {
+  let r = await page.evaluate(() => window.__oys.advance(0.5, 0.1));
+  while (r.outcome === 'playing' && r.t < SIM_LIMIT_SECONDS) r = await page.evaluate(() => window.__oys.advance(0.5, 0.1));
+  await page.evaluate(() => window.__oys.advance(1.8, 0.05));
+  return r;
+}
+
+/** Which run panel is showing. */
+async function panelKind(page) {
+  if (await page.locator('.oys-card--route').first().isVisible().catch(() => false)) return 'route';
+  if (await page.locator('.oys-card--relic').first().isVisible().catch(() => false)) return 'draft';
+  if (await page.getByRole('heading', { name: /^(Escaped\.|Lost on the line\.)$/ }).isVisible().catch(() => false)) return 'ending';
+  if (await page.getByRole('heading', { name: 'Who carries the thread?' }).isVisible().catch(() => false)) return 'starter';
+  return 'unknown';
+}
+
+/** Room intro card text, if shown. */
+async function introText(page) {
+  return page.evaluate(() => {
+    const intro = document.querySelector('.oys-intro');
+    return intro ? { on: intro.classList.contains('is-on'), text: intro.textContent?.trim() ?? '' } : null;
+  });
+}
 
 let failed = false;
 try {
@@ -271,19 +418,32 @@ try {
     await context.close();
   }
 
-  // --- B. Debug session: real touch input, pause, scripted clear ----------------------------
+  // --- B. Real UI path: Begin -> starter -> room 1 -> Onward -> route -> room 2 ----------------
   const { context, page, problems, logStart } = await newPhoneContext();
   const cdp = await context.newCDPSession(page);
-  await page.goto(`${servers.gameUrl}?debug`, { waitUntil: 'load' });
+  const h = hooks(page);
+  await page.goto(`${servers.gameUrl}?debug&seed=${SEED_UI}`, { waitUntil: 'load' });
   await page.getByRole('button', { name: 'Begin' }).waitFor({ state: 'visible', timeout: 20000 });
-  await page.waitForFunction(() => typeof window.__oys?.advance === 'function');
-  await page.evaluate(`window.__e2eSerialise = ${SERIALISE}`);
-  const state = async () => revive(await page.evaluate(() => window.__e2eSerialise(window.__oys.state())));
-  const phase = () => page.evaluate(() => window.__oys.phase());
+  await h.install();
+  const state = h.state;
+  const phase = h.phase;
 
   await page.getByRole('button', { name: 'Begin' }).tap();
+  await page.getByRole('heading', { name: 'Who carries the thread?' }).waitFor({ state: 'visible', timeout: 5000 });
+  const threadkeeper = page.locator('.oys-card').filter({ hasText: 'Threadkeeper' });
+  const longReach = page.locator('.oys-card').filter({ hasText: 'Long Reach' });
+  const starterState = { threadkeeperEnabled: await threadkeeper.isEnabled(), longReachEnabled: await longReach.isEnabled() };
+  report.screenshots.push(await shot(page, 'starter'));
+  await threadkeeper.tap();
   await page.waitForFunction(() => window.__oys.phase() === 'playing', null, { timeout: 5000 });
-  record('B1 real tap on Begin starts the room', true);
+  const room1 = await state();
+  const run1 = await h.run();
+  const intro1 = await introText(page);
+  record(
+    'B1 Begin -> starter select (Threadkeeper open, Long Reach locked on fresh storage) -> room 1 with intro card',
+    starterState.threadkeeperEnabled && !starterState.longReachEnabled && room1.room.id === 'departure_court' && run1.at === 'n0' && !!intro1?.on,
+    `starters ${JSON.stringify(starterState)}; room ${room1.room.id} at ${run1.at}; loadout ${JSON.stringify(run1.loadout)}; intro "${intro1?.text}"`,
+  );
 
   // Frame pacing and draw calls in live play (n1 is dormant: nothing can attack yet).
   await page.evaluate(() => {
@@ -371,61 +531,216 @@ try {
   await page.getByRole('button', { name: 'Resume' }).tap();
   await page.waitForFunction(() => window.__oys.phase() === 'playing');
 
-  // Scripted clear: the tested greedy bot decides in Node; commands go through the debug hook.
-  const startHealth = (await state()).health;
-  const playStart = Date.now();
-  let s = await state();
+  // Scripted clear of room 1: the tested greedy bot decides in Node; commands go through the debug hook.
   let telegraphShot = false;
-  let iterations = 0;
   const lockedSeen = new Set();
-  while (s.outcome === 'playing' && s.time < SIM_LIMIT_SECONDS && iterations < 5000) {
-    iterations += 1;
-    const command = botCommand(s);
-    const json = await page.evaluate((cmd) => {
-      if (cmd) window.__oys.push(cmd);
-      window.__oys.advance(0.05, 0.05);
-      return window.__e2eSerialise(window.__oys.state());
-    }, command);
-    s = revive(json);
+  const clear1 = await botPlayRoom(page, async (s) => {
     for (const e of s.enemies) if (e.phase === 'locked') lockedSeen.add(e.key);
     if (!telegraphShot && s.enemies.some((e) => e.phase === 'locked')) {
       telegraphShot = true;
       report.screenshots.push(await shot(page, 'telegraph'));
     }
-  }
-  const outcome = s.outcome;
-  await page.evaluate(() => window.__oys.advance(1.8, 0.05));
-  const victoryText = page.getByText('The gate opens.');
-  const victoryVisible = await victoryText.isVisible();
+  });
+  const victoryVisible = await page.getByText('The gate opens.').isVisible();
+  const onward = page.getByRole('button', { name: 'Onward' });
+  const onwardVisible = await onward.isVisible();
   if (victoryVisible) report.screenshots.push(await shot(page, 'victory'));
   report.playthrough = {
     method: 'tests/sim/bot.ts botCommand() run in Node on page state each 0.05 s sim; commands via window.__oys.push; time via __oys.advance(0.05) plus the live rAF loop',
-    outcome,
-    simSeconds: round(s.time),
-    wallSeconds: round((Date.now() - playStart) / 1000),
-    healthStartOfScript: startHealth,
-    healthLeft: s.health,
-    stats: s.stats,
+    ...clear1,
     lockedTelegraphsSeen: [...lockedSeen],
   };
-  record('B8 scripted Departure Court clear reaches victory', outcome === 'victory', `sim ${round(s.time)} s, health ${s.health}/${s.maxHealth}, stats ${JSON.stringify(s.stats)}`);
-  record('B9 result panel shows "The gate opens."', victoryVisible);
+  record('B8 scripted Departure Court clear reaches victory', clear1.outcome === 'victory', `sim ${clear1.simSeconds} s, health ${clear1.healthLeft}, stats ${JSON.stringify(clear1.stats)}`);
+  record('B9 result panel shows "The gate opens." with an Onward button', victoryVisible && onwardVisible);
   record('B10 a locked telegraph was rendered during play', telegraphShot, [...lockedSeen].join(', '));
 
   const metrics = await cdp.send('Performance.enable').then(() => cdp.send('Performance.getMetrics'));
   const metric = (name) => metrics.metrics.find((m) => m.name === name)?.value ?? null;
-  const heap = await page.evaluate(() => (performance.memory ? { used: performance.memory.usedJSHeapSize, total: performance.memory.totalJSHeapSize } : null));
   report.measurements.afterPlaythrough = {
-    label: 'desktop Chromium-family metrics after one full clear; not phone memory evidence',
-    jsHeapUsedBytes: metric('JSHeapUsedSize') ?? heap?.used ?? null,
-    jsHeapTotalBytes: metric('JSHeapTotalSize') ?? heap?.total ?? null,
+    label: 'desktop Chromium-family metrics after clearing room 1; not phone memory evidence',
+    jsHeapUsedBytes: metric('JSHeapUsedSize'),
+    jsHeapTotalBytes: metric('JSHeapTotalSize'),
     domNodes: metric('Nodes'),
     jsEventListeners: metric('JSEventListeners'),
   };
+
+  // Onward -> route choice -> room 2.
+  await onward.tap();
+  await page.getByRole('heading', { name: 'Choose your line' }).waitFor({ state: 'visible', timeout: 5000 });
+  const routeCards = page.locator('.oys-card--route');
+  const routeNames = await page.locator('.oys-card--route .oys-card-title').allTextContents();
+  report.screenshots.push(await shot(page, 'route'));
+  await routeCards.first().tap();
+  await page.waitForFunction(() => window.__oys.phase() === 'playing', null, { timeout: 5000 });
+  const run2 = await h.run();
+  const room2 = await state();
+  const intro2 = await introText(page);
+  report.screenshots.push(await shot(page, 'room2-intro'));
+  const template2 = run2.graph.nodes[run2.at]?.roomId;
+  record(
+    'B11 Onward -> "Choose your line" with two cards -> first card starts room 2 with its intro card',
+    routeNames.length === 2 && run2.at !== run1.at && run2.history.includes(run2.at) && !!intro2?.on,
+    `cards ${JSON.stringify(routeNames)}; at ${run1.at} -> ${run2.at} (template ${template2}, room data ${room2.room.id}); intro "${intro2?.text}"`,
+  );
+
+  // Persistence: reload in room 2 -> Continue restarts this room from its entry state.
+  const entry2 = { at: run2.at, roomId: room2.room.id, health: room2.health, attempts: run2.attempts[run2.at] ?? 0, history: run2.history };
+  await page.reload({ waitUntil: 'load' });
+  const cont = page.getByRole('button', { name: 'Continue' });
+  await cont.waitFor({ state: 'visible', timeout: 20000 });
+  await h.install();
+  const caption = (await page.locator('#oys-continue-cap').textContent())?.trim();
+  const detail = (await page.locator('.oys-continue-detail').textContent().catch(() => null))?.trim() ?? null;
+  const newExpeditionVisible = await page.getByRole('button', { name: 'New expedition' }).isVisible();
+  report.screenshots.push(await shot(page, 'continue'));
+  record(
+    'B12 after a reload the title offers Continue with "Continue restarts this room."',
+    caption === 'Continue restarts this room.' && newExpeditionVisible,
+    `caption "${caption}"; detail "${detail}"; New expedition button ${newExpeditionVisible}`,
+  );
+  await cont.tap();
+  await page.waitForFunction(() => window.__oys.phase() === 'playing', null, { timeout: 5000 });
+  const runC = await h.run();
+  const roomC = await state();
+  record(
+    'B13 Continue restarts the same room (node, room, entry health) from its start',
+    runC.at === entry2.at && roomC.room.id === entry2.roomId && roomC.health === entry2.health && roomC.time < 1 && JSON.stringify(runC.history) === JSON.stringify(entry2.history),
+    `at ${entry2.at} -> ${runC.at}; room ${entry2.roomId} -> ${roomC.room.id}; health ${entry2.health} -> ${roomC.health}; sim t ${round(roomC.time)} s after Continue`,
+  );
+
+  // Defeat path: stand still until the room is lost -> Retry room restarts it as attempt 2.
+  const lost = await idleUntilOver(page);
+  const retry = page.getByRole('button', { name: 'Retry room' });
+  const retryVisible = await retry.isVisible();
+  const abandonVisible = await page.getByRole('button', { name: 'Abandon expedition' }).isVisible();
+  if (retryVisible) report.screenshots.push(await shot(page, 'defeat'));
+  record('B14 standing still loses the room and offers Retry room / Abandon expedition', lost.outcome === 'defeat' && retryVisible && abandonVisible, `outcome ${lost.outcome} at sim ${round(lost.t)} s, health ${lost.health}`);
+  if (retryVisible) {
+    await retry.tap();
+    await page.waitForFunction(() => window.__oys.phase() === 'playing', null, { timeout: 5000 });
+    const runR = await h.run();
+    const roomR = await state();
+    const introR = await introText(page);
+    record(
+      'B15 Retry room restarts the same room as attempt 2 at entry health',
+      runR.at === entry2.at && roomR.room.id === entry2.roomId && (runR.attempts[runR.at] ?? 0) === entry2.attempts + 1 && roomR.health === entry2.health && /Attempt 2/.test(introR?.text ?? ''),
+      `at ${runR.at}; failed attempts ${entry2.attempts} -> ${runR.attempts[runR.at]}; health ${roomR.health}; intro "${introR?.text}"`,
+    );
+  }
+
   const errs = problemsOf(problems, logStart);
   if (errs.note) report.notes = [...(report.notes ?? []), errs.note];
-  record('B11 no console errors, page errors or failed requests (debug session)', errs.list.length === 0, errs.list.slice(0, 5).join(' | ') || errs.note || '');
+  record('B16 no console errors, page errors or failed requests (UI session incl. reload)', errs.list.length === 0, errs.list.slice(0, 5).join(' | ') || errs.note || '');
+  report.consoleWarnings = [...(report.consoleWarnings ?? []), ...problems.warnings];
   await context.close();
+
+  // --- C. Full expedition: __oys.start() + bot + DOM clicks through every panel ---------------
+  {
+    const { context: ctx, page: p, problems: probs, logStart: start } = await newPhoneContext();
+    const hc = hooks(p);
+    await p.goto(`${servers.gameUrl}?debug&seed=${SEED_RUN}`, { waitUntil: 'load' });
+    await p.getByRole('button', { name: 'Begin' }).waitFor({ state: 'visible', timeout: 20000 });
+    await hc.install();
+    await p.evaluate(() => window.__oys.start('threadkeeper'));
+    const expedition = { seed: SEED_RUN, starter: 'threadkeeper', rooms: [], choices: [], relicsTaken: [], failures: [], ending: null, totalSimSeconds: 0 };
+    const wallStart = Date.now();
+    for (let guard = 0; guard < 40 && !expedition.ending; guard++) {
+      const ph = await hc.phase();
+      if (ph === 'playing') {
+        const runBefore = await hc.run();
+        const node = runBefore.graph.nodes[runBefore.at];
+        const result = await botPlayRoom(p);
+        expedition.totalSimSeconds += result.simSeconds;
+        expedition.rooms.push({ node: node.id, kind: node.kind, template: node.roomId, attempt: (runBefore.attempts[node.id] ?? 0) + 1, ...result });
+        if (result.outcome === 'victory') {
+          const next = p.getByRole('button', { name: /^(Onward|Pass the last gate)$/ });
+          await next.waitFor({ state: 'visible', timeout: 5000 });
+          await next.tap();
+        } else if (result.outcome === 'playing') {
+          // The greedy bot ran out of sim time without winning or losing: a stall, not a defeat.
+          const s = await hc.state();
+          const alive = s.enemies.filter((e) => e.phase !== 'dead').map((e) => `${e.key}@${fmt(e.pos)}:${e.phase}`);
+          expedition.failures.push(
+            `${node.id} (${node.roomId}, data ${result.roomData}): bot stalled at ${result.simSeconds} s sim; body (${fmt(s.body.pos)}) ${s.body.mode}, soul (${fmt(s.soul.pos)}), route ${round(s.route.length)}, health ${s.health}, alive ${alive.join(' ') || 'none'}, gate ${s.gate}`,
+          );
+          report.screenshots.push(await shot(p, 'expedition-stall'));
+          break;
+        } else {
+          expedition.failures.push(`${node.id} (${node.roomId}) attempt ${(runBefore.attempts[node.id] ?? 0) + 1}: ${result.outcome}`);
+          const attempts = (runBefore.attempts[node.id] ?? 0) + 1;
+          const button = p.getByRole('button', { name: attempts < 3 ? 'Retry room' : 'Abandon expedition' });
+          await button.waitFor({ state: 'visible', timeout: 5000 });
+          await button.tap();
+        }
+      } else if (ph === 'choosing') {
+        const kind = await panelKind(p);
+        if (kind === 'route') {
+          const names = await p.locator('.oys-card--route .oys-card-title').allTextContents();
+          await p.locator('.oys-card--route').first().tap();
+          expedition.choices.push({ panel: 'route', offered: names, picked: names[0] });
+        } else if (kind === 'draft') {
+          const offered = await p.locator('.oys-card--relic .oys-card-title').allTextContents();
+          const first = p.locator('.oys-card--relic:not([disabled])').first();
+          let picked = null;
+          let action = 'Keep my relics';
+          if ((await first.count()) > 0) {
+            picked = (await first.locator('.oys-card-title').textContent())?.trim() ?? null;
+            await first.tap();
+            const act = p.locator('.oys-draft-actions button:not([disabled])').first();
+            action = (await act.textContent())?.trim() ?? '';
+            await act.tap();
+          } else {
+            await p.getByRole('button', { name: 'Keep my relics' }).tap();
+          }
+          const runAfter = await hc.run();
+          expedition.choices.push({ panel: 'draft', offered, picked, action, loadoutAfter: runAfter.loadout });
+          if (picked && action !== 'Keep my relics') expedition.relicsTaken.push(picked);
+        } else if (kind === 'ending') {
+          expedition.ending = (await p.locator('.oys-choice h2').first().textContent())?.trim() ?? null;
+          report.screenshots.push(await shot(p, 'ending'));
+        } else {
+          expedition.failures.push(`unrecognised panel while choosing (guard ${guard})`);
+          break;
+        }
+      } else if (ph === 'ending' || ph === 'result') {
+        await p.evaluate(() => window.__oys.advance(0.5, 0.05));
+      } else {
+        expedition.failures.push(`unexpected phase ${ph}`);
+        break;
+      }
+    }
+    const finalRun = await hc.run();
+    expedition.totalSimSeconds = round(expedition.totalSimSeconds);
+    expedition.wallSeconds = round((Date.now() - wallStart) / 1000);
+    expedition.history = finalRun.history;
+    expedition.finalLoadout = finalRun.loadout;
+    expedition.runOutcome = finalRun.outcome;
+    expedition.runTotals = finalRun.totals;
+    expedition.notAuthoredWarnings = probs.warnings.filter((w) => w.includes('[rooms]'));
+    report.expedition = expedition;
+    record(
+      'C1 full expedition via __oys.start() + bot + DOM panel clicks reaches "Escaped."',
+      expedition.ending === 'Escaped.',
+      `${expedition.rooms.length} room attempts over nodes ${finalRun.history.join(' > ')}; relics taken ${JSON.stringify(expedition.relicsTaken)}; final loadout ${JSON.stringify(finalRun.loadout)}; ${expedition.totalSimSeconds} s sim; failures ${expedition.failures.length}`,
+    );
+
+    // Lateral unlock: having reached a station, the next starter panel offers Long Reach.
+    if (expedition.ending) {
+      await p.getByRole('button', { name: 'Again' }).tap();
+      const begin = p.getByRole('button', { name: 'Begin' });
+      await begin.waitFor({ state: 'visible', timeout: 5000 });
+      await begin.tap();
+      await p.getByRole('heading', { name: 'Who carries the thread?' }).waitFor({ state: 'visible', timeout: 5000 });
+      const lr = p.locator('.oys-card').filter({ hasText: 'Long Reach' });
+      const unlocked = await lr.isEnabled();
+      record('C2 after the run, the title offers Begin again and Long Reach is unlocked on the starter panel', unlocked, `Long Reach enabled ${unlocked}`);
+    }
+    const errsC = problemsOf(probs, start);
+    if (errsC.note) report.notes = [...(report.notes ?? []), errsC.note];
+    record('C3 no console errors, page errors or failed requests (full expedition)', errsC.list.length === 0, errsC.list.slice(0, 5).join(' | ') || errsC.note || '');
+    report.consoleWarnings = [...(report.consoleWarnings ?? []), ...probs.warnings];
+    await ctx.close();
+  }
 } catch (error) {
   failed = true;
   console.error(`\nE2E crashed: ${error instanceof Error ? error.stack : String(error)}`);
