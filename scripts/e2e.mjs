@@ -555,17 +555,11 @@ try {
   const state = h.state;
   const phase = h.phase;
 
+  // Main flow: Begin plays the levels in order, starting with the First Light tutorial.
   await page.getByRole('button', { name: 'Begin' }).tap();
-  await page.getByRole('heading', { name: 'Who carries the thread?' }).waitFor({ state: 'visible', timeout: 5000 });
-  const threadkeeper = page.locator('.oys-card').filter({ hasText: 'Threadkeeper' });
-  const longReach = page.locator('.oys-card').filter({ hasText: 'Long Reach' });
-  const starterState = { threadkeeperEnabled: await threadkeeper.isEnabled(), longReachEnabled: await longReach.isEnabled() };
-  report.screenshots.push(await shot(page, 'starter'));
-  await threadkeeper.tap();
   await h.ready();
-  await page.waitForFunction(() => window.__oys.phase() === 'playing', null, { timeout: 5000 });
+  await page.waitForFunction(() => window.__oys.phase() === 'playing', null, { timeout: 15000 });
 
-  // First-time players get the First Light tutorial before the expedition.
   const tutorialRoom = await state();
   const objective = page.locator('.oys-objective');
   await objective.waitFor({ state: 'visible', timeout: 5000 }).catch(() => {});
@@ -600,17 +594,39 @@ try {
     `present before lesson 5: [${lessons.beforeLesson5}]; after: [${lessons.afterLesson5}]; contact reunions ${lessons.contacts}`,
   );
   const tutorialClear = await botPlayRoom(page);
-  const begin = page.getByRole('button', { name: 'Begin the expedition' });
-  await begin.waitFor({ state: 'visible', timeout: 8000 });
+  const nextLevel = page.getByRole('button', { name: 'Next level' });
+  await nextLevel.waitFor({ state: 'visible', timeout: 8000 });
   report.screenshots.push(await shot(page, 'tutorial-complete'));
   record(
-    'B0 first expedition starts with the First Light tutorial: objective card, cleared, then "Begin the expedition"',
+    'B0 Begin plays level 1 (First Light tutorial): objective card, cleared, then "Next level"',
     tutorialRoom.room.id === 'first_light' && /Step 1 of 8/.test(objectiveText) && tutorialClear.outcome === 'victory',
     `room ${tutorialRoom.room.id}; card "${objectiveText.replace(/\s+/g, ' ').slice(0, 80)}"; tutorial ${tutorialClear.outcome}`,
   );
-  await begin.tap();
+  await nextLevel.tap();
   await h.ready();
-  await page.waitForFunction(() => window.__oys.phase() === 'playing', null, { timeout: 5000 });
+  await page.waitForFunction(() => window.__oys.phase() === 'playing', null, { timeout: 15000 });
+  const level2 = await state();
+  const level2Intro = await introText(page);
+  record(
+    'B0c "Next level" plays level 2 (Departure Court) in order, outside any expedition',
+    level2.room.id === 'departure_court' && (await h.run()) === null && /Level 2 of 8/.test(level2Intro?.text ?? ''),
+    `room ${level2.room.id}; intro "${level2Intro?.text}"`,
+  );
+
+  // The branching expedition is its own mode: Pause -> Main menu -> Expedition -> starter.
+  await page.getByRole('button', { name: 'Pause' }).tap();
+  await page.getByRole('button', { name: 'Main menu' }).tap();
+  const credit = await page.locator('.oys-title .oys-credit').textContent().catch(() => '');
+  await page.getByRole('button', { name: 'Expedition' }).tap();
+  await page.getByRole('heading', { name: 'Who carries the thread?' }).waitFor({ state: 'visible', timeout: 5000 });
+  const threadkeeper = page.locator('.oys-card').filter({ hasText: 'Threadkeeper' });
+  const longReach = page.locator('.oys-card').filter({ hasText: 'Long Reach' });
+  const starterState = { threadkeeperEnabled: await threadkeeper.isEnabled(), longReachEnabled: await longReach.isEnabled() };
+  report.screenshots.push(await shot(page, 'starter'));
+  record('B0d title credits the maker ("Made by Junaid")', credit === 'Made by Junaid', `credit "${credit}"`);
+  await threadkeeper.tap();
+  await h.ready();
+  await page.waitForFunction(() => window.__oys.phase() === 'playing', null, { timeout: 15000 });
   const room1 = await state();
   const run1 = await h.run();
   const intro1 = await introText(page);
@@ -621,7 +637,7 @@ try {
     `verified ${[...roomModels.verified].sort().join(', ')} across ${roomModels.roots} roots${roomModels.mismatched.length ? `; MISMATCH ${roomModels.mismatched.join(', ')}` : ''}`,
   );
   record(
-    'B1 Begin -> starter select (Threadkeeper open, Long Reach locked on fresh storage) -> room 1 with intro card',
+    'B1 Expedition -> starter select (Threadkeeper open, Long Reach locked on fresh storage) -> room 1 with intro card',
     starterState.threadkeeperEnabled && !starterState.longReachEnabled && room1.room.id === 'departure_court' && run1.at === 'n0' && !!intro1?.on,
     `starters ${JSON.stringify(starterState)}; room ${room1.room.id} at ${run1.at}; loadout ${JSON.stringify(run1.loadout)}; intro "${intro1?.text}"`,
   );
@@ -768,17 +784,16 @@ try {
   // Persistence: reload in room 2 -> Continue restarts this room from its entry state.
   const entry2 = { at: run2.at, roomId: room2.room.id, health: room2.health, attempts: run2.attempts[run2.at] ?? 0, history: run2.history };
   await page.reload({ waitUntil: 'load' });
-  const cont = page.getByRole('button', { name: 'Continue' });
+  const cont = page.getByRole('button', { name: 'Continue expedition', exact: true });
   await cont.waitFor({ state: 'visible', timeout: 20000 });
   await h.install();
-  const caption = (await page.locator('#oys-continue-cap').textContent())?.trim();
-  const detail = (await page.locator('.oys-continue-detail').textContent().catch(() => null))?.trim() ?? null;
-  const newExpeditionVisible = await page.getByRole('button', { name: 'New expedition' }).isVisible();
+  const caption = (await page.locator('.oys-title .oys-continue-cap', { hasText: 'Continue restarts this room.' }).textContent().catch(() => null))?.trim() ?? null;
+  const playDetail = (await page.locator('#oys-play-cap').textContent().catch(() => null))?.trim() ?? null;
   report.screenshots.push(await shot(page, 'continue'));
   record(
-    'B12 after a reload the title offers Continue with "Continue restarts this room."',
-    caption === 'Continue restarts this room.' && newExpeditionVisible,
-    `caption "${caption}"; detail "${detail}"; New expedition button ${newExpeditionVisible}`,
+    'B12 after a reload the title offers "Continue expedition" with "Continue restarts this room."',
+    caption === 'Continue restarts this room.',
+    `caption "${caption}"; Play shows "${playDetail}"`,
   );
   await cont.tap();
   await h.ready();
@@ -932,13 +947,13 @@ try {
     // Lateral unlock: having reached a station, the next starter panel offers Long Reach.
     if (expedition.ending) {
       await p.getByRole('button', { name: 'Again' }).tap();
-      const begin = p.getByRole('button', { name: 'Begin' });
-      await begin.waitFor({ state: 'visible', timeout: 5000 });
-      await begin.tap();
+      const expeditionBtn = p.getByRole('button', { name: 'Expedition', exact: true });
+      await expeditionBtn.waitFor({ state: 'visible', timeout: 5000 });
+      await expeditionBtn.tap();
       await p.getByRole('heading', { name: 'Who carries the thread?' }).waitFor({ state: 'visible', timeout: 5000 });
       const lr = p.locator('.oys-card').filter({ hasText: 'Long Reach' });
       const unlocked = await lr.isEnabled();
-      record('C2 after the run, the title offers Begin again and Long Reach is unlocked on the starter panel', unlocked, `Long Reach enabled ${unlocked}`);
+      record('C2 after the run, the title offers Expedition again and Long Reach is unlocked on the starter panel', unlocked, `Long Reach enabled ${unlocked}`);
     }
     const errsC = problemsOf(probs, start, runModels.verified);
     if (errsC.note) report.notes = [...(report.notes ?? []), errsC.note];

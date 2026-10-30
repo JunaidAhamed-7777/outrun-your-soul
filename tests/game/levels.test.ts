@@ -3,6 +3,7 @@ import { roomFor } from '../../src/content/rooms';
 import {
   isUnlocked,
   LEVELS,
+  nextCampaignLevel,
   parseLevelProgress,
   runStoryBeat,
   serializeLevelProgress,
@@ -21,17 +22,22 @@ describe('levels', () => {
     }
   });
 
-  it('opens only the tutorial at first, then one level past the furthest clear', () => {
+  it('unlocks strictly in order: 1 -> 2 -> ... -> 8, never skipping ahead', () => {
     let p = parseLevelProgress(null);
     expect(unlockedThrough(p)).toBe(0);
+    expect(nextCampaignLevel(p)?.id).toBe('first_light');
     expect(isUnlocked(p, 'departure_court')).toBe(false);
     p = withCleared(p, 'first_light');
     expect(isUnlocked(p, 'departure_court')).toBe(true);
     expect(isUnlocked(p, 'needle_gallery')).toBe(false);
-    // A branch room cleared during an expedition opens everything up to the level after it.
-    p = withCleared(p, 'glass_crossing');
-    expect(isUnlocked(p, 'mourners_garden')).toBe(true);
+    // Clearing a later room early (e.g. on an expedition) does not open anything past the gap.
+    p = withCleared(p, 'mourners_garden');
+    expect(isUnlocked(p, 'needle_gallery')).toBe(false);
     expect(isUnlocked(p, 'last_platform')).toBe(false);
+    expect(nextCampaignLevel(p)?.id).toBe('departure_court');
+    for (const l of LEVELS) p = withCleared(p, l.id);
+    expect(nextCampaignLevel(p)).toBeNull();
+    expect(isUnlocked(p, 'last_warden')).toBe(true);
   });
 
   it('round-trips through storage and ignores junk', () => {

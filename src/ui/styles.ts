@@ -276,6 +276,7 @@ export const CSS = /* css */ `
 .oys-wordmark span { display: block; }
 .oys-wordmark .w1 { font-size: clamp(46px, 15vw, 86px); }
 .oys-wordmark .w2 { font-size: clamp(25px, 8.2vw, 46px); letter-spacing: 0.3em; margin-top: 8px; color: #fff3da; }
+.oys-credit { margin: 6px 0 0; font: 600 11px/1.2 var(--font-ui); letter-spacing: 0.22em; text-transform: uppercase; color: var(--gold); opacity: 0.85; text-align: center; }
 .oys-tagline { margin: 0; font-family: var(--font-display); font-style: italic; font-size: clamp(16px, 4.4vw, 20px); color: var(--ivory-dim); max-width: 340px; }
 .oys-vignette-svg { width: min(92vw, 420px); height: auto; overflow: visible; }
 .oys-title-bottom { display: flex; flex-direction: column; align-items: center; gap: 16px; margin-bottom: 2vh; }

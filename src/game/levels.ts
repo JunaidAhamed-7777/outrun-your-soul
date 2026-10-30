@@ -2,8 +2,9 @@
  * Level select and story: the canonical order from First Light to the Last Warden, which
  * levels are unlocked, and the one-sentence story beat shown before each level begins.
  *
- * Unlocks: a level opens once the level before it has been cleared, in practice or during
- * an expedition. Clears are kept in a small versioned record in local storage (never
+ * Unlocks are strictly in order (1 -> 2 -> ... -> 8): a level opens only once every level
+ * before it has been cleared. Clearing a later room early (e.g. on an expedition) never
+ * skips ahead. Clears are kept in a small versioned record in local storage (never
  * throws when storage is unavailable; then only First Light is open).
  */
 import { roomMeta } from './room-meta';
@@ -59,13 +60,15 @@ export function withCleared(p: LevelProgress, id: string): LevelProgress {
   return { cleared: new Set([...p.cleared, id]) };
 }
 
-/** Index of the furthest unlocked level: one past the furthest cleared one. */
+/** Index of the furthest unlocked level: the first level not yet cleared, in order. */
 export function unlockedThrough(p: LevelProgress): number {
-  let furthest = -1;
-  LEVELS.forEach((l, i) => {
-    if (p.cleared.has(l.id)) furthest = Math.max(furthest, i);
-  });
-  return Math.min(LEVELS.length - 1, furthest + 1);
+  const firstUncleared = LEVELS.findIndex((l) => !p.cleared.has(l.id));
+  return firstUncleared < 0 ? LEVELS.length - 1 : firstUncleared;
+}
+
+/** The level the Play button starts: the first one not yet cleared, or null when all are done. */
+export function nextCampaignLevel(p: LevelProgress): LevelDef | null {
+  return LEVELS.find((l) => !p.cleared.has(l.id)) ?? null;
 }
 
 export function isUnlocked(p: LevelProgress, id: string): boolean {

@@ -40,6 +40,7 @@ import {
   LEVELS,
   LEVELS_KEY,
   levelIndex,
+  nextCampaignLevel,
   parseLevelProgress,
   runStoryBeat,
   serializeLevelProgress,
@@ -86,7 +87,7 @@ function practiceScreen(room: RoomDef, attempt: number): RoomScreen {
   return {
     kind: 'room',
     room,
-    label: 'Practice',
+    label: 'Level',
     depth: -1,
     attempt,
     entry: {
@@ -199,8 +200,17 @@ export async function startGame(container: HTMLElement): Promise<GameHandle | nu
   const audio: GameAudio = createAudio();
 
   const ui: GameUI = createUI(container, settings, {
-    onStart: () => beginNewExpedition(),
+    // Play: the levels in order (1 -> 8), each with its story line.
+    onStart: () => playCampaign(),
     onNewRun: () => beginNewExpedition(),
+    // Expedition: the branching roguelite run (continues a saved one if present).
+    onExpedition: () => {
+      void audio.unlock();
+      audio.ui('start');
+      const screen = director.hasContinue() ? director.continueRun() : null;
+      if (screen) present(screen);
+      else beginNewExpedition();
+    },
     onContinue: () => {
       void audio.unlock();
       audio.ui('start');
@@ -266,11 +276,25 @@ export async function startGame(container: HTMLElement): Promise<GameHandle | nu
     ui.hideHud();
     ui.setBoss(null);
     objective.set(null);
+    levelSelect.hide();
     const canContinue = director.hasContinue();
-    // Peek at the saved room for the Continue caption without disturbing the active run.
-    const peek = canContinue ? new Director({ checkpoints, progress: new ProgressStore(browserStorage()), resolveRoom }).continueRun() : null;
-    const detail = continueDetail(peek);
-    ui.showTitle(detail ? { canContinue, continueDetail: detail } : { canContinue });
+    const next = nextCampaignLevel(levelProgress);
+    const play = !next
+      ? { label: 'Play again', detail: `All ${LEVELS.length} levels cleared · pick any in Levels` }
+      : {
+          label: levelProgress.cleared.size === 0 ? 'Begin' : 'Continue',
+          detail: `Level ${levelIndex(next.id) + 1} of ${LEVELS.length} · ${next.name}`,
+        };
+    ui.showTitle({ canContinue, play });
+  }
+
+  /** Play the first level not yet cleared; when all are cleared, choose from the list. */
+  function playCampaign(): void {
+    void audio.unlock();
+    audio.ui('start');
+    const next = nextCampaignLevel(levelProgress);
+    if (next) startPractice(next.id, 1);
+    else openLevels();
   }
 
   function beginNewExpedition(): void {
@@ -364,11 +388,18 @@ export async function startGame(container: HTMLElement): Promise<GameHandle | nu
   }
 
   /** Result buttons after a practice clear: the next level if open, else back to the list. */
+  function levelClearNote(id: string): string {
+    const i = levelIndex(id);
+    const next = LEVELS[i + 1];
+    if (!next) return 'The end. Body and soul pass the last gate together.';
+    return `Level ${i + 2} unlocked: ${next.name}.`;
+  }
+
   function practiceVictory(id: string) {
     const next = nextLevelId(id);
     return next
       ? { primaryLabel: 'Next level', onPrimary: () => startPractice(next, 1), secondaryLabel: 'Levels', onSecondary: () => openLevels() }
-      : { primaryLabel: 'Levels', onPrimary: () => openLevels(), secondaryLabel: 'Main menu', onSecondary: () => goMainMenu() };
+      : { primaryLabel: 'Main menu', onPrimary: () => goMainMenu(), secondaryLabel: 'Levels', onSecondary: () => openLevels() };
   }
 
   function leaveTutorial(): void {
@@ -477,7 +508,11 @@ export async function startGame(container: HTMLElement): Promise<GameHandle | nu
     const meta = roomMeta(entry.roomId);
     const subtitle =
       screen.attempt > 1 ? `Attempt ${screen.attempt} — the room is as you entered it.` : room.boss ? BOSS_INTRO_SUBTITLE : meta.blurb;
-    ui.showRoomIntro(room.name || meta.name, subtitle, `${screen.label} · stop ${screen.depth + 1} of ${ROUTE_STOPS}`);
+    const where =
+      entry.nodeId === PRACTICE_NODE
+        ? `Level ${levelIndex(entry.roomId) + 1} of ${LEVELS.length}`
+        : `${screen.label} · stop ${screen.depth + 1} of ${ROUTE_STOPS}`;
+    ui.showRoomIntro(room.name || meta.name, subtitle, where);
     phase = 'playing';
     loop?.resume();
   }
@@ -493,7 +528,7 @@ export async function startGame(container: HTMLElement): Promise<GameHandle | nu
             'victory',
             sim,
             tutorial?.practice
-              ? { ...practiceVictory(LEVELS[0]!.id), note: 'You know the thread now.' }
+              ? { ...practiceVictory(LEVELS[0]!.id), note: `You know the thread now. ${levelClearNote(LEVELS[0]!.id)}` }
               : {
                   primaryLabel: 'Begin the expedition',
                   onPrimary: () => leaveTutorial(),
@@ -518,7 +553,7 @@ export async function startGame(container: HTMLElement): Promise<GameHandle | nu
       const attempt = current.attempt;
       if (sim.outcome === 'victory') {
         markLevelCleared(id);
-        afterEnding = () => ui.showResult('victory', sim, { ...practiceVictory(id), note: 'Practice: no relics; only the unlock is kept.' });
+        afterEnding = () => ui.showResult('victory', sim, { ...practiceVictory(id), note: levelClearNote(id) });
       } else {
         afterEnding = () =>
           ui.showResult('defeat', sim, {

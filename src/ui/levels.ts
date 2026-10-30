@@ -89,7 +89,7 @@ export function createLevelSelect(root: HTMLElement): LevelSelect {
       head.append(back, titles);
       const sub = doc.createElement('p');
       sub.className = 'sub';
-      sub.textContent = `${cleared} of ${levels.length} cleared. Clear a level to open the next. Practice runs keep no relics and save no expedition.`;
+      sub.textContent = `${cleared} of ${levels.length} cleared. Levels open in order: clear one to open the next.`;
       const list = doc.createElement('ol');
       let firstOpen: HTMLButtonElement | null = null;
       for (const l of levels) {
@@ -125,7 +125,11 @@ export function createLevelSelect(root: HTMLElement): LevelSelect {
         li.append(card);
         list.append(li);
       }
-      panel.append(head, sub, list);
+      const credit = doc.createElement('p');
+      credit.className = 'oys-credit';
+      credit.style.marginTop = '18px';
+      credit.textContent = 'Made by Junaid';
+      panel.append(head, sub, list, credit);
       panel.hidden = false;
       panel.scrollTop = 0;
       visible = true;

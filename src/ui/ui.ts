@@ -46,6 +46,8 @@ export interface UICallbacks {
   onSettingsChange(s: Settings): void;
   /** Title 'Continue' (room-entry checkpoint). Falls back to onStart when absent. */
   onContinue?(): void;
+  /** Title 'Expedition': the branching roguelite run. Shown only when provided. */
+  onExpedition?(): void;
   /** Title / pause 'Levels': open the level select. The button is shown only when provided. */
   onLevels?(): void;
   /** Pause 'Main menu': leave the room for the title screen. Shown only when provided. */
@@ -58,6 +60,8 @@ export interface UICallbacks {
 
 export interface TitleOptions {
   readonly canContinue: boolean;
+  /** Main 'Play' flow: label for the primary button and the level it starts. */
+  readonly play?: { readonly label: string; readonly detail: string };
   /** e.g. "Needle Gallery · 4 health"; shown under the Continue caption. */
   readonly continueDetail?: string;
 }
@@ -211,6 +215,7 @@ export function createUI(container: HTMLElement, initialSettings: Settings, call
       storageNote(),
       saveNote(),
       el('p', 'oys-controls-line', {}, [el('b', '', {}, ['Drag']), ' to dash · ', el('b', '', {}, ['Tap']), ' to return']),
+      el('p', 'oys-credit', {}, ['Made by Junaid']),
     ]),
   ]);
   title.hidden = true;
@@ -229,6 +234,27 @@ export function createUI(container: HTMLElement, initialSettings: Settings, call
   function buildTitleActions(opts: TitleOptions): HTMLElement {
     if (confirmTimer) clearTimeout(confirmTimer);
     confirmTimer = null;
+    if (opts.play) {
+      // Main flow: play the levels in order; expedition and level select are secondary.
+      const play = button('oys-btn', opts.play.label, { 'aria-describedby': 'oys-play-cap' });
+      play.addEventListener('click', () => {
+        hideTitle();
+        callbacks.onStart();
+      });
+      const nodes: HTMLElement[] = [play, el('p', 'oys-continue-cap', { id: 'oys-play-cap' }, [opts.play.detail]), ...levelsButton()];
+      if (callbacks.onExpedition) {
+        const exp = button('oys-btn oys-btn--ghost', opts.canContinue ? 'Continue expedition' : 'Expedition');
+        exp.addEventListener('click', () => {
+          hideTitle();
+          callbacks.onExpedition?.();
+        });
+        nodes.push(exp);
+        // A saved expedition resumes from its room entry; say so plainly.
+        if (opts.canContinue) nodes.push(el('p', 'oys-continue-cap', {}, [CONTINUE_CAPTION]));
+      }
+      titleActions.replaceChildren(...nodes);
+      return play;
+    }
     if (!opts.canContinue) {
       const begin = button('oys-btn', 'Begin');
       begin.addEventListener('click', () => {
@@ -331,6 +357,7 @@ export function createUI(container: HTMLElement, initialSettings: Settings, call
     el('div', 'oys-stack', {}, [el('h2', 'oys-heading', { id: 'oys-pause-h' }, ['Paused']), pauseReason, el('div', 'oys-rule')]),
     el('div', 'oys-stack', {}, [resumeBtn, restartBtn, ...pauseExits]),
     toggleRow(),
+    el('p', 'oys-credit', {}, ['Made by Junaid']),
     el('p', 'oys-note', {}, [
       pauseExits.length
         ? 'Restarting returns you to this room’s entrance. Leaving keeps your expedition saved: Continue restarts this room.'
