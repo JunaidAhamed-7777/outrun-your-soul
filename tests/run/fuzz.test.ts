@@ -86,7 +86,8 @@ describe('run layer fuzz', () => {
     expect(opsApplied).toBeGreaterThan(1000);
     expect(rejected).toBeGreaterThan(100);
     expect(finished).toBeGreaterThan(0);
-  });
+    // ~2.5 s alone; give headroom for a busy machine running the whole suite in parallel.
+  }, 30_000);
 });
 
 describe('run layer boundaries', () => {
