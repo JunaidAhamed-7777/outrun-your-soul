@@ -7,7 +7,7 @@ import { Color, Mesh, MeshStandardMaterial, MeshToonMaterial, type Material, typ
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { MODEL_IDS, type ModelId } from './contract';
 import { sharedToon, toon, toonGradient } from './materials';
-import { isPaletteKey } from './palette';
+import { isPaletteKey, PALETTE_HEX } from './palette';
 import { placeholderFor } from './placeholders';
 
 export function modelUrl(id: ModelId, base: string = import.meta.env.BASE_URL): string {
@@ -34,8 +34,16 @@ function toonify(root: Object3D): void {
     if (!(node instanceof Mesh)) return;
     const convert = (material: Material): Material => {
       if (material instanceof MeshToonMaterial) return material;
-      if (isPaletteKey(material.name)) return sharedToon(material.name);
-      const base = material instanceof MeshStandardMaterial ? material.color : new Color('#ffffff');
+      const emissive = material instanceof MeshStandardMaterial && material.emissive.getHex() !== 0;
+      if (isPaletteKey(material.name) && !emissive && !(material as MeshStandardMaterial).transparent) {
+        material.dispose();
+        return sharedToon(material.name);
+      }
+      const base = isPaletteKey(material.name)
+        ? new Color(PALETTE_HEX[material.name])
+        : material instanceof MeshStandardMaterial
+          ? material.color
+          : new Color('#ffffff');
       const converted = toon(base);
       converted.name = material.name;
       converted.gradientMap = toonGradient();
