@@ -24,6 +24,7 @@ export { SILK_CLOISTER, SILK_CLOISTER_ARCADE } from './silk-cloister';
 export { MOURNERS_GARDEN, MOURNERS_GARDEN_VIGIL, MOURNERS_GARDEN_WARDEN } from './mourners-garden';
 export { LAST_PLATFORM, LAST_PLATFORM_LONG_CHAIN, LAST_PLATFORM_WARDEN } from './last-platform';
 export { LAST_WARDEN_ARENA } from './last-warden';
+export { FIRST_LIGHT } from './first-light';
 export { validateRoom, reachablePoints } from './validate';
 
 /** Playable variants per template ID (index = RoomEntry.variant). */

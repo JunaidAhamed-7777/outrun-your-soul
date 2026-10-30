@@ -1,0 +1,55 @@
+/**
+ * First Light: the onboarding room played before a player's first expedition. Not part
+ * of the expedition template pool. Lessons arrive in order because each threat wakes
+ * only when the previous one falls; the step-by-step prompts live in src/game/tutorial.ts.
+ *
+ * Layout (8 x 12 tiles, y grows up the screen):
+ *
+ *   y=12 +--------+
+ *        |   [EX]  k|  exit gate x 3..5; keeper k wakes when n falls (aims at the soul)
+ *   y=10 |        |
+ *        |n       |   needler n wakes when the dummy breaks (aims at the body)
+ *   y=7  |  ##    |   low block: cover from the needler's line
+ *        |     d  |   training dummy d: dormant forever, the first strike target
+ *   y=4  |        |
+ *        |        |   open start: room to practise dash, follow, RETURN, contact
+ *   y=1  |   S    |
+ *        +--------+
+ */
+import type { RoomDef } from '../../sim/types';
+
+export const FIRST_LIGHT: RoomDef = {
+  id: 'first_light',
+  name: 'First Light',
+  width: 8,
+  height: 12,
+  walls: [{ x: 2, y: 7, w: 2, h: 1 }],
+  spawn: { x: 4, y: 1.5 },
+  exit: { x: 3, y: 11, w: 2, h: 1 },
+  enemies: [
+    // Never wakes: the player breaks it whenever they are ready.
+    { id: 'dummy', role: 'needler', at: { x: 5.6, y: 5.6 }, facing: { x: 0, y: -1 }, dormant: true },
+    {
+      id: 'needler',
+      role: 'needler',
+      at: { x: 1.2, y: 8.8 },
+      facing: { x: 1, y: -1 },
+      dormant: true,
+      wake: { kind: 'enemyKilled', enemy: 'dummy' },
+      // Extra idle time after waking so the first lock arrives after the prompt is read.
+      phase: -1.2,
+    },
+    {
+      id: 'keeper',
+      role: 'keeper',
+      at: { x: 6.8, y: 10.4 },
+      facing: { x: -1, y: -1 },
+      dormant: true,
+      wake: { kind: 'enemyKilled', enemy: 'needler' },
+      phase: -1.2,
+    },
+  ],
+  lanes: [],
+  // Prompts come from the tutorial coach, not the generic hint system.
+  hints: [],
+};

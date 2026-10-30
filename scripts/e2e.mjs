@@ -564,6 +564,25 @@ try {
   await threadkeeper.tap();
   await h.ready();
   await page.waitForFunction(() => window.__oys.phase() === 'playing', null, { timeout: 5000 });
+
+  // First-time players get the First Light tutorial before the expedition.
+  const tutorialRoom = await state();
+  const objective = page.locator('.oys-objective');
+  await objective.waitFor({ state: 'visible', timeout: 5000 }).catch(() => {});
+  const objectiveText = (await objective.textContent().catch(() => '')) ?? '';
+  report.screenshots.push(await shot(page, 'tutorial'));
+  const tutorialClear = await botPlayRoom(page);
+  const begin = page.getByRole('button', { name: 'Begin the expedition' });
+  await begin.waitFor({ state: 'visible', timeout: 8000 });
+  report.screenshots.push(await shot(page, 'tutorial-complete'));
+  record(
+    'B0 first expedition starts with the First Light tutorial: objective card, cleared, then "Begin the expedition"',
+    tutorialRoom.room.id === 'first_light' && /Step 1 of 8/.test(objectiveText) && tutorialClear.outcome === 'victory',
+    `room ${tutorialRoom.room.id}; card "${objectiveText.replace(/\s+/g, ' ').slice(0, 80)}"; tutorial ${tutorialClear.outcome}`,
+  );
+  await begin.tap();
+  await h.ready();
+  await page.waitForFunction(() => window.__oys.phase() === 'playing', null, { timeout: 5000 });
   const room1 = await state();
   const run1 = await h.run();
   const intro1 = await introText(page);

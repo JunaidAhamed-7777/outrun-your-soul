@@ -5,11 +5,11 @@
  * run-layer transitions and checkpoint writes.
  */
 import { createAudio, type GameAudio } from '../audio/audio';
-import { DEPARTURE_COURT, roomFor } from '../content/rooms';
+import { DEPARTURE_COURT, FIRST_LIGHT, roomFor } from '../content/rooms';
 import { bindLifecycle, createFixedLoop, type FixedLoop } from '../core';
 import { bindPointerInput, GestureMachine } from '../input';
 import { createRenderer, isWebGL2Available, type GameRenderer, type RenderOverlay } from '../render/renderer';
-import { isStarterId, type RelicId } from '../run';
+import { BASE_ROOM_PARAMS, EMPTY_CHARGES, isStarterId, type RelicId, type RoomEntry, type StarterId } from '../run';
 import { ProgressStore } from '../run/progress';
 import { CheckpointStore } from '../save/checkpoint';
 import { loadSettings, saveSettings, type Settings } from '../save/settings';
@@ -27,11 +27,13 @@ import {
   type SimEvent,
   type SimState,
 } from '../sim';
+import { createObjectiveCard } from '../ui/objective';
 import { BOSS_INTRO_SUBTITLE, createUI, type GameUI } from '../ui/ui';
 import { AimTracker } from './aim';
 import { bootFraction, bootScreen, SCRIPT_SHARE } from './boot';
 import { Director, type Screen } from './director';
 import { roomMeta } from './room-meta';
+import { TutorialCoach, TUTORIAL_DONE_KEY } from './tutorial';
 import { continueDetail, draftView, endingView, loadoutChips, routeChoices, starterOptions } from './views';
 
 type Phase = 'title' | 'choosing' | 'playing' | 'paused' | 'ending' | 'result';
@@ -58,6 +60,31 @@ function resolveRoom(roomId: string, variant: number): RoomDef {
     console.warn(`[rooms] '${roomId}' is not authored; using Departure Court`);
     return DEPARTURE_COURT;
   }
+}
+
+/** Node id marking the onboarding room (it is not part of the expedition graph). */
+const TUTORIAL_NODE = 'tutorial';
+
+function tutorialScreen(attempt: number): RoomScreen {
+  return {
+    kind: 'room',
+    room: FIRST_LIGHT,
+    label: 'Tutorial',
+    depth: -1,
+    attempt,
+    entry: {
+      nodeId: TUTORIAL_NODE,
+      roomId: FIRST_LIGHT.id as RoomEntry['roomId'],
+      variant: 0,
+      seed: 1,
+      health: TUNING.maxHealth,
+      maxHealth: TUNING.maxHealth,
+      loadout: [],
+      params: BASE_ROOM_PARAMS,
+      hooks: {},
+      charges: EMPTY_CHARGES,
+    },
+  };
 }
 
 export interface GameHandle {
@@ -92,6 +119,25 @@ export async function startGame(container: HTMLElement): Promise<GameHandle | nu
   let invariantReported = false;
   const aim = new AimTracker();
   const machine = new GestureMachine();
+  /** Onboarding state while First Light is being played before the first expedition. */
+  let tutorial: { coach: TutorialCoach; starter: StarterId; attempt: number } | null = null;
+  const isTutorialRoom = () => current?.entry.nodeId === TUTORIAL_NODE;
+  const tutorialDone = (): boolean => {
+    if (params.get('tutorial') === '0') return true;
+    if (params.get('tutorial') === '1') return false;
+    try {
+      return storage?.getItem(TUTORIAL_DONE_KEY) === '1';
+    } catch {
+      return false;
+    }
+  };
+  const markTutorialDone = (): void => {
+    try {
+      storage?.setItem(TUTORIAL_DONE_KEY, '1');
+    } catch {
+      // Storage unavailable: the tutorial simply offers itself again next session.
+    }
+  };
 
   // Late-bound so callbacks created before construction can reference them.
   let renderer: GameRenderer | null = null;
@@ -147,6 +193,7 @@ export async function startGame(container: HTMLElement): Promise<GameHandle | nu
   }
   // Keep the overlay above the canvas regardless of creation order.
   container.appendChild(ui.root);
+  const objective = createObjectiveCard(ui.root);
   const activeRenderer = renderer;
   activeRenderer.setRoom(room);
 
@@ -159,6 +206,7 @@ export async function startGame(container: HTMLElement): Promise<GameHandle | nu
     phase = 'title';
     ui.hideHud();
     ui.setBoss(null);
+    objective.set(null);
     const canContinue = director.hasContinue();
     // Peek at the saved room for the Continue caption without disturbing the active run.
     const peek = canContinue ? new Director({ checkpoints, progress: new ProgressStore(browserStorage()), resolveRoom }).continueRun() : null;
@@ -173,8 +221,25 @@ export async function startGame(container: HTMLElement): Promise<GameHandle | nu
     phase = 'choosing';
     ui.showStarterSelect(starterOptions(director.progress), (id) => {
       if (!isStarterId(id)) return;
-      present(director.newRun(newSeed(), id));
+      if (tutorialDone()) present(director.newRun(newSeed(), id));
+      else startTutorial(id, 1);
     });
+  }
+
+  /** First Light: the onboarding room, played once before the first expedition. */
+  function startTutorial(starter: StarterId, attempt: number): void {
+    ui.hideChoice();
+    ui.hideResult();
+    tutorial = { coach: new TutorialCoach(), starter, attempt };
+    roomReady = enterRoom(tutorialScreen(attempt));
+  }
+
+  function leaveTutorial(): void {
+    const starter = tutorial?.starter ?? 'threadkeeper';
+    markTutorialDone();
+    tutorial = null;
+    objective.set(null);
+    present(director.newRun(newSeed(), starter));
   }
 
   /** Show whatever the director says comes next. */
@@ -245,6 +310,17 @@ export async function startGame(container: HTMLElement): Promise<GameHandle | nu
     machine.cancel('interrupted');
     activeRenderer.setRoom(room);
     ui.showHud(room);
+    if (entry.nodeId === TUTORIAL_NODE && tutorial) {
+      tutorial.coach = new TutorialCoach();
+      ui.setLoadout([]);
+      ui.showRoomIntro(room.name, 'Learn to leave yourself behind.', 'Tutorial');
+      const view = tutorial.coach.view;
+      objective.set(view.step ? { index: view.index, total: view.total, title: view.step.title, text: view.step.text } : null);
+      phase = 'playing';
+      loop?.resume();
+      return;
+    }
+    objective.set(null);
     ui.setLoadout(loadoutChips(director.run, sim));
     const meta = roomMeta(entry.roomId);
     const subtitle =
@@ -255,6 +331,29 @@ export async function startGame(container: HTMLElement): Promise<GameHandle | nu
   }
 
   function onRoomOver(): void {
+    if (isTutorialRoom()) {
+      objective.set(null);
+      if (sim.outcome === 'victory') {
+        markTutorialDone();
+        afterEnding = () =>
+          ui.showResult('victory', sim, {
+            primaryLabel: 'Begin the expedition',
+            onPrimary: () => leaveTutorial(),
+            note: 'You know the thread now. The courtyards will not wait.',
+          });
+      } else {
+        const attempt = (tutorial?.attempt ?? 1) + 1;
+        afterEnding = () =>
+          ui.showResult('defeat', sim, {
+            primaryLabel: 'Try again',
+            onPrimary: () => startTutorial(tutorial?.starter ?? 'threadkeeper', attempt),
+            secondaryLabel: 'Skip tutorial',
+            onSecondary: () => leaveTutorial(),
+            note: 'Nothing is lost in the tutorial.',
+          });
+      }
+      return;
+    }
     if (sim.outcome === 'victory') {
       // Commit completion + reward + checkpoint now (idempotent), so a reload on the
       // result panel never replays a cleared room.
@@ -351,6 +450,17 @@ export async function startGame(container: HTMLElement): Promise<GameHandle | nu
       activeRenderer.handleEvents(events, sim);
       audio.handleEvents(events, sim);
       ui.handleEvents(events, sim);
+      if (tutorial && isTutorialRoom()) tutorial.coach.update(events, sim);
+    } else if (tutorial && isTutorialRoom()) {
+      tutorial.coach.update([], sim);
+    }
+    if (tutorial && isTutorialRoom() && phase === 'playing') {
+      const view = tutorial.coach.view;
+      if (view.justCompleted) {
+        objective.flash();
+        audio.ui('select');
+      }
+      objective.set(view.step ? { index: view.index, total: view.total, title: view.step.title, text: view.step.text } : null);
     }
     if (phase === 'ending') {
       endingLeft -= realDt;

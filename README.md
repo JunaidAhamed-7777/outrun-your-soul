@@ -35,6 +35,7 @@ There is no logo or cover art yet. The identity that exists is the in-game one:
 
 What exists (30 October 2026):
 - Deterministic 2D combat simulation (fixed 120 Hz step, event-time-ordered sweeps): finite-speed dash, slower route-following soul, vulnerable RETURN, genuine-contact reunion, shared health with attack-ID dedup, needler / keeper (forecast aim on the soul's route) / warden, persistent lanes, four behavioural relics plus Long Silk / Short Stitch parameters, and the Last Warden boss.
+- First Light: an eight-step onboarding room (dash, follow, RETURN, contact reunion, strike, locked lines, protecting the soul, leaving together) played before a first expedition; skippable after a defeat.
 - Run layer: six relics (14 legal pairs), two starters, a seeded branching expedition (opening, two branches, two stations with drafts, final approach, boss, ending), room-entry checkpoints ("Continue restarts this room."), progress atlas.
 - Six room templates with two authored variants each (validated, cleared by novice- and expert-timed planning bots) plus the boss arena.
 - Three.js orthographic presentation with 18 original Blender-authored GLB models (made through the pinned Blender MCP bridge, Khronos-validated, provenance in `art/provenance.csv`), touch gestures, procedural WebAudio, accessible DOM UI.
