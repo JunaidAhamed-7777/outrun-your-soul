@@ -198,6 +198,11 @@ let fps = 0;
 function frame(now: number): void {
   const dt = Math.min(0.1, (now - last) / 1000);
   last = now;
+  tick(dt);
+  requestAnimationFrame(frame);
+}
+
+function tick(dt: number): void {
   if (scene !== 'still') {
     autopilot(dt);
     acc += dt;
@@ -228,8 +233,20 @@ function frame(now: number): void {
       .map(([k]) => k);
     hud.textContent = `${scene}${scene === 'still' ? ` [${variants[variant]!.name}]` : ''} · ${fps.toFixed(0)} fps · calls ${st.calls} · tris ${st.triangles} · dpr ${st.pixelRatio} · glb: ${glbs.join(',') || 'none'}${reducedMotion ? ' · reduced motion' : ''}`;
   }
-  requestAnimationFrame(frame);
 }
 requestAnimationFrame(frame);
 
-Object.assign(window, { renderer, sim, still });
+/** Drive frames synchronously (the lab may run in a hidden pane where rAF is paused). */
+function labAdvance(seconds: number, frameRate = 60): string {
+  const n = Math.max(1, Math.round(seconds * frameRate));
+  for (let i = 0; i < n; i++) tick(1 / frameRate);
+  return hud.textContent ?? '';
+}
+
+function labVariant(i: number): string {
+  variant = ((i % variants.length) + variants.length) % variants.length;
+  applyVariant();
+  return variants[variant]!.name;
+}
+
+Object.assign(window, { renderer, sim, still, labAdvance, labVariant });

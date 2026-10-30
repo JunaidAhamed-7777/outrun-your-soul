@@ -8,6 +8,7 @@ import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { MODEL_IDS, type ModelId } from './contract';
 import { sharedToon, toon, toonGradient } from './materials';
 import { isPaletteKey, PALETTE_HEX } from './palette';
+import { mergeStaticMeshes } from './merge';
 import { placeholderFor } from './placeholders';
 
 export function modelUrl(id: ModelId, base: string = import.meta.env.BASE_URL): string {
@@ -88,10 +89,13 @@ export async function loadModels(
         root.removeFromParent();
         root.position.set(0, 0, 0);
         toonify(root);
+        mergeStaticMeshes(root, id);
         templates.set(id, root);
         sources.set(id, 'glb');
       } catch {
-        templates.set(id, placeholderFor(id));
+        const placeholder = placeholderFor(id);
+        mergeStaticMeshes(placeholder, id);
+        templates.set(id, placeholder);
         sources.set(id, 'placeholder');
       } finally {
         done += 1;
