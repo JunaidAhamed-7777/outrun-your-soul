@@ -9,3 +9,5 @@ coverage/
 .tools/
 art/logs/
 .claude/worktrees/
+__pycache__/
+*.pyc
