@@ -28,6 +28,8 @@ import { ringMaterial, setUniform } from './shaders';
 const GROUND = 0.018;
 /** Presentation scale for actor art; collision rings always show the true simulation radius. */
 export const ACTOR_SCALE = 1.18;
+/** The soul is the endpoint players must protect: give it extra presence. */
+export const SOUL_SCALE = 1.4;
 
 export function lerpVec(a: Vec2, b: Vec2, t: number): Vec2 {
   return { x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t };
@@ -277,14 +279,14 @@ export class SoulView {
     const float = reducedMotion ? 0 : Math.sin(time * 1.9 + 0.7) * 0.035;
     // Merged: a small mask riding just behind and above the courier's head.
     const k = this.apart;
-    const scale = (0.5 + 0.5 * k) * ACTOR_SCALE;
+    const scale = (0.5 + 0.5 * k) * SOUL_SCALE;
     this.model.scale.setScalar(scale);
     this.model.position.set(0, (1 - k) * 0.5 + float, (1 - k) * -0.12);
     if (this.wisp) this.wisp.rotation.z = reducedMotion ? 0 : Math.sin(time * 2.7) * 0.18;
     if (this.mask) this.mask.rotation.z = reducedMotion ? 0 : Math.sin(time * 1.3) * 0.06;
     this.glow.position.set(0, (0.55 * scale + (1 - k) * 0.5) + float, 0);
     this.pulse = Math.max(0, this.pulse - dt * 2.5);
-    const glowSize = 0.55 + 0.25 * k + this.pulse * 0.6;
+    const glowSize = 0.6 + 0.45 * k + this.pulse * 0.7;
     this.glow.scale.set(glowSize, glowSize, 1);
     this.ring.visible = k > 0.5 && state.body.mode !== 'dead';
     this.shadow.visible = k > 0.3;

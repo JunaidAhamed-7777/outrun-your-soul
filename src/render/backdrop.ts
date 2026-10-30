@@ -16,6 +16,7 @@ import {
   Matrix4,
   Mesh,
   MeshBasicMaterial,
+  MeshToonMaterial,
   Object3D,
   PlaneGeometry,
   Shape,
@@ -280,8 +281,20 @@ export function buildBackdrop(room: RoomDef, pitch: number, lib: ModelLibrary): 
 
   if (engineGlb) {
     // Placement and animation per art/environment-kit.md.
-    const engine = lib.instance('distant_engine');
+    const engine = lib.instance('distant_engine', true);
     engine.position.set(cx, -3.1, -(room.height + 3.5));
+    // Aerial perspective: lift the distant engine toward the warm sky so it sits behind play.
+    const haze = new Color('#f2c08f');
+    engine.traverse((node) => {
+      if (!(node instanceof Mesh)) return;
+      for (const material of Array.isArray(node.material) ? node.material : [node.material]) {
+        if (material instanceof MeshToonMaterial) {
+          material.emissive.copy(haze);
+          material.emissiveIntensity = 0.3;
+          disposables.push(material);
+        }
+      }
+    });
     group.add(engine);
     const gearA = engine.getObjectByName('distant_engine_gear_a');
     const gearB = engine.getObjectByName('distant_engine_gear_b');

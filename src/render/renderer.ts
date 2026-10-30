@@ -144,6 +144,7 @@ export async function createRenderer(container: HTMLElement, options: RendererOp
   const ndc = new Vector2();
   const hitPoint = new Vector3();
   const projected = new Vector3();
+  const seenEnemies = new Set<number>();
 
   function onContextLost(event: Event): void {
     event.preventDefault();
@@ -310,7 +311,8 @@ export async function createRenderer(container: HTMLElement, options: RendererOp
     body.update(state, alpha, dt, time, reducedMotion);
     soul.update(state, alpha, dt, time, reducedMotion, body.pos);
 
-    const seen = new Set<number>();
+    const seen = seenEnemies;
+    seen.clear();
     for (const enemy of state.enemies) {
       seen.add(enemy.id);
       let view = sentries.get(enemy.id);

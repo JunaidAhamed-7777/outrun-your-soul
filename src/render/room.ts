@@ -124,6 +124,8 @@ export function buildRoomView(room: RoomDef, lib: ModelLibrary): RoomView {
       floorPlacements.push({ matrix: placeAt(x, y), tint: new Color(k, k, k * 1.02) });
     }
   }
+  // Threshold stones continue through the gate opening in the north perimeter row.
+  for (let x = 0; x < room.width; x++) if (inExitColumn(room, x)) thresholdPlacements.push({ matrix: placeAt(x, room.height) });
   const floorTemplate = lib.template('floor_tile');
   // Stone mottling on the tile faces. Blender tiles carry their own chamfer (no baked bevel)
   // and no UVs, so they get top-down planar UVs.
@@ -167,7 +169,7 @@ export function buildRoomView(room: RoomDef, lib: ModelLibrary): RoomView {
   const shadowTex = softBox();
   const shadowGeo = new PlaneGeometry(1, 1);
   shadowGeo.rotateX(-Math.PI / 2);
-  const shadowMat = new MeshBasicMaterial({ map: shadowTex, color: new Color('#ffffff'), transparent: true, opacity: 0.55, depthWrite: false });
+  const shadowMat = new MeshBasicMaterial({ map: shadowTex, color: new Color('#ffffff'), transparent: true, opacity: 0.75, depthWrite: false });
   const shadows = new InstancedMesh(shadowGeo, shadowMat, shadowRects.length);
   const sm = new Matrix4();
   shadowRects.forEach((r, i) => {

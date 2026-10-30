@@ -56,6 +56,7 @@ export class RibbonView {
   private readonly knotA: Mesh<CircleGeometry, MeshBasicMaterial>;
   private readonly knotB: Mesh<CircleGeometry, MeshBasicMaterial>;
   private readonly pts: Vec2[] = [];
+  private readonly shadowPts: { x: number; y: number }[] = [];
   private time = 0;
   private flow = 0.3;
 
@@ -94,8 +95,13 @@ export class RibbonView {
     setUniform(this.silk.mesh.material, 'uFlow', this.flow);
 
     this.silk.set(this.pts, 0.075, 0.032);
-    const shadowPts = this.pts.map((p) => ({ x: p.x + 0.035, y: p.y - 0.045 }));
-    this.shade.set(shadowPts, 0.12, 0.008);
+    while (this.shadowPts.length < this.pts.length) this.shadowPts.push({ x: 0, y: 0 });
+    this.shadowPts.length = this.pts.length;
+    for (let i = 0; i < this.pts.length; i++) {
+      this.shadowPts[i]!.x = this.pts[i]!.x + 0.035;
+      this.shadowPts[i]!.y = this.pts[i]!.y - 0.045;
+    }
+    this.shade.set(this.shadowPts, 0.12, 0.008);
     this.knotA.visible = true;
     this.knotB.visible = true;
     place(this.knotA, soulPos, 0.036);

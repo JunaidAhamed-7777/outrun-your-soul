@@ -91,6 +91,7 @@ export class BoltLayer {
   readonly group = new Group();
   private readonly pool: BoltView[] = [];
   private readonly active = new Map<number, BoltView>();
+  private readonly seen = new Set<number>();
   private readonly shared: ConstructorParameters<typeof BoltView>[0];
 
   constructor(spot: Texture) {
@@ -118,7 +119,8 @@ export class BoltLayer {
   }
 
   update(projectiles: readonly ProjectileState[], alpha: number, time: number): void {
-    const seen = new Set<number>();
+    const seen = this.seen;
+    seen.clear();
     for (const p of projectiles) {
       if (!p.alive) continue;
       seen.add(p.id);
