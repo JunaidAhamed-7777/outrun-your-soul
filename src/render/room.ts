@@ -115,10 +115,13 @@ export function buildRoomView(room: RoomDef, lib: ModelLibrary): RoomView {
   const disposables: { dispose(): void }[] = [];
 
   // Outer plaza and grout bed.
-  const plazaGeo = new PlaneGeometry(80, 80);
+  // The plaza ends at the terrace edge (sim y = height + 3.2); the backdrop lies beyond it.
+  const plazaSouth = -30;
+  const plazaNorth = room.height + 3.2;
+  const plazaGeo = new PlaneGeometry(80, plazaNorth - plazaSouth);
   plazaGeo.rotateX(-Math.PI / 2);
   const plaza = new Mesh(plazaGeo, sharedToon('cobalt_deep'));
-  plaza.position.set(room.width / 2, -0.1, -room.height / 2 - 20);
+  plaza.position.set(room.width / 2, -0.1, -(plazaSouth + plazaNorth) / 2);
   plaza.name = 'plaza';
   const groutGeo = new PlaneGeometry(room.width, room.height);
   groutGeo.rotateX(-Math.PI / 2);
