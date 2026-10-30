@@ -41,11 +41,8 @@ export const BUDGETS = Object.freeze({
   actor: { label: 'Courier or soul', maxTriangles: 2000, maxMaterials: 3, materialsHard: true },
   enemy: { label: 'Ordinary enemy', maxTriangles: 2500, maxMaterials: 3, materialsHard: true },
   warden: { label: 'Warden', maxTriangles: 4000, maxMaterials: 3, materialsHard: true },
-  // The Last Warden boss reuses the warden family (ASSET_MANIFEST); ART_PIPELINE has no
-  // separate boss row. Its triangles are held to the Warden row; a material overrun is a
-  // warning until a budget decision is recorded in ART_PIPELINE.
-  boss: { label: 'Warden row applied to the Last Warden boss (no boss row in ART_PIPELINE)', maxTriangles: 4000, maxMaterials: 3, materialsHard: false },
-  module: { label: 'Small prop / modular wall', maxTriangles: 800, maxMaterials: 1, materialsHard: false },
+  boss: { label: 'Last Warden boss (body or heart)', maxTriangles: 4000, maxMaterials: 4, materialsHard: true },
+  module: { label: 'Small prop / modular wall', maxTriangles: 800, maxMaterials: 3, materialsHard: true },
   setPiece: { label: 'No per-asset budget documented; counts toward the <=60,000-triangle visible room', maxTriangles: 60000, maxMaterials: null, materialsHard: false },
   fixture: { label: 'Calibration fixture (never ships)', maxTriangles: null, maxMaterials: null, materialsHard: false },
   unknown: { label: 'Unknown asset ID: no documented budget', maxTriangles: 60000, maxMaterials: null, materialsHard: false },
@@ -64,6 +61,15 @@ export const ASSET_RULES = Object.freeze({
   wall_block: { category: 'module', parts: [], tile: true },
   exit_gate: { category: 'setPiece', parts: ['frame', 'door_left', 'door_right'], grounded: true, gateWidth: 2 },
   distant_engine: { category: 'setPiece', parts: [] },
+  // Nonblocking courtyard dress and runtime props (ASSET_MANIFEST `courtyard_dress`):
+  // held to the "Small prop" row, without the tile-footprint rule.
+  urn: { category: 'module', parts: [] },
+  banner_post: { category: 'module', parts: [] },
+  lamp_post: { category: 'module', parts: [] },
+  lane_emitter: { category: 'module', parts: [] },
+  threshold_inlay: { category: 'module', parts: [] },
+  // Signal House station backdrop: a set piece like the distant engine.
+  station_kiosk: { category: 'setPiece', parts: [] },
   calibration_tile: { category: 'fixture', parts: [] },
 });
 

@@ -17,10 +17,19 @@
     "soul_mask",
     "needler",
     "keeper",
+    "warden",
+    "last_warden_body",
+    "last_warden_heart",
     "floor_tile",
     "wall_block",
     "exit_gate",
-    "distant_engine"
+    "distant_engine",
+    "lane_emitter",
+    "threshold_inlay",
+    "urn",
+    "banner_post",
+    "lamp_post",
+    "station_kiosk"
   ],
   "missingRuntimeModels": [],
   "summary": {
@@ -38,17 +47,14 @@
       "sha256": "47b583234aeec0387074264eb6c3a70169643895de8edf3c332ecf8e21b492e4",
       "status": "pass",
       "errors": [],
-      "warnings": [
-        "not in MODEL_IDS (src/render/contract.ts): the runtime never requests it; remove it or add it to the contract",
-        "asset ID \"banner_post\" is not in the asset contract"
-      ],
+      "warnings": [],
       "stats": {
         "assetId": "banner_post",
-        "category": "unknown",
+        "category": "module",
         "budget": {
-          "label": "Unknown asset ID: no documented budget",
-          "maxTriangles": 60000,
-          "maxMaterials": null
+          "label": "Small prop / modular wall",
+          "maxTriangles": 800,
+          "maxMaterials": 3
         },
         "rootNodes": [
           "banner_post"
@@ -340,7 +346,7 @@
         "budget": {
           "label": "Small prop / modular wall",
           "maxTriangles": 800,
-          "maxMaterials": 1
+          "maxMaterials": 3
         },
         "rootNodes": [
           "floor_tile"
@@ -480,17 +486,14 @@
       "sha256": "addaa00c038556de14a00a3ff686c885488119572430847689f3199991f51936",
       "status": "pass",
       "errors": [],
-      "warnings": [
-        "not in MODEL_IDS (src/render/contract.ts): the runtime never requests it; remove it or add it to the contract",
-        "asset ID \"lamp_post\" is not in the asset contract"
-      ],
+      "warnings": [],
       "stats": {
         "assetId": "lamp_post",
-        "category": "unknown",
+        "category": "module",
         "budget": {
-          "label": "Unknown asset ID: no documented budget",
-          "maxTriangles": 60000,
-          "maxMaterials": null
+          "label": "Small prop / modular wall",
+          "maxTriangles": 800,
+          "maxMaterials": 3
         },
         "rootNodes": [
           "lamp_post"
@@ -553,17 +556,14 @@
       "sha256": "0811eb7ce6428832c29d07b1b7c8ca62f97c436dbd812ac5427cdd46b40d2f81",
       "status": "pass",
       "errors": [],
-      "warnings": [
-        "not in MODEL_IDS (src/render/contract.ts): the runtime never requests it; remove it or add it to the contract",
-        "asset ID \"lane_emitter\" is not in the asset contract"
-      ],
+      "warnings": [],
       "stats": {
         "assetId": "lane_emitter",
-        "category": "unknown",
+        "category": "module",
         "budget": {
-          "label": "Unknown asset ID: no documented budget",
-          "maxTriangles": 60000,
-          "maxMaterials": null
+          "label": "Small prop / modular wall",
+          "maxTriangles": 800,
+          "maxMaterials": 3
         },
         "rootNodes": [
           "lane_emitter"
@@ -634,17 +634,14 @@
       "sha256": "bb8508223bd2fc8dc8c5af0a3934a88443526227cd10fbed92ac69d2e9c9aa28",
       "status": "pass",
       "errors": [],
-      "warnings": [
-        "not in MODEL_IDS (src/render/contract.ts): the runtime never requests it; remove it or add it to the contract",
-        "4 materials exceeds 3 (Warden row applied to the Last Warden boss (no boss row in ART_PIPELINE), docs/ART_PIPELINE.md)"
-      ],
+      "warnings": [],
       "stats": {
         "assetId": "last_warden_body",
         "category": "boss",
         "budget": {
-          "label": "Warden row applied to the Last Warden boss (no boss row in ART_PIPELINE)",
+          "label": "Last Warden boss (body or heart)",
           "maxTriangles": 4000,
-          "maxMaterials": 3
+          "maxMaterials": 4
         },
         "rootNodes": [
           "last_warden_body"
@@ -711,17 +708,14 @@
       "sha256": "4c1fd618fdf9d01c7b2f1e745b51f483f30fd5d28b53947dfd52c5b84333ed73",
       "status": "pass",
       "errors": [],
-      "warnings": [
-        "not in MODEL_IDS (src/render/contract.ts): the runtime never requests it; remove it or add it to the contract",
-        "4 materials exceeds 3 (Warden row applied to the Last Warden boss (no boss row in ART_PIPELINE), docs/ART_PIPELINE.md)"
-      ],
+      "warnings": [],
       "stats": {
         "assetId": "last_warden_heart",
         "category": "boss",
         "budget": {
-          "label": "Warden row applied to the Last Warden boss (no boss row in ART_PIPELINE)",
+          "label": "Last Warden boss (body or heart)",
           "maxTriangles": 4000,
-          "maxMaterials": 3
+          "maxMaterials": 4
         },
         "rootNodes": [
           "last_warden_heart"
@@ -941,15 +935,12 @@
       "sha256": "989bcb7084d953d4ed7803bdc937a2c7fd434652260e684876290af15856255a",
       "status": "pass",
       "errors": [],
-      "warnings": [
-        "not in MODEL_IDS (src/render/contract.ts): the runtime never requests it; remove it or add it to the contract",
-        "asset ID \"station_kiosk\" is not in the asset contract"
-      ],
+      "warnings": [],
       "stats": {
         "assetId": "station_kiosk",
-        "category": "unknown",
+        "category": "setPiece",
         "budget": {
-          "label": "Unknown asset ID: no documented budget",
+          "label": "No per-asset budget documented; counts toward the <=60,000-triangle visible room",
           "maxTriangles": 60000,
           "maxMaterials": null
         },
@@ -1017,17 +1008,14 @@
       "sha256": "a1e7172a5179cacb3f4b2cd8fc2f7cbcff2c9efceae523ad7cb3ad0a67ac5c1b",
       "status": "pass",
       "errors": [],
-      "warnings": [
-        "not in MODEL_IDS (src/render/contract.ts): the runtime never requests it; remove it or add it to the contract",
-        "asset ID \"threshold_inlay\" is not in the asset contract"
-      ],
+      "warnings": [],
       "stats": {
         "assetId": "threshold_inlay",
-        "category": "unknown",
+        "category": "module",
         "budget": {
-          "label": "Unknown asset ID: no documented budget",
-          "maxTriangles": 60000,
-          "maxMaterials": null
+          "label": "Small prop / modular wall",
+          "maxTriangles": 800,
+          "maxMaterials": 3
         },
         "rootNodes": [
           "threshold_inlay"
@@ -1090,17 +1078,14 @@
       "sha256": "2ecc8c7e58662ee89c844f69a985ac164a02aa71252bbdfe91e10044af56f77f",
       "status": "pass",
       "errors": [],
-      "warnings": [
-        "not in MODEL_IDS (src/render/contract.ts): the runtime never requests it; remove it or add it to the contract",
-        "asset ID \"urn\" is not in the asset contract"
-      ],
+      "warnings": [],
       "stats": {
         "assetId": "urn",
-        "category": "unknown",
+        "category": "module",
         "budget": {
-          "label": "Unknown asset ID: no documented budget",
-          "maxTriangles": 60000,
-          "maxMaterials": null
+          "label": "Small prop / modular wall",
+          "maxTriangles": 800,
+          "maxMaterials": 3
         },
         "rootNodes": [
           "urn"
@@ -1162,16 +1147,14 @@
       "sha256": "5d52a6e895a510651843dacaab91c281b5fb491d0fa77ba1d6bdd96244a2d604",
       "status": "pass",
       "errors": [],
-      "warnings": [
-        "2 materials exceeds 1 (Small prop / modular wall, docs/ART_PIPELINE.md)"
-      ],
+      "warnings": [],
       "stats": {
         "assetId": "wall_block",
         "category": "module",
         "budget": {
           "label": "Small prop / modular wall",
           "maxTriangles": 800,
-          "maxMaterials": 1
+          "maxMaterials": 3
         },
         "rootNodes": [
           "wall_block"
@@ -1233,9 +1216,7 @@
       "sha256": "3c242b4f043f37835d823a99ea04e281e992056ece3d8c91315ddd5e49655f0d",
       "status": "pass",
       "errors": [],
-      "warnings": [
-        "not in MODEL_IDS (src/render/contract.ts): the runtime never requests it; remove it or add it to the contract"
-      ],
+      "warnings": [],
       "stats": {
         "assetId": "warden",
         "category": "warden",

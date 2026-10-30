@@ -49,13 +49,14 @@ These are proposed engineering guardrails, **not platform limits, tested capacit
 | Courier or soul | <=2,000 exported triangles each; <=3 material slots (raised from 1–2, see note) |
 | Ordinary enemy | <=2,500 exported triangles; <=3 materials (raised from 2, see note) |
 | Warden | <=4,000 exported triangles; <=3 materials |
-| Small prop / modular wall | 100–800 triangles, normally one material |
+| Last Warden boss (body, heart) | <=4,000 exported triangles each; <=4 materials (added 30 Oct, see note) |
+| Small prop / modular wall | 100–800 triangles; <=3 materials (raised from one, see note) |
 | Entire visible room | <=60,000 triangles, <=60 total render calls including effects |
 | Texture memory | Start below 32 MiB estimated decoded GPU texture memory |
 | First playable download | Target <=10 MiB compressed total application payload |
 | Device behavior | Target 60 fps; investigate sustained drops below 30 fps, stalls and missed input |
 
-**Budget decision, 30 Oct 2026:** actor and ordinary-enemy material slots were raised to three after the first exports. A third palette material (mask black on the courier and needler, cobalt glass on the keeper) carries the face/aim cue that makes these silhouettes readable at phone size, and the binding constraint is the whole-room render-call budget (<=60), which five actors at three materials each (~15 calls) stays well inside. Re-check if the phone test shows draw-call pressure.
+**Budget decision, 30 Oct 2026:** actor and ordinary-enemy material slots were raised to three after the first exports. A third palette material (mask black on the courier and needler, cobalt glass on the keeper) carries the face/aim cue that makes these silhouettes readable at phone size, and the binding constraint is the whole-room render-call budget (<=60), which five actors at three materials each (~15 calls) stays well inside. Re-check if the phone test shows draw-call pressure. The same day a boss row was added (the boss reads as a gold-and-vermilion mirror of the courier and needs a fourth palette material) and small props/modules were allowed up to three materials (wall body + coping, decor gold/ivory trim): the renderer bakes each model part into one vertex-coloured mesh, so material count no longer maps to draw calls, and measured play stays at 42–52 calls.
 
 Count the exported/runtime mesh, not only Blender's visible base mesh. Duplicate vertices, material groups and effects can increase cost. Measure the actual renderer and phone; geometry count alone is not a frame-time predictor. Record device, browser, viewport, pixel ratio, scene seed, build commit, warm/cold load, frame-time sample and memory estimate. Cap render pixel ratio if necessary while leaving input in CSS pixels. Do not run arbitrary low-resolution quality reduction that erases the soul or threat lines.
 
