@@ -55,6 +55,19 @@ export const CUE_SPECS: Readonly<Record<CueName, VoiceSpec>> = {
   rejectClick: { group: 'tick', duration: 0.08, minInterval: 0.12, priority: 2 },
   queuedTick: { group: 'tick', duration: 0.06, minInterval: 0.1, priority: 2 },
   wake: { group: 'air', duration: 0.6, minInterval: 0.2, priority: 5 },
+  select: { group: 'pluck', duration: 0.6, minInterval: 0.05, priority: 4 },
+  relicTake: { group: 'chord', duration: 1.6, minInterval: 0.3, priority: 7 },
+  roomSting: { group: 'stinger', duration: 1.4, minInterval: 0.5, priority: 6 },
+  endingEscaped: { group: 'stinger', duration: 4.2, minInterval: 1, priority: 10 },
+  endingFailed: { group: 'stinger', duration: 3.6, minInterval: 1, priority: 10 },
+  boost: { group: 'air', duration: 0.45, minInterval: 0.12, priority: 6 },
+  bellCharge: { group: 'chime', duration: 1.4, minInterval: 0.2, priority: 7 },
+  bellBurst: { group: 'impact', duration: 1.8, minInterval: 0.2, priority: 9 },
+  decoyPlace: { group: 'pluck', duration: 0.6, minInterval: 0.15, priority: 6 },
+  decoyTake: { group: 'pluck', duration: 0.6, minInterval: 0.15, priority: 6 },
+  guardClang: { group: 'impact', duration: 0.6, minInterval: 0.06, priority: 8 },
+  sweepWhoosh: { group: 'air', duration: 0.6, minInterval: 0.1, priority: 8 },
+  exposedChime: { group: 'chime', duration: 0.9, minInterval: 0.2, priority: 8 },
 };
 
 interface ActiveVoice {

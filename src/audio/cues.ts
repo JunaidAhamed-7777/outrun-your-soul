@@ -32,7 +32,22 @@ export type CueName =
   | 'defeat'
   | 'rejectClick'
   | 'queuedTick'
-  | 'wake';
+  | 'wake'
+  // Run interface stingers (played through GameAudio.ui).
+  | 'select'
+  | 'relicTake'
+  | 'roomSting'
+  | 'endingEscaped'
+  | 'endingFailed'
+  // Relic and warden events (mapped defensively by event type string).
+  | 'boost'
+  | 'bellCharge'
+  | 'bellBurst'
+  | 'decoyPlace'
+  | 'decoyTake'
+  | 'guardClang'
+  | 'sweepWhoosh'
+  | 'exposedChime';
 
 export interface CueRequest {
   readonly cue: CueName;
@@ -101,7 +116,12 @@ type Handler<T extends SimEventType> = (
   mem: CueMemory,
 ) => CueRequest[];
 
-const HANDLERS: { readonly [T in SimEventType]: Handler<T> } = {
+/**
+ * Typed handlers for known event types. Partial on purpose: when the simulation adds
+ * event types, this table keeps compiling and the string-keyed table below (or
+ * silence) covers them until they get a typed entry.
+ */
+const HANDLERS: { readonly [T in SimEventType]?: Handler<T> } = {
   dashStart: (e, ctx, mem) => {
     const d = Math.hypot(e.to.x - e.from.x, e.to.y - e.from.y);
     const degree = dashDegree(d, ctx.dashMax);
@@ -157,9 +177,60 @@ const HANDLERS: { readonly [T in SimEventType]: Handler<T> } = {
   queueExpired: () => [cue('rejectClick', { intensity: 0.3, variant: 'expired' })],
 };
 
+/** Read a position from an event that may not be typed yet ({ at } or { pos }). */
+export function pointOf(e: unknown): Vec2 | undefined {
+  if (typeof e !== 'object' || e === null) return undefined;
+  const r = e as Record<string, unknown>;
+  for (const key of ['at', 'pos', 'to']) {
+    const v = r[key];
+    if (typeof v === 'object' && v !== null) {
+      const { x, y } = v as Record<string, unknown>;
+      if (typeof x === 'number' && typeof y === 'number' && Number.isFinite(x) && Number.isFinite(y)) return { x, y };
+    }
+  }
+  return undefined;
+}
+
+type LooseHandler = (e: unknown, ctx: CueContext, mem: CueMemory) => CueRequest[];
+
+const one = (name: CueName, intensity: number): LooseHandler => (e, ctx) => [
+  cue(name, { pan: panFor(pointOf(e), ctx), intensity }),
+];
+
+/**
+ * Relic and warden events announced by the simulation work in progress. Keyed by the
+ * event type string (with a few likely spellings) so new events sound right as soon as
+ * they exist, and unknown types stay silent instead of throwing.
+ */
+export const LOOSE_HANDLERS: Readonly<Record<string, LooseHandler>> = {
+  boost: one('boost', 0.7),
+  soulBoost: one('boost', 0.7),
+  charge: one('bellCharge', 0.8),
+  bellCharge: one('bellCharge', 0.8),
+  bellCharged: one('bellCharge', 0.8),
+  burst: one('bellBurst', 1),
+  bellBurst: one('bellBurst', 1),
+  decoyPlaced: one('decoyPlace', 0.7),
+  decoyPlace: one('decoyPlace', 0.7),
+  decoyTaken: one('decoyTake', 0.7),
+  decoyConsumed: one('decoyTake', 0.7),
+  guarded: one('guardClang', 0.9),
+  guard: one('guardClang', 0.9),
+  sweep: one('sweepWhoosh', 0.85),
+  wardenSweep: one('sweepWhoosh', 0.85),
+  exposed: one('exposedChime', 0.8),
+  opening: one('exposedChime', 0.8),
+};
+
 export function cuesForEvent(e: SimEvent, ctx: CueContext, mem: CueMemory): CueRequest[] {
-  const handler = HANDLERS[e.type] as Handler<SimEventType>;
-  return handler(e as never, ctx, mem);
+  const type = (e as { type?: unknown }).type;
+  if (typeof type !== 'string') return [];
+  const typed = Object.prototype.hasOwnProperty.call(HANDLERS, type)
+    ? (HANDLERS as Record<string, Handler<SimEventType> | undefined>)[type]
+    : undefined;
+  if (typed) return typed(e as never, ctx, mem);
+  const loose = Object.prototype.hasOwnProperty.call(LOOSE_HANDLERS, type) ? LOOSE_HANDLERS[type] : undefined;
+  return loose ? loose(e, ctx, mem) : [];
 }
 
 /** Cues that would read as offence; RETURN must never trigger these. */
