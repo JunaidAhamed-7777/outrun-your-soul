@@ -311,6 +311,19 @@ export const CSS = /* css */ `
   .oys-ui *, .oys-ui *::before, .oys-ui *::after { animation-duration: 1ms !important; animation-iteration-count: 1 !important; }
 }
 @media (min-height: 760px) { .oys-hint { font-size: 16px; } }
+/* Short phones (e.g. 320x568): tighten the title so it never needs scrolling. */
+@media (max-height: 660px) {
+  .oys-panel { gap: 12px; }
+  .oys-title-top { margin-top: 0; gap: 8px; }
+  .oys-wordmark .w1 { font-size: clamp(36px, 12vw, 64px); }
+  .oys-wordmark .w2 { font-size: clamp(20px, 6.6vw, 36px); margin-top: 4px; }
+  .oys-tagline { font-size: 15px; }
+  .oys-vignette-svg { width: min(78vw, 330px); }
+  .oys-title-bottom { gap: 10px; margin-bottom: 0; }
+  .oys-btn { min-height: 48px; }
+  .oys-heading { font-size: clamp(26px, 8vw, 36px); }
+  .oys-stats dt, .oys-stats dd { padding: 7px 2px; }
+}
 `;
 
 export function injectStyles(doc: Document): void {
