@@ -1,13 +1,19 @@
 /**
- * Application wiring: one simulation, one renderer, one UI overlay, one audio graph.
- * The simulation is advanced only by the fixed-step loop; everything else reads it.
+ * Application wiring: one simulation, one renderer, one UI overlay, one audio graph and
+ * the expedition director. The simulation is advanced only by the fixed-step loop;
+ * everything else reads it. The director decides which screen comes next and owns all
+ * run-layer transitions and checkpoint writes.
  */
 import { createAudio, type GameAudio } from '../audio/audio';
-import { DEPARTURE_COURT } from '../content/rooms/departure-court';
+import { DEPARTURE_COURT, roomFor } from '../content/rooms';
 import { bindLifecycle, createFixedLoop, type FixedLoop } from '../core';
 import { bindPointerInput, GestureMachine } from '../input';
 import { createRenderer, isWebGL2Available, type GameRenderer, type RenderOverlay } from '../render/renderer';
+import { isStarterId, type RelicId } from '../run';
+import { ProgressStore } from '../run/progress';
+import { CheckpointStore } from '../save/checkpoint';
 import { loadSettings, saveSettings, type Settings } from '../save/settings';
+import { browserStorage } from '../save/storage';
 import {
   checkInvariants,
   createSim,
@@ -23,17 +29,33 @@ import {
 } from '../sim';
 import { createUI, type GameUI } from '../ui/ui';
 import { AimTracker } from './aim';
+import { Director, type Screen } from './director';
+import { roomMeta } from './room-meta';
+import { continueDetail, draftView, endingView, loadoutChips, routeChoices, starterOptions } from './views';
 
-type Phase = 'title' | 'playing' | 'paused' | 'ending' | 'result';
+type Phase = 'title' | 'choosing' | 'playing' | 'paused' | 'ending' | 'result';
+type RoomScreen = Extract<Screen, { kind: 'room' }>;
 
 /** Real seconds the scene keeps animating after victory/defeat before the result panel. */
 const ENDING_SECONDS = 1.4;
+/** Total stops on the expedition graph (opening .. ending), for the intro card. */
+const ROUTE_STOPS = 7;
 
 function safeStorage(): Storage | null {
   try {
     return window.localStorage;
   } catch {
     return null;
+  }
+}
+
+/** Content registry lookup; an unknown template falls back to a known room so a run never dead-ends. */
+function resolveRoom(roomId: string, variant: number): RoomDef {
+  try {
+    return roomFor(roomId, variant);
+  } catch {
+    console.warn(`[rooms] '${roomId}' is not authored; using Departure Court`);
+    return DEPARTURE_COURT;
   }
 }
 
@@ -45,17 +67,22 @@ export interface GameHandle {
 export async function startGame(container: HTMLElement): Promise<GameHandle | null> {
   const params = new URLSearchParams(window.location.search);
   const debug = params.has('debug');
-  const seed = Number(params.get('seed') ?? '1') >>> 0;
+  const fixedSeed = params.get('seed');
   const storage = safeStorage();
   const loaded = loadSettings(storage);
   let settings: Settings = loaded.settings;
 
+  const checkpoints = new CheckpointStore(browserStorage());
+  const director = new Director({ checkpoints, progress: new ProgressStore(browserStorage()), resolveRoom });
+
   let phase: Phase = 'title';
+  let current: RoomScreen | null = null;
   let room: RoomDef = DEPARTURE_COURT;
-  let sim: SimState = createSim(room, { seed });
+  let sim: SimState = createSim(room, { seed: 1 });
   let pendingCommands: Command[] = [];
   let frameEvents: SimEvent[] = [];
   let endingLeft = 0;
+  let afterEnding: (() => void) | null = null;
   let invariantReported = false;
   const aim = new AimTracker();
   const machine = new GestureMachine();
@@ -66,17 +93,20 @@ export async function startGame(container: HTMLElement): Promise<GameHandle | nu
   const audio: GameAudio = createAudio();
 
   const ui: GameUI = createUI(container, settings, {
-    onStart: () => {
+    onStart: () => beginNewExpedition(),
+    onNewRun: () => beginNewExpedition(),
+    onContinue: () => {
       void audio.unlock();
       audio.ui('start');
-      ui.hideTitle();
-      startRoom();
+      const screen = director.continueRun();
+      if (screen) present(screen);
+      else beginNewExpedition();
     },
     onResume: () => resume(),
     onRestart: () => {
       ui.hidePause();
       ui.hideResult();
-      startRoom();
+      if (current) startRoom(current);
     },
     onPause: () => pause('user'),
     onSettingsChange: (next) => {
@@ -86,8 +116,10 @@ export async function startGame(container: HTMLElement): Promise<GameHandle | nu
       audio.setVolumes(settings.musicVolume, settings.sfxVolume);
       renderer?.setReducedMotion(settings.reducedMotion);
     },
+    onSound: (name) => audio.ui(name),
   });
   ui.setStorageNotice(loaded.storageAvailable);
+  ui.setSaveNotice(checkpoints.available);
   audio.setMuted(settings.muted);
   audio.setVolumes(settings.musicVolume, settings.sfxVolume);
 
@@ -106,18 +138,107 @@ export async function startGame(container: HTMLElement): Promise<GameHandle | nu
   const activeRenderer = renderer;
   activeRenderer.setRoom(room);
 
-  function startRoom(): void {
-    sim = createSim(room, { seed });
+  function newSeed(): number {
+    if (fixedSeed !== null) return Number(fixedSeed) >>> 0;
+    return (Date.now() ^ Math.floor(Math.random() * 0x7fffffff)) >>> 0;
+  }
+
+  function showTitle(): void {
+    phase = 'title';
+    ui.hideHud();
+    const canContinue = director.hasContinue();
+    // Peek at the saved room for the Continue caption without disturbing the active run.
+    const peek = canContinue ? new Director({ checkpoints, progress: new ProgressStore(browserStorage()), resolveRoom }).continueRun() : null;
+    const detail = continueDetail(peek);
+    ui.showTitle(detail ? { canContinue, continueDetail: detail } : { canContinue });
+  }
+
+  function beginNewExpedition(): void {
+    void audio.unlock();
+    audio.ui('start');
+    ui.hideTitle();
+    phase = 'choosing';
+    ui.showStarterSelect(starterOptions(director.progress), (id) => {
+      if (!isStarterId(id)) return;
+      present(director.newRun(newSeed(), id));
+    });
+  }
+
+  /** Show whatever the director says comes next. */
+  function present(screen: Screen): void {
+    ui.hideChoice();
+    ui.hideResult();
+    ui.hidePause();
+    switch (screen.kind) {
+      case 'room':
+        startRoom(screen);
+        return;
+      case 'route':
+        phase = 'choosing';
+        ui.hideHud();
+        ui.showRouteChoice('Choose your line', routeChoices(screen.choices), (id) => present(director.chooseRoute(id)));
+        return;
+      case 'station':
+        phase = 'choosing';
+        ui.hideHud();
+        ui.showDraft(draftView(screen), (pick, replaceIndex) => present(director.takeDraft(pick as RelicId | null, replaceIndex)));
+        return;
+      case 'ending': {
+        phase = 'choosing';
+        ui.hideHud();
+        current = null;
+        ui.showEnding(endingView(screen.run, director.progressAtStart ?? director.progress, director.progress), () => {
+          ui.hideChoice();
+          showTitle();
+        });
+        return;
+      }
+    }
+  }
+
+  function startRoom(screen: RoomScreen): void {
+    current = screen;
+    room = screen.room;
+    const entry = screen.entry;
+    sim = createSim(room, { seed: entry.seed, params: entry.params, health: entry.health });
     pendingCommands = [];
     frameEvents = [];
     endingLeft = 0;
+    afterEnding = null;
     invariantReported = false;
     aim.reset();
     machine.cancel('interrupted');
     activeRenderer.setRoom(room);
     ui.showHud(room);
+    ui.setLoadout(loadoutChips(director.run, sim));
+    const meta = roomMeta(entry.roomId);
+    const subtitle = screen.attempt > 1 ? `Attempt ${screen.attempt} — the room is as you entered it.` : meta.blurb;
+    ui.showRoomIntro(room.name || meta.name, subtitle, `${screen.label} · stop ${screen.depth + 1} of ${ROUTE_STOPS}`);
     phase = 'playing';
     loop?.resume();
+  }
+
+  function onRoomOver(): void {
+    if (sim.outcome === 'victory') {
+      // Commit completion + reward + checkpoint now (idempotent), so a reload on the
+      // result panel never replays a cleared room.
+      const next = director.roomVictory(sim);
+      afterEnding = () =>
+        ui.showResult('victory', sim, {
+          primaryLabel: next.kind === 'ending' ? 'Pass the last gate' : 'Onward',
+          onPrimary: () => present(next),
+        });
+    } else {
+      const retry = director.roomDefeat();
+      afterEnding = () =>
+        ui.showResult('defeat', sim, {
+          primaryLabel: 'Retry room',
+          onPrimary: () => present(retry),
+          secondaryLabel: 'Abandon expedition',
+          onSecondary: () => present(director.abandon()),
+          note: 'Continue restarts this room.',
+        });
+    }
   }
 
   function pause(reason: 'user' | 'interrupted'): void {
@@ -155,7 +276,7 @@ export async function startGame(container: HTMLElement): Promise<GameHandle | nu
     onInterrupt: () => pause('interrupted'),
     onContextLost: () => {
       pause('interrupted');
-      ui.showFatal('Graphics were interrupted', 'The browser reset the graphics context. Reload the page to continue.');
+      ui.showFatal('Graphics were interrupted', 'The browser reset the graphics context. Reload the page; Continue restarts this room.');
     },
   });
 
@@ -175,6 +296,7 @@ export async function startGame(container: HTMLElement): Promise<GameHandle | nu
     if (sim.outcome !== 'playing') {
       phase = 'ending';
       endingLeft = ENDING_SECONDS;
+      onRoomOver();
     }
   }
 
@@ -198,27 +320,33 @@ export async function startGame(container: HTMLElement): Promise<GameHandle | nu
       endingLeft -= realDt;
       if (endingLeft <= 0) {
         phase = 'result';
-        ui.showResult(sim.outcome === 'victory' ? 'victory' : 'defeat', sim);
+        afterEnding?.();
+        afterEnding = null;
       }
     }
     activeRenderer.render(sim, alpha, overlay(), realDt);
-    ui.update(sim, realDt);
+    if (phase === 'playing' || phase === 'paused' || phase === 'ending') {
+      ui.update(sim, realDt);
+      ui.setLoadout(loadoutChips(director.run, sim));
+    }
     audio.update(sim, realDt);
   }
 
   loop = createFixedLoop({ step, frame }, { stepSeconds: STEP_SECONDS, maxCatchUpSeconds: TUNING.maxCatchUpSeconds });
   loop.start();
   window.addEventListener('resize', () => activeRenderer.resize());
-  ui.showTitle();
+  showTitle();
 
   const handle: GameHandle = { state: () => sim, phase: () => phase };
   if (debug) {
     (window as unknown as { __oys: unknown }).__oys = {
       ...handle,
+      run: () => director.run,
       push: (command: Command) => pendingCommands.push(command),
-      start: () => {
+      /** Start a fresh expedition with a starter, skipping the title/starter panels. */
+      start: (starter = 'threadkeeper') => {
         ui.hideTitle();
-        startRoom();
+        if (isStarterId(starter)) present(director.newRun(newSeed(), starter));
       },
       pause: () => pause('user'),
       resume,
