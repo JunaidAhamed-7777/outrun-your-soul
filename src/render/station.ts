@@ -64,12 +64,12 @@ export function buildStation(lib: ModelLibrary): StationView {
   group.add(instanceTemplate(lib.template('urn'), [onWall(-1, height, PERIMETER_SCALE.side), onWall(width, height, PERIMETER_SCALE.side)], 'station_urns'));
   group.add(instanceTemplate(lib.template('lamp_post'), [onWall(-1, 1, PERIMETER_SCALE.side), onWall(width, 1, PERIMETER_SCALE.side)], 'station_lamps'));
 
-  // Plaza beneath everything.
+  // Plaza beneath the platform, ending behind the north parapet so the engine shows beyond it.
   const plazaGeo = new PlaneGeometry(60, 40);
   plazaGeo.rotateX(-Math.PI / 2);
   const plazaMat = toon('cobalt_deep');
   const plaza = new Mesh(plazaGeo, plazaMat);
-  plaza.position.set(width / 2, -0.1, -height / 2 + 14);
+  plaza.position.set(width / 2, -0.1, -(height + 1 - 20));
   group.add(plaza);
   disposables.push(plazaGeo, plazaMat);
 
