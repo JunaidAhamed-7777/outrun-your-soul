@@ -248,7 +248,8 @@ export function playRoom(room: RoomDef, options: SimOptions, cfg: BotConfig = NO
     for (const e of stepEvents) {
       events.push(e);
       if (e.type === 'kill' || e.type === 'roomCleared') lastProgress = s.time;
-      if (e.type === 'boss' && (e.what === 'heartHit' || e.what === 'defeated')) lastProgress = s.time;
+      // In a boss fight the boss sets the rhythm: waiting for its next opening is not a stall.
+      if (e.type === 'boss' && e.what !== 'wake') lastProgress = s.time;
       if (e.type === 'boss' && e.what === 'defeated' && s.boss) killOrder.push(`boss:${s.boss.key}`);
       if (e.type === 'dashEnd') dashEnds.push(e.at);
       if (e.type === 'kill') {
