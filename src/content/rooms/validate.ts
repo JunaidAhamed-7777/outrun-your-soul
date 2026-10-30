@@ -84,10 +84,6 @@ export function validateRoom(room: RoomDef): string[] {
   for (const e of room.enemies) {
     if (ids.has(e.id)) err(`duplicate enemy id ${e.id}`);
     ids.add(e.id);
-    if (e.role === 'warden') {
-      err(`enemy ${e.id}: warden role is not implemented`);
-      continue;
-    }
     const radius = ENEMY_TUNING[e.role].radius;
     if (!circleClear(room, e.at, radius)) err(`enemy ${e.id} overlaps a wall or bound`);
     if (dist(e.at, room.spawn) < radius + TUNING.bodyRadius + 0.5) err(`enemy ${e.id} is on top of the spawn`);
@@ -124,7 +120,6 @@ export function validateRoom(room: RoomDef): string[] {
   const reachable = reachablePoints(room);
   if (!reachable.some((p) => pointInRect(p, room.exit))) err('exit is unreachable from spawn');
   for (const e of room.enemies) {
-    if (e.role === 'warden') continue;
     const reach = ENEMY_TUNING[e.role].radius + TUNING.bodyRadius;
     if (!reachable.some((p) => dist(p, e.at) < reach)) err(`enemy ${e.id} cannot be reached`);
   }

@@ -155,7 +155,9 @@ const HANDLERS: { readonly [T in SimEventType]: Handler<T> } = {
   rejected: () => [cue('rejectClick', { intensity: 0.5 })],
   queued: () => [cue('queuedTick', { intensity: 0.4 })],
   queueExpired: () => [cue('rejectClick', { intensity: 0.3, variant: 'expired' })],
-  // Relic events (added by the simulation; dedicated cues pending from the audio owner).
+  // Warden and relic events (added by the simulation; dedicated cues pending from the audio owner).
+  guarded: () => [],
+  sweep: () => [],
   soulBoost: () => [],
   soulBoostEnd: () => [],
   halo: () => [],

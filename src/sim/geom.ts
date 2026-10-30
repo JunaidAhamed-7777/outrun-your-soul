@@ -188,6 +188,17 @@ export function circleTimeOfImpact(rel: Vec2, relVel: Vec2, reach: number, tMax:
 }
 
 /**
+ * Like circleTimeOfImpact, but an existing overlap only counts while the circles are
+ * still closing. Used where contact must not re-trigger as they separate (a body
+ * resting against a warden's guard can dash away).
+ */
+export function circleApproachTime(rel: Vec2, relVel: Vec2, reach: number, tMax: number): number | null {
+  const c = dot(rel, rel) - reach * reach;
+  if (c <= TOUCH_TOLERANCE) return dot(rel, relVel) < 0 ? 0 : null;
+  return circleTimeOfImpact(rel, relVel, reach, tMax);
+}
+
+/**
  * Entry time of a circle moving p0 -> p0 + disp into a non-wall rectangle region
  * (lanes, exits). Returns 0 when already overlapping, null when it never enters.
  */

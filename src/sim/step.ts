@@ -19,8 +19,20 @@
  */
 import { applyCommand, executeBuffered, type StepProbe } from './actions';
 import { applyDamage } from './combat';
-import { aimPointFor, aimToward, BOLT_MAX_AGE, isActive, sentryTuning, wakeEnemy } from './enemies';
 import {
+  aimPointFor,
+  aimToward,
+  BOLT_MAX_AGE,
+  ENEMY_TUNING,
+  inSweep,
+  isActive,
+  sentryTuning,
+  turnToward,
+  wakeEnemy,
+  wardenGuards,
+} from './enemies';
+import {
+  circleApproachTime,
   circleEntersRect,
   circleTimeOfImpact,
   circleTouchesRect,
@@ -363,7 +375,11 @@ function findCollision(state: SimState, plan: Plan, span: number): Candidate | n
     if (dashing) {
       for (const e of state.enemies) {
         if (e.phase === 'dead') continue;
-        const tKill = circleTimeOfImpact(sub(b0, e.pos), vb, TUNING.bodyRadius + e.radius, dt);
+        const reachE = TUNING.bodyRadius + e.radius;
+        const tKill =
+          e.role === 'warden'
+            ? circleApproachTime(sub(b0, e.pos), vb, reachE, dt)
+            : circleTimeOfImpact(sub(b0, e.pos), vb, reachE, dt);
         if (tKill !== null) found.push(candidate(ta + tKill, 'kill', e.id));
       }
     }
@@ -436,6 +452,13 @@ function advance(state: SimState, plan: Plan, dt: number): void {
   for (const e of state.enemies) {
     if (!isActive(e.phase)) continue;
     e.phaseTime += dt;
+    if (e.role === 'warden') {
+      if (e.phase === 'idle') {
+        e.facing = turnToward(e.facing, sub(state.body.pos, e.pos), ENEMY_TUNING.warden.turnRate * dt);
+        e.aim = e.facing;
+      }
+      continue;
+    }
     if (e.phase === 'tracking') {
       const lockIn = Math.max(0, e.phaseDuration - e.phaseTime);
       e.aimTarget = aimPointFor(state, e, lockIn + sentryTuning(e.role).locked);
@@ -516,6 +539,69 @@ function killEnemy(state: SimState, e: EnemyState, cause: 'dash' | 'burst', even
     }
   }
   wakeWhere(state, events, (s) => s.wake?.kind === 'enemyKilled' && s.wake.enemy === e.key);
+}
+
+/** A dash that struck a warden's guarded front stops at contact. Nobody is hurt. */
+function guardStop(state: SimState, e: EnemyState, events: SimEvent[]): void {
+  const body = state.body;
+  if (!body.dash) return;
+  const at = body.pos;
+  if (isSeparated(state.route)) setTail(state.route, at);
+  body.dash = null;
+  body.mode = 'recover';
+  body.recoverLeft = TUNING.recoverySeconds;
+  events.push({ type: 'guarded', t: state.time, enemyId: e.id, at });
+  events.push({ type: 'dashEnd', t: state.time, at, reason: 'guarded' });
+}
+
+/** Warden cycle: idle (turning) -> locked windup (frozen sector) -> sweep -> exposed -> idle. */
+function wardenTransition(state: SimState, e: EnemyState, events: SimEvent[]): void {
+  const w = ENEMY_TUNING.warden;
+  const t = state.time;
+  e.phaseTime = 0;
+  switch (e.phase) {
+    case 'idle':
+      e.phase = 'locked';
+      e.phaseDuration = w.windup;
+      e.aim = e.facing;
+      e.attackId = state.nextId++;
+      events.push({ type: 'telegraph', t, enemyId: e.id, phase: 'locked', target: 'body' });
+      return;
+    case 'locked': {
+      const attackId = e.attackId ?? state.nextId++;
+      e.attackId = null;
+      e.phase = 'exposed';
+      e.phaseDuration = w.exposed;
+      events.push({
+        type: 'sweep',
+        t,
+        enemyId: e.id,
+        attackId,
+        at: e.pos,
+        facing: e.facing,
+        range: w.sweepRange,
+        halfAngle: w.sweepHalfAngle,
+      });
+      // One activation, both endpoints: damage at most once (attack-ID dedup).
+      if (inSweep(e, state.body.pos, TUNING.bodyRadius)) {
+        if (state.body.mode === 'dash') {
+          events.push({ type: 'shielded', t, endpoint: 'body', attackId, at: state.body.pos, reason: 'dash' });
+        } else {
+          applyDamage(state, 'body', attackId, 'sweep', state.body.pos, events);
+        }
+      }
+      if (state.outcome === 'playing' && isSeparated(state.route) && inSweep(e, state.soul.pos, TUNING.soulRadius)) {
+        applyDamage(state, 'soul', attackId, 'sweep', state.soul.pos, events);
+      }
+      return;
+    }
+    case 'exposed':
+      e.phase = 'idle';
+      e.phaseDuration = w.cooldown;
+      return;
+    default:
+      return;
+  }
 }
 
 /** Arrival effects, once per separated-to-reunited transition, at the meeting point. */
@@ -606,6 +692,10 @@ function resolveContact(state: SimState, events: SimEvent[], probe: StepProbe | 
 }
 
 function enemyTransition(state: SimState, e: EnemyState, events: SimEvent[]): void {
+  if (e.role === 'warden') {
+    wardenTransition(state, e, events);
+    return;
+  }
   const tune = sentryTuning(e.role);
   const t = state.time;
   e.phaseTime = 0;
@@ -715,7 +805,9 @@ function resolve(state: SimState, ev: Candidate, events: SimEvent[], probe: Step
       return;
     case 'kill': {
       const e = state.enemies.find((q) => q.id === ev.id);
-      if (e && e.phase !== 'dead') killEnemy(state, e, 'dash', events);
+      if (!e || e.phase === 'dead') return;
+      if (wardenGuards(e, body.pos)) guardStop(state, e, events);
+      else killEnemy(state, e, 'dash', events);
       return;
     }
     case 'boltHit': {

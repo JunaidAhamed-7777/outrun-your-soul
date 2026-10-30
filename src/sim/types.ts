@@ -126,7 +126,8 @@ export interface RouteState {
   length: number;
 }
 
-export type EnemyPhase = 'dormant' | 'idle' | 'tracking' | 'locked' | 'recover' | 'dead';
+/** 'exposed' is the warden's opening after its sweep (no guard). */
+export type EnemyPhase = 'dormant' | 'idle' | 'tracking' | 'locked' | 'recover' | 'exposed' | 'dead';
 
 export interface EnemyState {
   readonly id: EntityId;
@@ -303,7 +304,8 @@ export type RejectReason =
   | 'notSeparated'
   | 'ended';
 
-export type DashLimit = 'none' | 'range' | 'capacity' | 'wall' | 'contact';
+/** 'guard': the dash will be stopped by a warden's armoured front. */
+export type DashLimit = 'none' | 'range' | 'capacity' | 'wall' | 'contact' | 'guard';
 
 export interface DashPreview {
   readonly valid: boolean;
@@ -338,7 +340,7 @@ export interface ReturnPreview {
 
 export type SimEvent =
   | { readonly type: 'dashStart'; readonly t: number; readonly from: Vec2; readonly to: Vec2; readonly limitedBy: DashLimit }
-  | { readonly type: 'dashEnd'; readonly t: number; readonly at: Vec2; readonly reason: 'arrived' | 'contact' }
+  | { readonly type: 'dashEnd'; readonly t: number; readonly at: Vec2; readonly reason: 'arrived' | 'contact' | 'guarded' }
   | { readonly type: 'ready'; readonly t: number }
   | { readonly type: 'returnStart'; readonly t: number; readonly from: Vec2 }
   | { readonly type: 'returnStop'; readonly t: number; readonly at: Vec2; readonly reason: 'reunited' | 'interrupted' }
@@ -354,7 +356,7 @@ export type SimEvent =
       /** 'dash' for a direct outward-dash kill; 'burst' for a Mourning Bell burst. */
       readonly cause?: 'dash' | 'burst';
     }
-  | { readonly type: 'hit'; readonly t: number; readonly endpoint: 'body' | 'soul'; readonly attackId: AttackId; readonly at: Vec2; readonly health: number; readonly source: 'bolt' | 'lane' }
+  | { readonly type: 'hit'; readonly t: number; readonly endpoint: 'body' | 'soul'; readonly attackId: AttackId; readonly at: Vec2; readonly health: number; readonly source: 'bolt' | 'lane' | 'sweep' }
   | { readonly type: 'shielded'; readonly t: number; readonly endpoint: 'body' | 'soul'; readonly attackId: AttackId; readonly at: Vec2; readonly reason: 'grace' | 'dash' | 'spent' }
   | { readonly type: 'wake'; readonly t: number; readonly enemyId: EntityId }
   | { readonly type: 'telegraph'; readonly t: number; readonly enemyId: EntityId; readonly phase: 'tracking' | 'locked'; readonly target: 'body' | 'soul' }
@@ -368,6 +370,19 @@ export type SimEvent =
   | { readonly type: 'rejected'; readonly t: number; readonly command: Command['kind']; readonly reason: RejectReason }
   | { readonly type: 'queued'; readonly t: number; readonly command: Command['kind'] }
   | { readonly type: 'queueExpired'; readonly t: number }
+  /** An outward dash struck a warden's guarded front: the dash stops there, nobody is hurt. */
+  | { readonly type: 'guarded'; readonly t: number; readonly enemyId: EntityId; readonly at: Vec2 }
+  /** A warden's sweep resolved over its frozen sector (fresh attack ID per activation). */
+  | {
+      readonly type: 'sweep';
+      readonly t: number;
+      readonly enemyId: EntityId;
+      readonly attackId: AttackId;
+      readonly at: Vec2;
+      readonly facing: Vec2;
+      readonly range: number;
+      readonly halfAngle: number;
+    }
   /** Needlesong: a cut sped up the soul (refreshes, never stacks). */
   | { readonly type: 'soulBoost'; readonly t: number; readonly multiplier: number; readonly seconds: number }
   | { readonly type: 'soulBoostEnd'; readonly t: number }

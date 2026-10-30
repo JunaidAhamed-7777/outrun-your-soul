@@ -10,7 +10,7 @@ export function applyDamage(
   state: SimState,
   endpoint: 'body' | 'soul',
   attackId: AttackId,
-  source: 'bolt' | 'lane',
+  source: 'bolt' | 'lane' | 'sweep',
   at: Vec2,
   events: SimEvent[],
 ): void {

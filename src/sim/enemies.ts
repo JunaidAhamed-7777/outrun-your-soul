@@ -1,7 +1,14 @@
 /**
- * Stationary sentry roles. Each attack is announced (tracking), then locked (aim frozen,
+ * Stationary enemy roles.
+ *
+ * Needler and keeper: each attack is announced (tracking), then locked (aim frozen,
  * attack ID reserved), then fired as a cuttable bolt. Killing a sentry cancels only its
  * unlaunched attack; bolts already in flight persist.
+ *
+ * Warden: armoured, with a facing that turns slowly toward the body. An outward dash that
+ * strikes inside its frontal guard arc is stopped at contact ('guarded'); off-angle it
+ * kills. It periodically winds up a short-range sweep over a telegraphed, frozen sector
+ * ('locked'), strikes once (fresh attack ID), and is then 'exposed': any angle kills.
  *
  * Timings are paper values from COMBAT_SPEC/CONTENT, not validated difficulty.
  */
@@ -24,7 +31,31 @@ export interface SentryTuning {
   readonly target: 'body' | 'soul';
 }
 
-export const ENEMY_TUNING: Readonly<Record<Exclude<EnemyRole, 'warden'>, SentryTuning>> = {
+export interface WardenTuning {
+  readonly radius: number;
+  /** Half-width of the frontal guard arc, radians from facing. */
+  readonly guardHalfAngle: number;
+  /** Maximum turn rate toward the body while idle, radians per second. */
+  readonly turnRate: number;
+  /** Idle (turning, guarded) time between sweeps. */
+  readonly cooldown: number;
+  /** Telegraphed windup: the sweep sector is frozen and drawn. */
+  readonly windup: number;
+  /** Centre-distance reach of the sweep (an endpoint is hit if its circle reaches it). */
+  readonly sweepRange: number;
+  /** Half-width of the sweep sector, radians from facing. */
+  readonly sweepHalfAngle: number;
+  /** Opening after the sweep: no guard, any-angle dash kills. */
+  readonly exposed: number;
+}
+
+const deg = (d: number): number => (d * Math.PI) / 180;
+
+export const ENEMY_TUNING: {
+  readonly needler: SentryTuning;
+  readonly keeper: SentryTuning;
+  readonly warden: WardenTuning;
+} = {
   needler: {
     radius: 0.42,
     cooldown: 1.7,
@@ -48,23 +79,80 @@ export const ENEMY_TUNING: Readonly<Record<Exclude<EnemyRole, 'warden'>, SentryT
     boltRadius: 0.17,
     target: 'soul',
   },
+  // Turn rate is slow enough that a dash around it (~0.2 s plus aim) reaches its flank;
+  // the windup is long enough to pull the soul out or strike from behind.
+  warden: {
+    radius: 0.55,
+    guardHalfAngle: deg(60),
+    turnRate: deg(30),
+    cooldown: 2.4,
+    windup: 1.0,
+    sweepRange: 2.2,
+    sweepHalfAngle: deg(60),
+    exposed: 1.6,
+  },
 };
 
 /** Bolts expire after this long even if they never meet a wall. */
 export const BOLT_MAX_AGE = 6;
 
 export function sentryTuning(role: EnemyRole): SentryTuning {
-  if (role === 'warden') {
-    // TODO(phase 2): warden frontal guard and announced openings (COMBAT_SPEC / CONTENT).
-    throw new Error('Warden role is not implemented yet');
-  }
+  if (role === 'warden') throw new Error('Wardens fire no bolts; use ENEMY_TUNING.warden');
   return ENEMY_TUNING[role];
+}
+
+export function roleRadius(role: EnemyRole): number {
+  return ENEMY_TUNING[role].radius;
+}
+
+/** Idle (cooldown) length for any role. */
+function cooldownFor(role: EnemyRole): number {
+  return ENEMY_TUNING[role].cooldown;
+}
+
+/** Angle in [0, pi] between two directions. */
+export function angleBetween(a: Vec2, b: Vec2): number {
+  const la = Math.hypot(a.x, a.y);
+  const lb = Math.hypot(b.x, b.y);
+  if (la === 0 || lb === 0) return 0;
+  const c = (a.x * b.x + a.y * b.y) / (la * lb);
+  return Math.acos(Math.max(-1, Math.min(1, c)));
+}
+
+/** True when a strike arriving from `from` hits a warden's armoured front. */
+export function wardenGuards(enemy: EnemyState, from: Vec2): boolean {
+  if (enemy.role !== 'warden' || enemy.phase === 'exposed' || enemy.phase === 'dead') return false;
+  return angleBetween(enemy.facing, sub(from, enemy.pos)) <= ENEMY_TUNING.warden.guardHalfAngle + 1e-12;
+}
+
+/** Rotate `facing` toward `goal` by at most `maxTurn` radians (unit result). */
+export function turnToward(facing: Vec2, goal: Vec2, maxTurn: number): Vec2 {
+  const g = normalize(goal);
+  if (g.x === 0 && g.y === 0) return facing;
+  const current = Math.atan2(facing.y, facing.x);
+  let delta = Math.atan2(g.y, g.x) - current;
+  while (delta > Math.PI) delta -= 2 * Math.PI;
+  while (delta < -Math.PI) delta += 2 * Math.PI;
+  if (Math.abs(delta) <= maxTurn) return g;
+  const next = current + Math.sign(delta) * maxTurn;
+  return { x: Math.cos(next), y: Math.sin(next) };
+}
+
+/** Whether an endpoint circle is inside a warden's sweep sector. */
+export function inSweep(enemy: EnemyState, point: Vec2, radius: number): boolean {
+  const w = ENEMY_TUNING.warden;
+  const rel = sub(point, enemy.pos);
+  const d = Math.hypot(rel.x, rel.y);
+  if (d > w.sweepRange + radius) return false;
+  if (d <= enemy.radius + radius) return true; // pressed against it: always swept
+  // Widen the sector edge by the endpoint's angular half-size so a circle grazing it counts.
+  const slack = Math.asin(Math.min(1, radius / d));
+  return angleBetween(enemy.facing, rel) <= w.sweepHalfAngle + slack;
 }
 
 const DEFAULT_FACING: Vec2 = { x: 0, y: -1 };
 
 export function createEnemy(spawn: EnemySpawn, id: EntityId): EnemyState {
-  const tune = sentryTuning(spawn.role);
   const facing = spawn.facing ? normalize(spawn.facing) : DEFAULT_FACING;
   const dormant = spawn.dormant === true;
   return {
@@ -72,13 +160,13 @@ export function createEnemy(spawn: EnemySpawn, id: EntityId): EnemyState {
     key: spawn.id,
     role: spawn.role,
     pos: spawn.at,
-    radius: tune.radius,
+    radius: roleRadius(spawn.role),
     phase: dormant ? 'dormant' : 'idle',
     // `phase` is idle time already elapsed at activation; negative delays the first attack.
     phaseTime: dormant ? 0 : (spawn.phase ?? 0),
-    phaseDuration: dormant ? Infinity : tune.cooldown,
+    phaseDuration: dormant ? Infinity : cooldownFor(spawn.role),
     aim: facing,
-    target: tune.target,
+    target: spawn.role === 'warden' ? 'body' : sentryTuning(spawn.role).target,
     attackId: null,
     facing,
     aimTarget: null,
@@ -88,14 +176,15 @@ export function createEnemy(spawn: EnemySpawn, id: EntityId): EnemyState {
 
 /** Wake a dormant sentry into its idle cooldown. */
 export function wakeEnemy(enemy: EnemyState, spawn: EnemySpawn | undefined): void {
-  const tune = sentryTuning(enemy.role);
   enemy.phase = 'idle';
   enemy.phaseTime = spawn?.phase ?? 0;
-  enemy.phaseDuration = tune.cooldown;
+  enemy.phaseDuration = cooldownFor(enemy.role);
 }
 
 export function isActive(phase: EnemyPhase): boolean {
-  return phase === 'idle' || phase === 'tracking' || phase === 'locked' || phase === 'recover';
+  return (
+    phase === 'idle' || phase === 'tracking' || phase === 'locked' || phase === 'recover' || phase === 'exposed'
+  );
 }
 
 /** Unit aim from a sentry toward a point, keeping the previous aim if degenerate. */
