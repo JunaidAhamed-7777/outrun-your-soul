@@ -1,0 +1,114 @@
+{
+  "asset_id": "lamp_post",
+  "status": "exported",
+  "author": "original (script-authored in Blender via the pinned Blender MCP bridge)",
+  "created_at": "2026-10-30T15:24:56+00:00",
+  "blender_version": "5.2.2 LTS",
+  "exporter_version": "5.2.40",
+  "source_path": "art/source/environment.blend",
+  "export": {
+    "path": "public/assets/models/lamp_post.glb",
+    "bytes": 14336,
+    "sha256": "addaa00c038556de14a00a3ff686c885488119572430847689f3199991f51936"
+  },
+  "preview": "art/previews/lamp_post-game-camera.png",
+  "measured": {
+    "triangles": 206,
+    "materials": [
+      "gold",
+      "gold_dark",
+      "ivory"
+    ],
+    "material_count": 3,
+    "bounds_min": [
+      -0.2,
+      -0.1126,
+      0
+    ],
+    "bounds_max": [
+      0.2,
+      0.1126,
+      1.77
+    ],
+    "dimensions": [
+      0.4,
+      0.2252,
+      1.77
+    ],
+    "parts": [
+      "lamp_post",
+      "lamp_post_lamp"
+    ]
+  },
+  "budget": {
+    "triangles": 300,
+    "materials": 3
+  },
+  "within_budget": true,
+  "notes": "Nonblocking decor: gold railway lamp with an ivory globe in an open gold crown (readable from the tilted camera), ladder crossarm. Origin ground centre.",
+  "glb_verification": {
+    "asset_id": "lamp_post",
+    "file": "public/assets/models/lamp_post.glb",
+    "sha256": "addaa00c038556de14a00a3ff686c885488119572430847689f3199991f51936",
+    "bytes": 14336,
+    "generator": "Khronos glTF Blender I/O v5.2.40",
+    "triangles": 206,
+    "materials": [
+      "gold_dark",
+      "gold",
+      "ivory"
+    ],
+    "bounds_gltf_yup": {
+      "min": [
+        -0.2,
+        0,
+        -0.1126
+      ],
+      "max": [
+        0.2,
+        1.77,
+        0.1126
+      ]
+    },
+    "parts": [
+      "lamp_post",
+      "lamp_post_lamp"
+    ],
+    "checks": [
+      {
+        "name": "triangles within budget (300)",
+        "pass": true
+      },
+      {
+        "name": "materials within budget (3)",
+        "pass": true
+      },
+      {
+        "name": "single root named lamp_post",
+        "pass": true
+      },
+      {
+        "name": "all part nodes prefixed with the asset id",
+        "pass": true
+      },
+      {
+        "name": "materials are palette keys",
+        "pass": true
+      },
+      {
+        "name": "no cameras or lights",
+        "pass": true
+      },
+      {
+        "name": "grounded and centred on origin",
+        "pass": true
+      },
+      {
+        "name": "part lamp_post_lamp",
+        "pass": true
+      }
+    ],
+    "pass": true,
+    "verified_at": "2026-10-30T15:25:07Z"
+  }
+}

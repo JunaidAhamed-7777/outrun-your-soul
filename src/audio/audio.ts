@@ -15,6 +15,17 @@ import { playCue } from './voicing';
 import { CUE_SPECS, VoiceLimiter } from './voices';
 import { threadMeter } from '../ui/hud-logic';
 
+/** Interface sounds the overlay may request (title, panels, stingers). */
+export type UiSound = 'tap' | 'open' | 'close' | 'start' | 'select' | 'take' | 'roomIntro' | 'escaped' | 'failed';
+
+const UI_CUES: Partial<Record<UiSound, CueRequest['cue']>> = {
+  select: 'select',
+  take: 'relicTake',
+  roomIntro: 'roomSting',
+  escaped: 'endingEscaped',
+  failed: 'endingFailed',
+};
+
 export interface GameAudio {
   unlock(): Promise<void>;
   handleEvents(events: readonly SimEvent[], state: SimState): void;
@@ -23,7 +34,7 @@ export interface GameAudio {
   setVolumes(music: number, sfx: number): void;
   suspend(): void;
   resume(): void;
-  ui(name: 'tap' | 'open' | 'close' | 'start'): void;
+  ui(name: UiSound): void;
   /** Additive: audition one cue by name (labs). */
   audition?(request: Partial<CueRequest> & Pick<CueRequest, 'cue'>): void;
   /** Additive: engine status for diagnostics. */
@@ -349,11 +360,16 @@ export function createAudio(): GameAudio {
       if (engine && engine.ctx.state !== 'running') void engine.ctx.resume().catch(() => {});
     },
 
-    ui(name: 'tap' | 'open' | 'close' | 'start'): void {
+    ui(name: UiSound): void {
       const e = ready();
       if (!e) return;
       const t = e.ctx.currentTime + 0.005;
       const s = e.synth;
+      const mapped = UI_CUES[name];
+      if (mapped) {
+        playCue(s, { cue: mapped, delay: 0, degree: 4, intensity: 0.85, pan: 0, variant: '' }, t);
+        return;
+      }
       switch (name) {
         case 'tap':
           s.tick(t, { hz: 1800, q: 1.5, dur: 0.02, gain: 0.06 });

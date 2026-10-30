@@ -1,0 +1,122 @@
+{
+  "asset_id": "threshold_inlay",
+  "status": "exported",
+  "author": "original (script-authored in Blender via the pinned Blender MCP bridge)",
+  "created_at": "2026-10-30T15:24:57+00:00",
+  "blender_version": "5.2.2 LTS",
+  "exporter_version": "5.2.40",
+  "source_path": "art/source/environment.blend",
+  "export": {
+    "path": "public/assets/models/threshold_inlay.glb",
+    "bytes": 29836,
+    "sha256": "a1e7172a5179cacb3f4b2cd8fc2f7cbcff2c9efceae523ad7cb3ad0a67ac5c1b"
+  },
+  "preview": "art/previews/threshold_inlay-game-camera.png",
+  "measured": {
+    "triangles": 644,
+    "materials": [
+      "gold",
+      "gold_dark",
+      "ivory"
+    ],
+    "material_count": 3,
+    "bounds_min": [
+      0,
+      0,
+      0
+    ],
+    "bounds_max": [
+      2,
+      1,
+      0.002
+    ],
+    "dimensions": [
+      2,
+      1,
+      0.002
+    ],
+    "parts": [
+      "threshold_inlay",
+      "threshold_inlay_inlay"
+    ]
+  },
+  "budget": {
+    "triangles": 800,
+    "materials": 3
+  },
+  "within_budget": true,
+  "notes": "Exit-zone ground inlay, [0,2]x[0,1], bottom z=0, top z=0.002; coplanar non-overlapping regions (holes cut in the ivory field are filled exactly by the emblem pieces). Gate ring emblem plus north-pointing double chevrons.",
+  "glb_verification": {
+    "asset_id": "threshold_inlay",
+    "file": "public/assets/models/threshold_inlay.glb",
+    "sha256": "a1e7172a5179cacb3f4b2cd8fc2f7cbcff2c9efceae523ad7cb3ad0a67ac5c1b",
+    "bytes": 29836,
+    "generator": "Khronos glTF Blender I/O v5.2.40",
+    "triangles": 644,
+    "materials": [
+      "gold",
+      "ivory",
+      "gold_dark"
+    ],
+    "bounds_gltf_yup": {
+      "min": [
+        0,
+        0,
+        -1
+      ],
+      "max": [
+        2,
+        0.002,
+        0
+      ]
+    },
+    "parts": [
+      "threshold_inlay",
+      "threshold_inlay_inlay"
+    ],
+    "checks": [
+      {
+        "name": "triangles within budget (800)",
+        "pass": true
+      },
+      {
+        "name": "materials within budget (3)",
+        "pass": true
+      },
+      {
+        "name": "single root named threshold_inlay",
+        "pass": true
+      },
+      {
+        "name": "all part nodes prefixed with the asset id",
+        "pass": true
+      },
+      {
+        "name": "materials are palette keys",
+        "pass": true
+      },
+      {
+        "name": "no cameras or lights",
+        "pass": true
+      },
+      {
+        "name": "footprint x exactly [0,2]",
+        "pass": true
+      },
+      {
+        "name": "footprint glTF z exactly [-1,0]",
+        "pass": true
+      },
+      {
+        "name": "bottom at 0, top at 0.002",
+        "pass": true
+      },
+      {
+        "name": "part threshold_inlay_inlay",
+        "pass": true
+      }
+    ],
+    "pass": true,
+    "verified_at": "2026-10-30T15:25:07Z"
+  }
+}

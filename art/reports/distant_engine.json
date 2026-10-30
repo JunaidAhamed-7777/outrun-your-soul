@@ -2,14 +2,14 @@
   "asset_id": "distant_engine",
   "status": "exported",
   "author": "original (script-authored in Blender via the pinned Blender MCP bridge)",
-  "created_at": "2026-10-30T14:54:42+00:00",
+  "created_at": "2026-10-30T15:24:55+00:00",
   "blender_version": "5.2.2 LTS",
   "exporter_version": "5.2.40",
   "source_path": "art/source/environment.blend",
   "export": {
     "path": "public/assets/models/distant_engine.glb",
-    "bytes": 400136,
-    "sha256": "2e2341e0146bde3d1489b61391beecc80aa2544f5c6ef598251cb4d6540b63eb"
+    "bytes": 400152,
+    "sha256": "5a11895bf4a168dc4a8e3937e25006f95776d9206e8ebc135812a81a788b4041"
   },
   "preview": "art/previews/distant_engine-game-camera.png",
   "measured": {
@@ -24,17 +24,17 @@
     "bounds_min": [
       -15.1,
       -1.21,
-      -4
+      -5.9204
     ],
     "bounds_max": [
       15.1,
-      4.65,
-      6.65
+      5.85,
+      6.0843
     ],
     "dimensions": [
       30.2,
-      5.86,
-      10.65
+      7.06,
+      12.0047
     ],
     "parts": [
       "distant_engine",
@@ -53,8 +53,8 @@
   "glb_verification": {
     "asset_id": "distant_engine",
     "file": "public/assets/models/distant_engine.glb",
-    "sha256": "2e2341e0146bde3d1489b61391beecc80aa2544f5c6ef598251cb4d6540b63eb",
-    "bytes": 400136,
+    "sha256": "5a11895bf4a168dc4a8e3937e25006f95776d9206e8ebc135812a81a788b4041",
+    "bytes": 400152,
     "generator": "Khronos glTF Blender I/O v5.2.40",
     "triangles": 7786,
     "materials": [
@@ -66,12 +66,12 @@
     "bounds_gltf_yup": {
       "min": [
         -15.1,
-        -4,
-        -4.65
+        -5.9204,
+        -5.85
       ],
       "max": [
         15.1,
-        6.65,
+        6.1318,
         1.21
       ]
     },
@@ -83,6 +83,14 @@
       "distant_engine_train"
     ],
     "checks": [
+      {
+        "name": "triangles within budget (8000)",
+        "pass": true
+      },
+      {
+        "name": "materials within budget (4)",
+        "pass": true
+      },
       {
         "name": "single root named distant_engine",
         "pass": true
@@ -117,6 +125,6 @@
       }
     ],
     "pass": true,
-    "verified_at": "2026-10-30T14:54:52Z"
+    "verified_at": "2026-10-30T15:25:07Z"
   }
 }
