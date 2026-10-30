@@ -13,6 +13,8 @@ export interface CreateOptions {
   readonly seed: number;
   readonly params?: Partial<RoomParams>;
   readonly health?: number;
+  /** Shared health cap for this room (the run's RoomEntry.maxHealth); default TUNING.maxHealth. */
+  readonly maxHealth?: number;
   /** Behavioural relics equipped for this room (reach relics come through params). */
   readonly relics?: SimRelicConfig;
   /** Earned relic charges carried in from the room-entry checkpoint. */
@@ -68,7 +70,13 @@ export function createSim(room: RoomDef, options: CreateOptions): SimState {
   });
   for (const lane of lanes) if (lane.status === 'active') lane.attackId = nextId++;
   const boss = room.boss ? createBoss(room.boss, nextId++) : null;
-  const health = Math.min(TUNING.maxHealth, Math.max(1, options.health ?? TUNING.maxHealth));
+  const maxHealth =
+    options.maxHealth !== undefined && Number.isFinite(options.maxHealth) && options.maxHealth >= 1
+      ? Math.floor(options.maxHealth)
+      : TUNING.maxHealth;
+  // Health is validated against the cap: never above it, never below 1 at room entry.
+  const requested = options.health ?? maxHealth;
+  const health = Math.min(maxHealth, Math.max(1, Number.isFinite(requested) ? Math.floor(requested) : maxHealth));
   return {
     rulesVersion: RULES_VERSION,
     room,
@@ -78,7 +86,7 @@ export function createSim(room: RoomDef, options: CreateOptions): SimState {
     rng: seedRng(options.seed),
     nextId,
     health,
-    maxHealth: TUNING.maxHealth,
+    maxHealth,
     graceLeft: 0,
     damagedAttackIds: new Set(),
     body: {

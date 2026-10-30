@@ -399,28 +399,45 @@ export function resolveBoss(state: SimState, kind: BossKind, endpoint: 0 | 1, ev
       }
       return;
     }
-    case 'bossHeart': {
-      if (!heartVulnerable(b)) return;
-      b.hp -= 1;
-      events.push({ type: 'boss', t, what: 'heartHit', at: b.heart.pos, hp: b.hp });
-      b.attackId = null;
-      b.path = [];
-      b.fan = [];
-      if (b.hp <= 0) {
-        b.phase = 'dead';
-        b.phaseDuration = Infinity;
-        events.push({ type: 'boss', t, what: 'defeated', at: b.body.pos });
-        return;
-      }
-      b.phase = 'stagger';
-      b.phaseTime = 0;
-      b.phaseDuration = BOSS_TUNING.stagger;
-      b.stage = Math.min(b.stage + 1, stagesOf(state).length - 1);
-      b.step = 0;
-      events.push({ type: 'boss', t, what: 'stagger', at: b.body.pos, hp: b.hp });
+    case 'bossHeart':
+      strikeHeart(state, 'dash', events);
       return;
-    }
   }
+}
+
+/**
+ * One heart strike (dash or Mourning Bell burst): only while the heart trails the body and
+ * the boss is not staggered. The stagger that follows makes a second strike in the same
+ * instant impossible, so a burst never counts more than once.
+ */
+export function strikeHeart(state: SimState, cause: 'dash' | 'burst', events: SimEvent[]): boolean {
+  const b = state.boss;
+  if (!b || !heartVulnerable(b)) return false;
+  const t = state.time;
+  b.hp -= 1;
+  events.push({ type: 'boss', t, what: 'heartHit', at: b.heart.pos, hp: b.hp, cause });
+  b.attackId = null;
+  b.path = [];
+  b.fan = [];
+  if (b.hp <= 0) {
+    b.phase = 'dead';
+    b.phaseDuration = Infinity;
+    events.push({ type: 'boss', t, what: 'defeated', at: b.body.pos });
+    return true;
+  }
+  b.phase = 'stagger';
+  b.phaseTime = 0;
+  b.phaseDuration = BOSS_TUNING.stagger;
+  b.stage = Math.min(b.stage + 1, stagesOf(state).length - 1);
+  b.step = 0;
+  events.push({ type: 'boss', t, what: 'stagger', at: b.body.pos, hp: b.hp });
+  return true;
+}
+
+/** Mourning Bell: a burst whose radius covers the trailing heart counts as one heart strike. */
+export function burstReachesHeart(state: SimState, at: Vec2, radius: number): boolean {
+  const b = state.boss;
+  return !!b && heartVulnerable(b) && dist(b.heart.pos, at) <= radius + BOSS_TUNING.heartRadius;
 }
 
 /** Invariant violations for the boss (empty when healthy). */
