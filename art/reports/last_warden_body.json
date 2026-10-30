@@ -2,7 +2,7 @@
   "asset_id": "last_warden_body",
   "status": "exported",
   "author": "original (script-authored in Blender via the pinned Blender MCP bridge)",
-  "created_at": "2026-10-30T15:19:28+00:00",
+  "created_at": "2026-10-30T15:21:35+00:00",
   "blender_version": "5.2.2 LTS",
   "exporter_version": "5.2.40",
   "source_path": "art/source/actors.blend",
@@ -24,7 +24,7 @@
     "bounds_min": [
       -0.54,
       -0.4424,
-      0.0
+      0
     ],
     "bounds_max": [
       0.54,
@@ -49,5 +49,119 @@
     "materials": 4
   },
   "within_budget": true,
-  "notes": "Last Warden boss body: a dark mirror of the courier. Tall gold_dark robe with gold armour (belt, breastplate, pauldrons, gauntlets, sabatons), crowned gold_dark cowl (seven-spike ring), ivory mask in a gold frame with vermilion_dark eye slits tipped 32 deg toward the camera, a vermilion_dark mantle (curved grid cape) pivoting at the shoulders, and a gold funeral staff with ring and bell. Parts: body pivot at hips (z 0.60), head pivot at neck (z 1.08), mask child of head, mantle pivot at shoulders (z 1.00)."
+  "notes": "Last Warden boss body: a dark mirror of the courier. Tall gold_dark robe with gold armour (belt, breastplate, pauldrons, gauntlets, sabatons), crowned gold_dark cowl (seven-spike ring), ivory mask in a gold frame with vermilion_dark eye slits tipped 32 deg toward the camera, a vermilion_dark mantle (curved grid cape) pivoting at the shoulders, and a gold funeral staff with ring and bell. Parts: body pivot at hips (z 0.60), head pivot at neck (z 1.08), mask child of head, mantle pivot at shoulders (z 1.00).",
+  "glb_verification": {
+    "checked_at": "2026-10-30T15:21:42.955Z",
+    "file": "public/assets/models/last_warden_body.glb",
+    "bytes": 147436,
+    "sha256": "bb8508223bd2fc8dc8c5af0a3934a88443526227cd10fbed92ac69d2e9c9aa28",
+    "generator": "Khronos glTF Blender I/O v5.2.40",
+    "triangles": 2564,
+    "bounds_yup": {
+      "min": [
+        -0.54,
+        0,
+        -0.455
+      ],
+      "max": [
+        0.54,
+        1.61,
+        0.442
+      ]
+    },
+    "muzzle_or_front_pivot_yup": [
+      0,
+      1.23,
+      0.16
+    ],
+    "checks": [
+      {
+        "name": "single root named after asset",
+        "ok": true,
+        "detail": [
+          "last_warden_body"
+        ]
+      },
+      {
+        "name": "no cameras",
+        "ok": true,
+        "detail": 0
+      },
+      {
+        "name": "no lights",
+        "ok": true,
+        "detail": []
+      },
+      {
+        "name": "expected part nodes",
+        "ok": true,
+        "detail": {
+          "missing": [],
+          "nodes": [
+            "last_warden_body_mask",
+            "last_warden_body_head",
+            "last_warden_body_mantle",
+            "last_warden_body_body",
+            "last_warden_body"
+          ]
+        }
+      },
+      {
+        "name": "palette-key materials",
+        "ok": true,
+        "detail": [
+          "ivory",
+          "gold",
+          "vermilion_dark",
+          "gold_dark"
+        ]
+      },
+      {
+        "name": "unit node scale",
+        "ok": true,
+        "detail": []
+      },
+      {
+        "name": "stands on ground (min Y ~ 0, Y up)",
+        "ok": true,
+        "detail": {
+          "minY": 0,
+          "maxY": 1.6096111536026
+        }
+      },
+      {
+        "name": "mask faces +Z (lowest point forward of highest)",
+        "ok": true,
+        "detail": {
+          "chin": [
+            0,
+            1.054,
+            0.221
+          ],
+          "brow": [
+            0,
+            1.372,
+            0.057
+          ]
+        }
+      },
+      {
+        "name": "mantle trails toward -Z",
+        "ok": true,
+        "detail": {
+          "min": [
+            -0.54,
+            0.05,
+            -0.455
+          ],
+          "max": [
+            0.54,
+            1.1,
+            0.315
+          ]
+        }
+      }
+    ],
+    "passed": true
+  }
 }

@@ -47,7 +47,7 @@
   "within_budget": true,
   "notes": "Soul: floating hollow mask with inward-curling crescent horns (soul_glow, saturated cyan, emissive 1.2) and open almond eye holes, tipped 30 deg up toward the game camera, over a curling teardrop wisp plus three motes (soul_core, pale, emissive 0.6) that reaches down to the ground point. Cyan (cool) vs the courier ivory (warm) keeps body and soul apart even at a few pixels. Deliberately no body/limbs so it never reads as a second courier. Origin on the ground; mask pivot at z 0.64, wisp pivot just under and behind the chin for runtime sway; the wisp tip touches the ground at the true soul position. Holes are real geometry (scanfill + solidify), so bolts and floor show through the eyes.",
   "glb_verification": {
-    "checked_at": "2026-10-30T14:52:26.249Z",
+    "checked_at": "2026-10-30T15:21:42.951Z",
     "file": "public/assets/models/soul_mask.glb",
     "bytes": 31572,
     "sha256": "ff694de7edb91589439478194d6d764d2e0a5fae2109c141d0ebe8c3e292d1fe",
@@ -124,7 +124,7 @@
         }
       },
       {
-        "name": "mask faces +Z (chin forward of brow)",
+        "name": "mask faces +Z (lowest point forward of highest)",
         "ok": true,
         "detail": {
           "chin": [
