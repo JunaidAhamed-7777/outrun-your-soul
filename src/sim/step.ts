@@ -490,12 +490,6 @@ function advance(state: SimState, plan: Plan, bp: BossPlan | null, dt: number): 
       }
       continue;
     }
-    if (e.phase === 'tracking') {
-      const lockIn = Math.max(0, e.phaseDuration - e.phaseTime);
-      e.aimTarget = aimPointFor(state, e, lockIn + sentryTuning(e.role).locked);
-      e.aim = aimToward(e, e.aimTarget);
-      e.facing = e.aim;
-    }
   }
   for (const lane of state.lanes) {
     lane.cycleTime = mod(lane.cycleTime + dt, laneDef(state, lane).period);
@@ -984,6 +978,21 @@ function settle(state: SimState, events: SimEvent[]): void {
   }
 }
 
+/**
+ * Tracking warnings follow their target for presentation only: the line that matters is
+ * computed exactly at lock time. Refreshing once per step (not on every event split)
+ * keeps keepers' led aim cheap without changing any outcome.
+ */
+function refreshTrackingAims(state: SimState): void {
+  for (const e of state.enemies) {
+    if (e.phase !== 'tracking' || e.role === 'warden') continue;
+    const lockIn = Math.max(0, e.phaseDuration - e.phaseTime);
+    e.aimTarget = aimPointFor(state, e, lockIn + sentryTuning(e.role).locked);
+    e.aim = aimToward(e, e.aimTarget);
+    e.facing = e.aim;
+  }
+}
+
 /** Advance one fixed step. `probe` lets previews observe execution internals. */
 export function stepInternal(state: SimState, commands: readonly Command[], probe?: StepProbe): SimEvent[] {
   const events: SimEvent[] = [];
@@ -1030,6 +1039,7 @@ export function stepInternal(state: SimState, commands: readonly Command[], prob
   } else {
     for (const cmd of commands) events.push({ type: 'rejected', t: state.time, command: cmd.kind, reason: 'ended' });
   }
+  refreshTrackingAims(state);
   state.tick += 1;
   state.time = state.tick * STEP_SECONDS;
   return events;
