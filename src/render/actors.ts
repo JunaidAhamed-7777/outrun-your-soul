@@ -437,7 +437,7 @@ export class GateView {
     spot: Texture,
     anchor: Vec2,
     private readonly exitGlow: Mesh<PlaneGeometry, MeshBasicMaterial>,
-    private readonly threshold?: MeshToonMaterial,
+    private readonly threshold: readonly MeshToonMaterial[] = [],
   ) {
     this.root.name = 'gate_view';
     const model = lib.instance('exit_gate');
@@ -479,12 +479,13 @@ export class GateView {
     this.shaft.scale.set(shaftSize, shaftSize * 1.15, 1);
     this.exitGlow.material.opacity = this.ready * (1 - this.open) * (0.2 + 0.2 * pulse) + this.open * 0.7;
     this.exitGlow.visible = this.exitGlow.material.opacity > 0.01;
-    if (this.threshold) {
-      // Sealed: dim slate. Ready: gold trim breathes. Open: the inlay glows.
-      const glow = this.ready * (1 - this.open) * (0.22 + 0.28 * pulse) + this.open * 0.75;
-      this.threshold.emissiveIntensity = glow;
-      const k = 0.62 + 0.38 * this.ready;
-      this.threshold.color.setRGB(k, k, k);
+    // Sealed: the inlay is dimmed well below the wall coping. Ready: gold breathes. Open: it glows.
+    const glow = this.ready * (1 - this.open) * (0.22 + 0.28 * pulse) + this.open * 0.75;
+    const k = 0.5 + 0.5 * this.ready;
+    for (const m of this.threshold) {
+      m.emissiveIntensity = glow;
+      if (!m.userData.baseColor) m.userData.baseColor = m.color.clone();
+      m.color.copy(m.userData.baseColor as Color).multiplyScalar(k);
     }
   }
 

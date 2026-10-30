@@ -231,18 +231,19 @@ export async function createRenderer(container: HTMLElement, options: RendererOp
       backdrop?.dispose();
       gate?.dispose();
       room = next;
-      roomView = buildRoomView(next, lib);
+      roomView = buildRoomView(next, lib, spot);
       scene.add(roomView.group);
       const pitch = fitCamera({ roomWidth: next.width, roomHeight: next.height, viewportWidth: 1, viewportHeight: 1 }).pitch;
       backdrop = buildBackdrop(next, pitch, lib);
       scene.background = backdrop.background;
       scene.add(backdrop.group);
-      gate = new GateView(lib, spot, roomView.gateAnchor, roomView.exitGlow, roomView.thresholdMaterial);
+      gate = new GateView(lib, spot, roomView.gateAnchor, roomView.exitGlow, roomView.thresholdMaterials);
       scene.add(gate.root);
       // Warm low sun from the south-east so the camera sees lit faces.
       sun.position.set(next.width / 2 + 6, 9, -next.height / 2 + 7);
       sun.target.position.set(next.width / 2, 0, -next.height / 2);
     }
+    if (roomView) lanes.setApertures(roomView.laneApertures, spot);
     resize();
   }
 
@@ -389,6 +390,7 @@ export async function createRenderer(container: HTMLElement, options: RendererOp
     gate?.update(state.gate, dt, time, reducedMotion);
     effects.update(dt, body.pos);
     backdrop?.update(time, dt, reducedMotion);
+    roomView?.update(time, reducedMotion);
 
     defeat = approach(defeat, state.outcome === 'defeat' ? 1 : 0, 2.5, dt);
     hemi.intensity = 1.55 * (1 - defeat * 0.45);

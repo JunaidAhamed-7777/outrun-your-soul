@@ -5,8 +5,13 @@
  */
 import {
   AdditiveBlending,
+  BufferAttribute,
+  BufferGeometry,
   Color,
   Group,
+  Points,
+  PointsMaterial,
+  Vector3,
   Mesh,
   MeshBasicMaterial,
   OctahedronGeometry,
@@ -26,6 +31,7 @@ import { boltSlowed } from './simext';
 import { verticalGradient } from './textures';
 
 export const BOLT_HEIGHT = 0.34;
+const LANE_GLOW = new Color('#c77dff');
 const HOT_CORE = color('bolt_core');
 const HOT_EDGE = color('bolt_edge');
 const COOL_CORE = new Color('#e4f6ff');
@@ -173,9 +179,48 @@ export class LaneLayer {
   readonly group = new Group();
   private readonly views = new Map<number, Mesh<PlaneGeometry, ShaderMaterial>>();
   private time = 0;
+  private glows: Points<BufferGeometry, PointsMaterial> | null = null;
+  private glowKeys: string[] = [];
+
+  /** Lane emitter apertures (per lane key): one additive point batch glows with lane status. */
+  setApertures(apertures: ReadonlyMap<string, Vector3[]>, spot: Texture): void {
+    if (this.glows) {
+      this.glows.geometry.dispose();
+      this.glows.material.dispose();
+      this.glows.removeFromParent();
+      this.glows = null;
+    }
+    this.glowKeys = [];
+    const pos: number[] = [];
+    for (const [key, list] of apertures) {
+      for (const p of list) {
+        pos.push(p.x, p.y, p.z);
+        this.glowKeys.push(key);
+      }
+    }
+    if (!pos.length) return;
+    const geo = new BufferGeometry();
+    geo.setAttribute('position', new BufferAttribute(new Float32Array(pos), 3));
+    geo.setAttribute('color', new BufferAttribute(new Float32Array(pos.length), 3));
+    const mat = new PointsMaterial({ map: spot, size: 0.9, vertexColors: true, transparent: true, blending: AdditiveBlending, depthWrite: false });
+    this.glows = new Points(geo, mat);
+    this.glows.renderOrder = 9;
+    this.glows.frustumCulled = false;
+    this.group.add(this.glows);
+  }
 
   update(lanes: readonly LaneState[], dt: number, reducedMotion: boolean): void {
     this.time += dt;
+    if (this.glows) {
+      const colors = this.glows.geometry.getAttribute('color') as BufferAttribute;
+      this.glowKeys.forEach((key, i) => {
+        const lane = lanes.find((l) => l.key === key);
+        const blink = reducedMotion ? 0.6 : 0.5 + 0.5 * Math.sin(this.time * 13);
+        const k = !lane ? 0 : lane.status === 'active' ? 1 : lane.status === 'warning' ? 0.25 + 0.55 * blink : 0.12;
+        colors.setXYZ(i, LANE_GLOW.r * k, LANE_GLOW.g * k, LANE_GLOW.b * k);
+      });
+      colors.needsUpdate = true;
+    }
     for (const lane of lanes) {
       let mesh = this.views.get(lane.id);
       if (!mesh) {
@@ -195,6 +240,12 @@ export class LaneLayer {
   }
 
   clear(): void {
+    if (this.glows) {
+      this.glows.geometry.dispose();
+      this.glows.material.dispose();
+      this.glows.removeFromParent();
+      this.glows = null;
+    }
     for (const mesh of this.views.values()) {
       mesh.geometry.dispose();
       mesh.material.dispose();
