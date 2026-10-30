@@ -300,7 +300,16 @@ export async function startGame(container: HTMLElement): Promise<GameHandle | nu
     current = screen;
     room = screen.room;
     const entry = screen.entry;
-    sim = createSim(room, { seed: entry.seed, params: entry.params, health: entry.health, maxHealth: entry.maxHealth, relics: entry.hooks, charges: entry.charges });
+    sim = createSim(room, {
+      seed: entry.seed,
+      params: entry.params,
+      health: entry.health,
+      maxHealth: entry.maxHealth,
+      relics: entry.hooks,
+      charges: entry.charges,
+      // The tutorial lets shots land but never lets them end the run.
+      ...(entry.nodeId === TUTORIAL_NODE ? { minHealth: 1 } : {}),
+    });
     pendingCommands = [];
     frameEvents = [];
     endingLeft = 0;
@@ -313,7 +322,7 @@ export async function startGame(container: HTMLElement): Promise<GameHandle | nu
     if (entry.nodeId === TUTORIAL_NODE && tutorial) {
       tutorial.coach = new TutorialCoach();
       ui.setLoadout([]);
-      ui.showRoomIntro(room.name, 'Learn to leave yourself behind.', 'Tutorial');
+      // The step banner announces the room's first lesson; no separate intro card here.
       const view = tutorial.coach.view;
       objective.set(view.step ? { index: view.index, total: view.total, title: view.step.title, text: view.step.text } : null);
       phase = 'playing';

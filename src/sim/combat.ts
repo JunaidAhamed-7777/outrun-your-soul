@@ -25,7 +25,7 @@ export function applyDamage(
     return;
   }
   state.damagedAttackIds.add(attackId);
-  state.health = Math.max(0, state.health - 1);
+  state.health = Math.max(state.minHealth ?? 0, state.health - 1);
   state.graceLeft = TUNING.hitGraceSeconds;
   state.stats.hits += 1;
   events.push({ type: 'hit', t, endpoint, attackId, at, health: state.health, source });

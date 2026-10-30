@@ -1,7 +1,8 @@
 /**
  * First Light: the onboarding room played before a player's first expedition. Not part
- * of the expedition template pool. Lessons arrive in order because each threat wakes
- * only when the previous one falls; the step-by-step prompts live in src/game/tutorial.ts.
+ * of the expedition template pool. The first sentry wakes after the movement lessons;
+ * each later threat wakes only when the previous one falls. Hits land but the room runs
+ * with a health floor of 1, so nobody can lose here; the step-by-step prompts live in src/game/tutorial.ts.
  *
  * Layout (8 x 12 tiles, y grows up the screen):
  *
@@ -10,7 +11,7 @@
  *   y=10 |        |
  *        |n       |   needler n wakes when the dummy breaks (aims at the body)
  *   y=7  |  ##    |   low block: cover from the needler's line
- *        |     d  |   training dummy d: dormant forever, the first strike target
+ *        |     d  |   sentry d: quiet for 18 s, then fires; the first strike target
  *   y=4  |        |
  *        |        |   open start: room to practise dash, follow, RETURN, contact
  *   y=1  |   S    |
@@ -27,8 +28,16 @@ export const FIRST_LIGHT: RoomDef = {
   spawn: { x: 4, y: 1.5 },
   exit: { x: 3, y: 11, w: 2, h: 1 },
   enemies: [
-    // Never wakes: the player breaks it whenever they are ready.
-    { id: 'dummy', role: 'needler', at: { x: 5.6, y: 5.6 }, facing: { x: 0, y: -1 }, dormant: true },
+    // Quiet while the movement lessons run, then it starts firing at the body. The tutorial
+    // runs with a health floor of 1 (src/game/game.ts), so shots teach without ending the run.
+    {
+      id: 'dummy',
+      role: 'needler',
+      at: { x: 5.6, y: 5.6 },
+      facing: { x: 0, y: -1 },
+      dormant: true,
+      wake: { kind: 'time', seconds: 18 },
+    },
     {
       id: 'needler',
       role: 'needler',

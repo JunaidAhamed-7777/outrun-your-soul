@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { NOVICE_BOT, playRoom } from '../../src/bot/bot';
 import { FIRST_LIGHT, validateRoom } from '../../src/content/rooms';
-import { TUTORIAL_STEPS, TutorialCoach } from '../../src/game/tutorial';
+import { TIMED_STEPS, TUTORIAL_STEPS, TutorialCoach } from '../../src/game/tutorial';
 import { createSim, stepSim, type SimEvent, type SimState } from '../../src/sim';
 
 const ev = (e: Record<string, unknown>) => e as unknown as SimEvent;
@@ -45,15 +45,36 @@ describe('tutorial coach', () => {
   });
 });
 
+describe('timed tutorial steps', () => {
+  it('step 6 (the amber line) steps aside after its timer even if the needler lives', () => {
+    const coach = new TutorialCoach();
+    const s = createSim(FIRST_LIGHT, { seed: 1 }) as SimState;
+    s.enemies.find((e) => e.key === 'dummy')!.phase = 'dead';
+    coach.update([ev({ type: 'dashStart' }), ev({ type: 'reunion', cause: 'contact' }), ev({ type: 'returnStart' })], s);
+    expect(coach.view.step?.id).toBe('locked');
+    s.time += TIMED_STEPS.locked! - 0.5;
+    coach.update([], s);
+    expect(coach.view.step?.id).toBe('locked');
+    s.time += 1;
+    coach.update([], s);
+    expect(coach.view.justCompleted).toBe('locked');
+    expect(coach.view.step?.id).toBe('keeper');
+  });
+});
+
 describe('First Light room', () => {
   it('validates', () => {
     expect(validateRoom(FIRST_LIGHT)).toEqual([]);
   });
 
-  it('is completely safe until the dummy is broken', () => {
-    const s = createSim(FIRST_LIGHT, { seed: 1 });
-    while (s.time < 60) stepSim(s, []);
+  it('stays quiet for the movement lessons, then its shots land but never drop health below 1', () => {
+    const s = createSim(FIRST_LIGHT, { seed: 1, minHealth: 1 });
+    while (s.time < 15) stepSim(s, []);
     expect(s.health).toBe(s.maxHealth);
+    while (s.time < 120) stepSim(s, []);
+    expect(s.stats.hits).toBeGreaterThan(s.maxHealth);
+    expect(s.health).toBe(1);
+    expect(s.outcome).toBe('playing');
   });
 
   it('is cleared by a novice-timed bot without losing', () => {

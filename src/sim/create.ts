@@ -15,6 +15,8 @@ export interface CreateOptions {
   readonly health?: number;
   /** Shared health cap for this room (the run's RoomEntry.maxHealth); default TUNING.maxHealth. */
   readonly maxHealth?: number;
+  /** Health floor: hits still register (flash, grace, stats) but never reduce health below it. */
+  readonly minHealth?: number;
   /** Behavioural relics equipped for this room (reach relics come through params). */
   readonly relics?: SimRelicConfig;
   /** Earned relic charges carried in from the room-entry checkpoint. */
@@ -87,6 +89,9 @@ export function createSim(room: RoomDef, options: CreateOptions): SimState {
     nextId,
     health,
     maxHealth,
+    ...(options.minHealth !== undefined && options.minHealth > 0
+      ? { minHealth: Math.min(maxHealth, Math.floor(options.minHealth)) }
+      : {}),
     graceLeft: 0,
     damagedAttackIds: new Set(),
     body: {

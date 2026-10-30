@@ -16,11 +16,14 @@ export const TUTORIAL_STEPS: readonly TutorialStep[] = [
   { id: 'follow', title: 'Your soul follows', text: 'Your soul walks your red thread slowly. Wait, and it will catch up and rejoin you.' },
   { id: 'return', title: 'Return', text: 'Dash out again, then tap once (no drag). Your body runs back along the thread to meet your soul.' },
   { id: 'contact', title: 'Meet early', text: 'Dash out, then dash straight back into your soul. Touching it rejoins you at once — the gold ring shows where.' },
-  { id: 'strike', title: 'Strike', text: 'A dash cuts through anything in its path. Break the still sentry on the right.' },
+  { id: 'strike', title: 'Strike', text: 'A dash cuts through anything in its path. Break the sentry on the right before it starts firing.' },
   { id: 'locked', title: 'Read the amber line', text: 'An amber line is a shot about to fire. Once it locks it never moves: step off it, or dash through the bolt.' },
   { id: 'keeper', title: 'Protect your soul', text: 'The lantern aims where your soul is going, not where it is. Return or dash back to it before the shot lands, then break the lantern.' },
   { id: 'gate', title: 'Leave together', text: 'The gate opens only for both of you. Rejoin your soul and step into the gate.' },
 ];
+
+/** Steps that dismiss themselves after this many simulation seconds as the current step. */
+export const TIMED_STEPS: Readonly<Record<string, number>> = { locked: 8 };
 
 export interface TutorialView {
   readonly index: number;
@@ -35,6 +38,8 @@ const dead = (s: SimState, key: string) => s.enemies.some((e) => e.key === key &
 export class TutorialCoach {
   private readonly done = new Set<string>();
   private last: string | null = null;
+  /** The step currently shown and the sim time it became current. */
+  private shown: { id: string; since: number } | null = null;
 
   /** Feed one frame's events and the current state. */
   update(events: readonly SimEvent[], state: SimState): void {
@@ -51,6 +56,12 @@ export class TutorialCoach {
     if (dead(state, 'dummy')) this.complete('strike');
     if (dead(state, 'needler')) this.complete('locked');
     if (dead(state, 'keeper')) this.complete('keeper');
+    // Timed steps read once, then step aside.
+    const current = TUTORIAL_STEPS.find((s) => !this.done.has(s.id));
+    if (!current) return;
+    if (this.shown?.id !== current.id) this.shown = { id: current.id, since: state.time };
+    const limit = TIMED_STEPS[current.id];
+    if (limit !== undefined && state.time - this.shown.since >= limit) this.complete(current.id);
   }
 
   get view(): TutorialView {

@@ -297,6 +297,8 @@ export interface SimState {
   nextId: number;
   health: number;
   readonly maxHealth: number;
+  /** Health never drops below this (0 normally; 1 in the tutorial, where hits still land but cannot kill). */
+  readonly minHealth?: number;
   graceLeft: number;
   /** Attack activations that already dealt damage; one attack ID damages at most once. */
   damagedAttackIds: Set<AttackId>;
