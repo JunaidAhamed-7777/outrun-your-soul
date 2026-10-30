@@ -368,7 +368,12 @@ function advance(state: SimState, plan: Plan, dt: number): void {
     consumeHead(route, plan.soulSpeed * dt);
     if (plan.bodyKind === 'return') consumeTail(route, TUNING.returnSpeed * dt);
     state.soul.pos = route.points[0]!;
+    const before = body.pos;
     body.pos = route.points[route.points.length - 1]!;
+    if (plan.bodyKind === 'return') {
+      const heading = normalize(sub(body.pos, before));
+      if (heading.x !== 0 || heading.y !== 0) body.facing = heading; // presentation only
+    }
   } else {
     state.soul.pos = body.pos;
   }
