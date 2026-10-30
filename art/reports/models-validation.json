@@ -22,17 +22,12 @@
     "exit_gate",
     "distant_engine"
   ],
-  "missingRuntimeModels": [
-    "floor_tile",
-    "wall_block",
-    "exit_gate",
-    "distant_engine"
-  ],
+  "missingRuntimeModels": [],
   "summary": {
-    "shipping": 4,
+    "shipping": 8,
     "fixtures": 1,
     "failed": 0,
-    "shippingTriangles": 2118
+    "shippingTriangles": 11194
   },
   "models": [
     {
@@ -103,6 +98,222 @@
           "totalVertexCount": 1640,
           "totalTriangleCount": 814,
           "materialCount": 3,
+          "animationCount": 0,
+          "extensionsUsed": []
+        }
+      }
+    },
+    {
+      "assetId": "distant_engine",
+      "file": "public/assets/models/distant_engine.glb",
+      "shipping": true,
+      "bytes": 400136,
+      "sha256": "2e2341e0146bde3d1489b61391beecc80aa2544f5c6ef598251cb4d6540b63eb",
+      "status": "pass",
+      "errors": [],
+      "warnings": [],
+      "stats": {
+        "assetId": "distant_engine",
+        "category": "setPiece",
+        "budget": {
+          "label": "No per-asset budget documented; counts toward the <=60,000-triangle visible room",
+          "maxTriangles": 60000,
+          "maxMaterials": null
+        },
+        "rootNodes": [
+          "distant_engine"
+        ],
+        "childNodes": [
+          "distant_engine_body",
+          "distant_engine_gear_a",
+          "distant_engine_gear_b",
+          "distant_engine_train"
+        ],
+        "triangles": 7786,
+        "materials": [
+          "cobalt_mist",
+          "gold",
+          "gold_dark",
+          "ivory"
+        ],
+        "materialCount": 4,
+        "meshes": 4,
+        "nodes": 5,
+        "animations": [],
+        "extensionsUsed": [],
+        "bounds": {
+          "min": [
+            -15.1,
+            -4,
+            -4.65
+          ],
+          "max": [
+            15.1,
+            6.65,
+            1.21
+          ],
+          "size": [
+            30.2,
+            10.65,
+            5.86
+          ]
+        }
+      },
+      "khronos": {
+        "validatorVersion": "2.0.0-dev.3.10",
+        "numErrors": 0,
+        "numWarnings": 0,
+        "numInfos": 0,
+        "numHints": 0,
+        "messages": [],
+        "info": {
+          "generator": "Khronos glTF Blender I/O v5.2.40",
+          "drawCallCount": 11,
+          "totalVertexCount": 14382,
+          "totalTriangleCount": 7786,
+          "materialCount": 4,
+          "animationCount": 0,
+          "extensionsUsed": []
+        }
+      }
+    },
+    {
+      "assetId": "exit_gate",
+      "file": "public/assets/models/exit_gate.glb",
+      "shipping": true,
+      "bytes": 64772,
+      "sha256": "5c4742faccf11b6d53638282f2518fc7a276dd6a35efb5659985bcddbc457913",
+      "status": "pass",
+      "errors": [],
+      "warnings": [
+        "gate width 2.88 far from 2 tiles"
+      ],
+      "stats": {
+        "assetId": "exit_gate",
+        "category": "setPiece",
+        "budget": {
+          "label": "No per-asset budget documented; counts toward the <=60,000-triangle visible room",
+          "maxTriangles": 60000,
+          "maxMaterials": null
+        },
+        "rootNodes": [
+          "exit_gate"
+        ],
+        "childNodes": [
+          "exit_gate_door_left",
+          "exit_gate_door_right",
+          "exit_gate_frame"
+        ],
+        "triangles": 1206,
+        "materials": [
+          "gold",
+          "gold_dark",
+          "ivory"
+        ],
+        "materialCount": 3,
+        "meshes": 3,
+        "nodes": 4,
+        "animations": [],
+        "extensionsUsed": [],
+        "bounds": {
+          "min": [
+            -1.44,
+            0,
+            -0.19
+          ],
+          "max": [
+            1.44,
+            2.352,
+            0.19
+          ],
+          "size": [
+            2.88,
+            2.352,
+            0.38
+          ]
+        }
+      },
+      "khronos": {
+        "validatorVersion": "2.0.0-dev.3.10",
+        "numErrors": 0,
+        "numWarnings": 0,
+        "numInfos": 0,
+        "numHints": 0,
+        "messages": [],
+        "info": {
+          "generator": "Khronos glTF Blender I/O v5.2.40",
+          "drawCallCount": 9,
+          "totalVertexCount": 2164,
+          "totalTriangleCount": 1206,
+          "materialCount": 3,
+          "animationCount": 0,
+          "extensionsUsed": []
+        }
+      }
+    },
+    {
+      "assetId": "floor_tile",
+      "file": "public/assets/models/floor_tile.glb",
+      "shipping": true,
+      "bytes": 2208,
+      "sha256": "ae54b311595319da34f9a57491d9799b1573c6d8c407c7b543f61d3cf846b20f",
+      "status": "pass",
+      "errors": [],
+      "warnings": [],
+      "stats": {
+        "assetId": "floor_tile",
+        "category": "module",
+        "budget": {
+          "label": "Small prop / modular wall",
+          "maxTriangles": 800,
+          "maxMaterials": 1
+        },
+        "rootNodes": [
+          "floor_tile"
+        ],
+        "childNodes": [
+          "floor_tile_slab"
+        ],
+        "triangles": 20,
+        "materials": [
+          "cobalt"
+        ],
+        "materialCount": 1,
+        "meshes": 1,
+        "nodes": 2,
+        "animations": [],
+        "extensionsUsed": [],
+        "bounds": {
+          "min": [
+            0.01,
+            -0.1,
+            -0.99
+          ],
+          "max": [
+            0.99,
+            0,
+            -0.01
+          ],
+          "size": [
+            0.98,
+            0.1,
+            0.98
+          ]
+        }
+      },
+      "khronos": {
+        "validatorVersion": "2.0.0-dev.3.10",
+        "numErrors": 0,
+        "numWarnings": 0,
+        "numInfos": 0,
+        "numHints": 0,
+        "messages": [],
+        "info": {
+          "generator": "Khronos glTF Blender I/O v5.2.40",
+          "drawCallCount": 1,
+          "totalVertexCount": 40,
+          "totalTriangleCount": 20,
+          "materialCount": 1,
           "animationCount": 0,
           "extensionsUsed": []
         }
@@ -339,6 +550,77 @@
           "extensionsUsed": [
             "KHR_materials_emissive_strength"
           ]
+        }
+      }
+    },
+    {
+      "assetId": "wall_block",
+      "file": "public/assets/models/wall_block.glb",
+      "shipping": true,
+      "bytes": 5224,
+      "sha256": "5d52a6e895a510651843dacaab91c281b5fb491d0fa77ba1d6bdd96244a2d604",
+      "status": "pass",
+      "errors": [],
+      "warnings": [
+        "2 materials exceeds 1 (Small prop / modular wall, docs/ART_PIPELINE.md)"
+      ],
+      "stats": {
+        "assetId": "wall_block",
+        "category": "module",
+        "budget": {
+          "label": "Small prop / modular wall",
+          "maxTriangles": 800,
+          "maxMaterials": 1
+        },
+        "rootNodes": [
+          "wall_block"
+        ],
+        "childNodes": [
+          "wall_block_block"
+        ],
+        "triangles": 64,
+        "materials": [
+          "wall_body",
+          "wall_cap"
+        ],
+        "materialCount": 2,
+        "meshes": 1,
+        "nodes": 2,
+        "animations": [],
+        "extensionsUsed": [],
+        "bounds": {
+          "min": [
+            0,
+            0,
+            -1
+          ],
+          "max": [
+            1,
+            0.55,
+            0
+          ],
+          "size": [
+            1,
+            0.55,
+            1
+          ]
+        }
+      },
+      "khronos": {
+        "validatorVersion": "2.0.0-dev.3.10",
+        "numErrors": 0,
+        "numWarnings": 0,
+        "numInfos": 0,
+        "numHints": 0,
+        "messages": [],
+        "info": {
+          "generator": "Khronos glTF Blender I/O v5.2.40",
+          "drawCallCount": 2,
+          "totalVertexCount": 128,
+          "totalTriangleCount": 64,
+          "materialCount": 2,
+          "animationCount": 0,
+          "extensionsUsed": []
         }
       }
     },
