@@ -54,6 +54,38 @@ export function formatDuration(seconds: number): string {
 
 export const GATE_WAITING_TEXT = 'The gate needs both of you.';
 
+export interface BossView {
+  readonly name: string;
+  readonly heartHp: number;
+  readonly heartMax: number;
+  /** 0-based current stage, as in BossState.stage. */
+  readonly stage: number;
+  readonly stages: number;
+}
+
+export interface BossBar {
+  /** One per heart point; true = still standing. */
+  readonly segments: boolean[];
+  /** One per stage; true = reached. */
+  readonly stageDots: boolean[];
+  readonly label: string;
+}
+
+const clampInt = (n: number, lo: number, hi: number): number =>
+  Math.max(lo, Math.min(hi, Math.floor(Number.isFinite(n) ? n : lo)));
+
+export function bossBar(view: BossView): BossBar {
+  const max = clampInt(view.heartMax, 0, 12);
+  const hp = clampInt(view.heartHp, 0, max);
+  const stages = clampInt(view.stages, 0, 8);
+  const stage = clampInt(view.stage, 0, Math.max(0, stages - 1));
+  return {
+    segments: Array.from({ length: max }, (_, i) => i < hp),
+    stageDots: Array.from({ length: stages }, (_, i) => i <= stage),
+    label: `${view.name}: heart ${hp} of ${max}${stages > 0 ? `, stage ${stage + 1} of ${stages}` : ''}`,
+  };
+}
+
 /** Micro-label only when the gate state needs the player's attention. */
 export function gateLabel(gate: GateStatus): string | null {
   return gate === 'ready' ? GATE_WAITING_TEXT : null;

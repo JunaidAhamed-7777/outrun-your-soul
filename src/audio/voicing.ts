@@ -207,16 +207,22 @@ export function playCue(s: Synth, r: CueRequest, t: number): SynthVoice {
         s.sweep(t, { type: 'highpass', from: 1800, to: 5200, q: 0.8, attack: 0.03, dur: 0.25, gain: 0.07 * k, pan, send: 0.2 }),
       ]);
     case 'bellCharge':
-      return group([
-        s.bell(t, degreeHz(0, 0), { gain: 0.12 * k, decay: 1.2, attack: 0.002, partials: BELL_PARTIALS, pan, send: 0.4 }),
-        s.bell(t + 0.03, degreeHz(4, 0), { gain: 0.05 * k, decay: 0.9, attack: 0.002, partials: BELL_PARTIALS, pan, send: 0.4 }),
-      ]);
+      // A small struck bell per kill, rising with progress; the full charge rings out.
+      return r.variant === 'full'
+        ? group([
+            s.bell(t, degreeHz(0, 0), { gain: 0.13 * k, decay: 1.4, attack: 0.002, partials: BELL_PARTIALS, pan, send: 0.45 }),
+            s.bell(t + 0.03, degreeHz(4, 0), { gain: 0.06 * k, decay: 1.1, attack: 0.002, partials: BELL_PARTIALS, pan, send: 0.45 }),
+            s.bell(t + 0.06, degreeHz(7, 0), { gain: 0.04 * k, decay: 0.9, attack: 0.002, partials: BELL_PARTIALS, pan, send: 0.45 }),
+          ])
+        : s.bell(t, degreeHz(r.degree, 1), { gain: 0.07 * k, decay: 0.6, attack: 0.002, partials: BELL_PARTIALS, pan, send: 0.35 });
     case 'bellBurst':
+      // The Mourning Bell tolls: a deep struck bell with a long hum, then the air moves.
       return group([
-        s.bell(t, degreeHz(0, -1), { gain: 0.22 * k, decay: 1.7, attack: 0.002, partials: BELL_PARTIALS, pan, send: 0.5 }),
-        s.bell(t, degreeHz(0, 0), { gain: 0.12 * k, decay: 1.4, attack: 0.002, partials: BELL_PARTIALS, pan, send: 0.5 }),
-        s.sweep(t, { type: 'lowpass', from: 200, to: 3200, q: 0.9, attack: 0.02, dur: 0.5, gain: 0.25 * k, pan }),
-        s.blip(t, { from: 140, to: 45, dur: 0.35, gain: 0.3 * k, pan }),
+        s.bell(t, degreeHz(0, -2), { gain: 0.26 * k, decay: 3.2, attack: 0.002, partials: BELL_PARTIALS, pan, send: 0.6 }),
+        s.bell(t, degreeHz(0, -1), { gain: 0.14 * k, decay: 2.4, attack: 0.002, partials: BELL_PARTIALS, pan, send: 0.6 }),
+        s.bell(t + 0.01, degreeHz(4, -1), { gain: 0.05 * k, decay: 1.8, attack: 0.002, partials: SOUL_PARTIALS, pan, send: 0.6 }),
+        s.sweep(t + 0.02, { type: 'lowpass', from: 200, to: 2600, q: 0.9, attack: 0.03, dur: 0.6, gain: 0.3 * k, pan }),
+        s.blip(t, { from: 120, to: 45, dur: 0.4, gain: 0.3 * k, pan }),
       ]);
     case 'decoyPlace':
       return group([
@@ -244,6 +250,112 @@ export function playCue(s: Synth, r: CueRequest, t: number): SynthVoice {
         s.bell(t, degreeHz(4, 1), { gain: 0.09 * k, decay: 0.7, attack: 0.002, partials: GLASS_PARTIALS, pan, send: 0.35 }),
         s.bell(t + 0.09, degreeHz(7, 1), { gain: 0.09 * k, decay: 0.8, attack: 0.002, partials: GLASS_PARTIALS, pan, send: 0.35 }),
       ]);
+    case 'boostEnd':
+      return s.blip(t, { from: degreeHz(4, 1), to: degreeHz(0, 0), dur: 0.22, attack: 0.02, gain: 0.035 * k, pan });
+    case 'haloShimmer':
+      // Barely there: the halo is shown visually; sound only hints that a bolt slowed.
+      return s.bell(t, degreeHz(r.variant === 'exit' ? 4 : 6, 2), {
+        gain: 0.014 * k,
+        decay: 0.28,
+        attack: 0.01,
+        partials: GLASS_PARTIALS,
+        pan,
+        send: 0.4,
+      });
+    case 'knotMark':
+      return group([
+        s.pluck(t, degreeHz(1, 1), { gain: 0.14 * k, brightness: 0.7, t60: 0.35, pan, send: 0.2 }),
+        s.pluck(t + 0.07, degreeHz(3, 1), { gain: 0.14 * k, brightness: 0.7, t60: 0.4, pan, send: 0.2 }),
+      ]);
+    case 'decoyClaim':
+      // A sentry's eye drawn to the knot: a falling lure call.
+      return group([
+        s.blip(t, { from: degreeHz(5, 1), to: degreeHz(2, 1), dur: 0.2, attack: 0.01, gain: 0.07 * k, pan }),
+        s.tick(t, { hz: 2400, q: 3, dur: 0.02, gain: 0.06 * k, pan }),
+      ]);
+    case 'wardenWindup':
+      // Metal drawn across stone: low, scraping and slow, nothing like a sentry tick.
+      return group([
+        s.sweep(t, { type: 'bandpass', from: 380, to: 1500, q: 6, attack: 0.55, dur: 0.15, gain: 0.32 * k, swell: true, pan, send: 0.2 }),
+        s.buzz(t, { freqs: [82.4, 87.3], from: 180, to: 520, attack: 0.5, dur: 0.25, gain: 0.12 * k }),
+      ]);
+    case 'bossWake':
+      return group([
+        s.buzz(t, { freqs: [degreeHz(0, -3), degreeHz(4, -3)], from: 110, to: 700, attack: 1.0, dur: 0.9, gain: 0.2 * k, send: 0.4 }),
+        s.bell(t + 0.2, degreeHz(0, -2), { gain: 0.18 * k, decay: 2.6, attack: 0.01, partials: CLANG_PARTIALS, send: 0.6 }),
+        s.bell(t + 0.2, 77.78, { gain: 0.1 * k, decay: 2.2, attack: 0.01, partials: CLANG_PARTIALS, send: 0.6 }),
+      ]);
+    case 'bossTelegraph': {
+      // Ominous low tolls a semitone apart under a rising rumble; a fan tolls three times.
+      const rumble = s.sweep(t, { type: 'lowpass', from: 80, to: 620, q: 1.4, attack: 0.9, dur: 0.15, gain: 0.22 * k, swell: true, pan, send: 0.3 });
+      if (r.variant === 'fan') {
+        return group([
+          rumble,
+          ...[146.83, 138.59, 130.81].map((hz, i) =>
+            s.bell(t + i * 0.16, hz, { gain: 0.12 * k, decay: 1.0, attack: 0.004, partials: CLANG_PARTIALS, pan: (i - 1) * 0.4, send: 0.5 }),
+          ),
+        ]);
+      }
+      return group([
+        rumble,
+        s.bell(t, 73.42, { gain: 0.2 * k, decay: 1.6, attack: 0.004, partials: CLANG_PARTIALS, pan, send: 0.5 }),
+        s.bell(t + 0.02, 77.78, { gain: 0.12 * k, decay: 1.4, attack: 0.004, partials: CLANG_PARTIALS, pan, send: 0.5 }),
+      ]);
+    }
+    case 'bossCharge':
+      return group([
+        s.sweep(t, { type: 'lowpass', from: 150, to: 1900, q: 1.1, attack: 0.05, dur: 0.55, gain: 0.55 * k, pan, send: 0.25 }),
+        s.blip(t, { from: 92, to: 40, dur: 0.45, gain: 0.4 * k, pan }),
+        s.crunch(t, { gain: 0.1 * k, dur: 0.12, lowpass: 900, pan }),
+      ]);
+    case 'bossFan':
+      return group([
+        ...[-0.55, 0, 0.55].map((p, i) =>
+          s.sweep(t + i * 0.03, { type: 'bandpass', from: 600, to: 2400, q: 1.2, attack: 0.02, dur: 0.26, gain: 0.4 * k, pan: p, send: 0.15 }),
+        ),
+        s.blip(t, { from: 110, to: 60, dur: 0.18, gain: 0.25 * k, pan }),
+      ]);
+    case 'bossHeartHit':
+      // A deep resonant strike on the warden's heart: the room rings.
+      return group([
+        s.bell(t, 55, { gain: 0.36 * k, decay: 3.0, attack: 0.002, partials: BELL_PARTIALS, pan, send: 0.7 }),
+        s.bell(t, 110, { gain: 0.16 * k, decay: 2.2, attack: 0.002, partials: BELL_PARTIALS, pan, send: 0.7 }),
+        s.bell(t + 0.01, 1661, { gain: 0.05 * k, decay: 0.6, attack: 0.001, partials: GLASS_PARTIALS, pan, send: 0.4 }),
+        s.crunch(t, { gain: 0.18 * k, dur: 0.07, lowpass: 2000, pan }),
+        s.blip(t, { from: 160, to: 38, dur: 0.5, gain: 0.35 * k, pan }),
+      ]);
+    case 'bossStagger':
+      return group([
+        s.blip(t, { from: 180, to: 55, dur: 0.85, attack: 0.02, gain: 0.13 * k, type: 'sawtooth', lowpass: 600, pan }),
+        s.bell(t, 146.83, { gain: 0.12 * k, decay: 0.7, attack: 0.002, partials: CLANG_PARTIALS, pan, send: 0.35 }),
+      ]);
+    case 'bossReunite':
+      // A dark mirror of the player's reunion: two tones converge into a low minor chord.
+      return group([
+        s.bell(t, 146.83, { gain: 0.07 * k, decay: 0.9, partials: SOUL_PARTIALS, detuneFrom: 60, glide: 0.15, pan, send: 0.4 }),
+        s.bell(t, 73.42, { gain: 0.07 * k, decay: 1.0, partials: SOUL_PARTIALS, detuneFrom: -60, glide: 0.15, pan, send: 0.4 }),
+        ...[146.83, 174.61, 220].map((hz, i) =>
+          s.bell(t + 0.14 + i * 0.04, hz, { gain: 0.045 * k, decay: 1.4, attack: 0.02, partials: SOUL_PARTIALS, pan, send: 0.5 }),
+        ),
+      ]);
+    case 'bossDefeated': {
+      // Dissonance, the dominant, then a wide resolving tonic with the pair's motif on top.
+      const voices = [
+        s.bell(t, 73.42, { gain: 0.14 * k, decay: 1.2, attack: 0.004, partials: CLANG_PARTIALS, send: 0.6 }),
+        s.bell(t, 77.78, { gain: 0.1 * k, decay: 1.0, attack: 0.004, partials: CLANG_PARTIALS, send: 0.6 }),
+      ];
+      for (const [i, hz] of [110, 138.59, 164.81, 220].entries()) {
+        voices.push(s.bell(t + 0.6 + i * 0.05, hz, { gain: 0.06 * k, decay: 1.2, attack: 0.01, send: 0.5 }));
+      }
+      for (const [i, deg] of [-7, -3, 0, 2, 4, 8].entries()) {
+        voices.push(s.bell(t + 1.3 + i * 0.03, degreeHz(deg, 0), { gain: 0.06 * k, decay: 3.6, attack: 0.02, send: 0.6 }));
+      }
+      for (const [i, deg] of [0, 2, 4, 7].entries()) {
+        voices.push(s.pluck(t + 1.35 + i * 0.09, degreeHz(deg, 1), { gain: 0.18 * k, brightness: 0.75, t60: 1.2, pan: (i - 1.5) * 0.3, send: 0.35 }));
+      }
+      voices.push(s.blip(t + 1.3, { from: 55, to: 36.7, dur: 1.5, attack: 0.05, gain: 0.2 * k }));
+      return group(voices);
+    }
     case 'wake':
       return group([
         s.blip(t, { from: 98, to: 87, dur: 0.45, attack: 0.08, gain: 0.16 * k }),

@@ -202,7 +202,7 @@ export function draftContent(
     nodes.push(keep);
     actions.replaceChildren(...nodes);
     // On short screens the choice buttons may sit below the fold; bring them into view.
-    if (selected) actions.scrollIntoView?.({ block: 'nearest', behavior: 'smooth' });
+    if (selected) actions.scrollIntoView?.({ block: 'nearest' });
   }
 
   const cards = options.map((option) => {

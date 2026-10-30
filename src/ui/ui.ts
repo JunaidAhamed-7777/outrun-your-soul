@@ -15,8 +15,8 @@ import type { RoomDef, SimEvent, SimState } from '../sim/types';
 import type { Settings } from '../save/settings';
 import { button, el, iconSpan } from './dom';
 import type { DraftView, RelicView } from './draft-logic';
-import { HintTracker } from './hints';
-import { gateLabel, healthLabel, healthPips, resultStats, threadMeter, type ThreadState } from './hud-logic';
+import { HintTracker, genericHintsFor } from './hints';
+import { bossBar, gateLabel, healthLabel, healthPips, resultStats, threadMeter, type BossView, type ThreadState } from './hud-logic';
 import { ICONS } from './icons';
 import { relicIconSvg } from './relic-icons';
 import {
@@ -35,6 +35,8 @@ import { createTitleVignette } from './title-vignette';
 
 export type { DraftView, RelicView } from './draft-logic';
 export type { EndingView, RouteChoice, StarterOption } from './run-panels';
+export type { BossView } from './hud-logic';
+export { BOSS_HINT, BOSS_INTRO_SUBTITLE, WARDEN_HINT } from './hints';
 
 export interface UICallbacks {
   onStart(): void;
@@ -105,6 +107,9 @@ export interface GameUI {
   setLoadout(relics: readonly LoadoutChip[]): void;
   showRoomIntro(name: string, subtitle: string, depthLabel: string): void;
   setSaveNotice(available: boolean): void;
+  // ---- boss (phase 3) ----
+  /** Slim boss bar under the top HUD row; null hides it. Cheap to call every frame. */
+  setBoss(view: BossView | null): void;
 }
 
 const STORAGE_NOTICE = 'Settings can’t be saved in this browser; they will reset when you leave.';
@@ -268,12 +273,20 @@ export function createUI(container: HTMLElement, initialSettings: Settings, call
   const hint = el('div', 'oys-hint', { 'aria-live': 'polite' });
   const vignetteFlash = el('div', 'oys-vignette', { 'aria-hidden': 'true' });
   const intro = el('div', 'oys-intro', { 'aria-live': 'polite' });
+  const bossName = el('span', 'oys-boss-name');
+  const bossStages = el('span', 'oys-boss-stages', { 'aria-hidden': 'true' });
+  const bossSegments = el('div', 'oys-boss-bar', { 'aria-hidden': 'true' });
+  const bossPanel = el('div', 'oys-boss', { role: 'img' }, [
+    el('div', 'oys-boss-head', {}, [bossName, bossStages]),
+    bossSegments,
+  ]);
   const hud = el('div', 'oys-hud', {}, [
     vignetteFlash,
     el('div', 'oys-hud-top', {}, [
       el('div', 'oys-hud-left', {}, [health, relicStrip]),
       el('div', 'oys-hud-right', {}, [thread, pauseBtn]),
     ]),
+    bossPanel,
     gate,
     hint,
   ]);
@@ -353,6 +366,8 @@ export function createUI(container: HTMLElement, initialSettings: Settings, call
   let lastGate: string | null = null;
   let lastHintId: string | null = null;
   let lastLoadout = '';
+  let lastBoss = '';
+  let lastBossHp = -1;
   let pips: HTMLElement[] = [];
   let introTimers: ReturnType<typeof setTimeout>[] = [];
 
@@ -415,7 +430,9 @@ export function createUI(container: HTMLElement, initialSettings: Settings, call
   function showHud(room: RoomDef): void {
     hudVisible = true;
     hud.hidden = false;
-    hints.reset(room.hints ?? []);
+    hints.reset([...(room.hints ?? []), ...genericHintsFor(room)]);
+    // An awake boss is introduced at once; a dormant one when it wakes.
+    if (room.boss && !room.boss.dormant) hints.trigger('boss');
     lastHealth = -1;
     lastMaxHealth = -1;
     lastThread = '';
@@ -454,6 +471,44 @@ export function createUI(container: HTMLElement, initialSettings: Settings, call
         return chip;
       }),
     );
+  }
+
+  function setBoss(view: BossView | null): void {
+    const key = view ? JSON.stringify([view.name, view.heartHp, view.heartMax, view.stage, view.stages]) : '';
+    if (key === lastBoss) return;
+    lastBoss = key;
+    hud.classList.toggle('has-boss', view !== null);
+    bossPanel.classList.toggle('is-on', view !== null);
+    if (!view) {
+      lastBossHp = -1;
+      return;
+    }
+    const bar = bossBar(view);
+    bossName.textContent = view.name;
+    bossStages.replaceChildren(...bar.stageDots.map((on) => el('span', on ? 'oys-boss-stage is-on' : 'oys-boss-stage')));
+    if (bossSegments.children.length !== bar.segments.length) {
+      bossSegments.replaceChildren(...bar.segments.map(() => el('span', 'oys-boss-seg')));
+    }
+    const segs = [...bossSegments.children] as HTMLElement[];
+    bar.segments.forEach((on, i) => segs[i]?.classList.toggle('is-empty', !on));
+    const hp = bar.segments.filter(Boolean).length;
+    if (lastBossHp > hp) {
+      // The segment that just broke flares once (opacity only under reduced motion).
+      const broken = segs[hp];
+      if (broken && typeof broken.animate === 'function') {
+        broken.animate(
+          settings.reducedMotion
+            ? [{ opacity: 1 }, { opacity: 0.35 }]
+            : [
+                { transform: 'scaleY(2.4)', filter: 'brightness(2.2)', opacity: 1 },
+                { transform: 'scaleY(1)', filter: 'brightness(1)', opacity: 0.35 },
+              ],
+          { duration: 520, easing: 'cubic-bezier(.2,.7,.2,1)' },
+        );
+      }
+    }
+    lastBossHp = hp;
+    bossPanel.setAttribute('aria-label', bar.label);
   }
 
   function showRoomIntro(name: string, subtitle: string, depthLabel: string): void {
@@ -518,8 +573,9 @@ export function createUI(container: HTMLElement, initialSettings: Settings, call
 
   function handleEvents(events: readonly SimEvent[], state: SimState): void {
     if (!hudVisible) return;
+    const roleOf = (id: number) => state.enemies.find((en) => en.id === id)?.role;
     for (const e of events) {
-      hints.onEvent(e);
+      hints.onEvent(e, roleOf);
       if (e.type === 'hit') {
         flashDamage();
         renderPips(state);
@@ -674,6 +730,7 @@ export function createUI(container: HTMLElement, initialSettings: Settings, call
       return choiceVisible;
     },
     setLoadout,
+    setBoss,
     showRoomIntro,
     setSaveNotice(available: boolean): void {
       saveAvailable = available;
