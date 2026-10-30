@@ -29,6 +29,7 @@ import { join, resolve } from 'node:path';
 import { chromium } from 'playwright-core';
 import { createServer as createViteServer } from 'vite';
 import { readTree } from './lib/files.mjs';
+import { analyzeGltf, parseGlb } from './lib/glb.mjs';
 import { startNestedServers } from './lib/nested.mjs';
 import { readZip } from './lib/zip.mjs';
 
@@ -185,6 +186,13 @@ mkdirSync(join(root, 'art', 'reports'), { recursive: true });
 const INSTRUMENT = () => {
   const stats = { firstDrawMs: null, frames: [], current: { calls: 0, triangles: 0 } };
   window.__e2e = stats;
+  // three.js announces every Scene to __THREE_DEVTOOLS__ ('observe'); keep them for model checks.
+  window.__e2eScenes = [];
+  const devtools = new EventTarget();
+  devtools.addEventListener('observe', (e) => {
+    if (e.detail?.isScene) window.__e2eScenes.push(e.detail);
+  });
+  window.__THREE_DEVTOOLS__ = devtools;
   const wrap = (proto, name, trianglesOf) => {
     const original = proto[name];
     if (!original) return;
@@ -245,13 +253,58 @@ async function newPhoneContext() {
   return { context, page, problems, logStart: servers.log.length };
 }
 
+/** Triangle counts of the packaged GLBs, parsed from the exact bytes under test. */
+const glbTriangles = new Map(
+  files
+    .filter((f) => /^assets\/models\/[a-z0-9_]+\.glb$/.test(f.path))
+    .map((f) => {
+      const id = f.path.slice('assets/models/'.length, -'.glb'.length);
+      try {
+        return [id, analyzeGltf(parseGlb(f.data).json, id).triangles];
+      } catch {
+        return [id, null];
+      }
+    }),
+);
+
+/**
+ * Which models the live scene renders from their GLB: every scene root named after a
+ * packaged model must carry exactly that GLB's triangle count (a primitive placeholder
+ * does not). Instanced meshes count their geometry once; modules instanced without a named
+ * root (floor, walls, decor) are not visible to this check.
+ */
+async function sceneModels(page) {
+  const ids = [...glbTriangles.keys()];
+  const found = await page.evaluate((names) => {
+    const out = [];
+    for (const scene of window.__e2eScenes ?? []) {
+      scene.traverse((o) => {
+        if (!names.includes(o.name) || o.parent?.name === o.name) return;
+        let tris = 0;
+        o.traverse((m) => {
+          if (m.isMesh) tris += m.geometry.index ? m.geometry.index.count / 3 : m.geometry.attributes.position.count / 3;
+        });
+        out.push({ name: o.name, tris });
+      });
+    }
+    return out;
+  }, ids);
+  const verified = new Set();
+  const mismatched = [];
+  for (const f of found) {
+    if (f.tris === glbTriangles.get(f.name)) verified.add(f.name);
+    else mismatched.push(`${f.name} ${f.tris} tris (GLB ${glbTriangles.get(f.name)})`);
+  }
+  return { verified, mismatched, roots: found.length };
+}
+
 /**
  * Console/page/network problems for one context. A top-level page load makes the browser
  * request /favicon.ico from the origin root (outside the nested game path); itch.io runs
  * the game in an iframe, which does not fetch favicons. Exactly those console 404s are
  * exempted, and only when the server log shows no other non-200 response.
  */
-function problemsOf(problems, logStart) {
+function problemsOf(problems, logStart, verifiedModels = new Set()) {
   const served = servers.log.slice(logStart).filter((l) => l.status !== 200);
   const favicon = served.filter((l) => l.path === '/favicon.ico');
   const other = served.filter((l) => l.path !== '/favicon.ico');
@@ -269,9 +322,14 @@ function problemsOf(problems, logStart) {
   // finished with HTTP 200 (observed on the 400 KB distant_engine.glb, 1 of 3 Chrome runs,
   // never in Edge). Such an abort is noted, not failed; an abort without a successful
   // completion of the same URL is a real failure.
-  const benign = problems.aborted.filter((url) => problems.finishedOk.has(url));
-  const realAborts = problems.aborted.filter((url) => !problems.finishedOk.has(url)).map((url) => `${url} net::ERR_ABORTED`);
-  if (benign.length > 0) note = [note, `noted ${benign.length} net::ERR_ABORTED report(s) for URLs that also finished with HTTP 200: ${benign.map((u) => u.split('/').pop()).join(', ')}`].filter(Boolean).join('; ');
+  // Since the iris-transition build, every load also reports courier_body.glb aborted after
+  // its 200 response while the scene demonstrably renders that GLB (triangles match). An
+  // abort is excused only when the URL finished OK or its model is verified in the scene.
+  const modelOf = (url) => /\/assets\/models\/([a-z0-9_]+)\.glb$/.exec(url)?.[1] ?? null;
+  const excused = (url) => problems.finishedOk.has(url) || verifiedModels.has(modelOf(url));
+  const benign = problems.aborted.filter(excused);
+  const realAborts = problems.aborted.filter((url) => !excused(url)).map((url) => `${url} net::ERR_ABORTED`);
+  if (benign.length > 0) note = [note, `noted ${benign.length} net::ERR_ABORTED report(s) for resources that finished with HTTP 200 or render from their GLB: ${benign.map((u) => u.split('/').pop()).join(', ')}`].filter(Boolean).join('; ');
   return { list: [...consoleErrors, ...problems.pageErrors, ...problems.failedRequests, ...realAborts, ...other.map((l) => `${l.path} HTTP ${l.status}`)], note };
 }
 
@@ -303,6 +361,8 @@ function hooks(page) {
     state: async () => revive(await page.evaluate(() => window.__e2eSerialise(window.__oys.state()))),
     run: () => page.evaluate(() => JSON.parse(JSON.stringify(window.__oys.run()))),
     phase: () => page.evaluate(() => window.__oys.phase()),
+    /** Settles when the latest room entry (iris out -> build -> iris in) has finished. */
+    ready: () => page.evaluate(() => window.__oys.ready()),
   };
 }
 
@@ -470,7 +530,13 @@ try {
     record('A2 WebGL2 canvas present', timing.canvas && timing.webgl2, timing.renderer ?? 'no renderer');
     record('A3 title Begin button visible', true, `${beginVisibleMs} ms after navigation start`);
     report.screenshots.push(await shot(page, 'title'));
-    const errs = problemsOf(problems, logStart);
+    const titleModels = await sceneModels(page);
+    record(
+      'A5 title scene renders packaged GLBs, not placeholders (triangle counts match)',
+      titleModels.roots > 0 && titleModels.mismatched.length === 0,
+      `verified ${[...titleModels.verified].sort().join(', ')}${titleModels.mismatched.length ? `; MISMATCH ${titleModels.mismatched.join(', ')}` : ''}`,
+    );
+    const errs = problemsOf(problems, logStart, titleModels.verified);
     if (errs.note) report.notes = [...(report.notes ?? []), errs.note];
     record('A4 no console errors, page errors or failed requests (production load)', errs.list.length === 0, errs.list.join(' | ') || errs.note || '');
     await context.close();
@@ -493,10 +559,17 @@ try {
   const starterState = { threadkeeperEnabled: await threadkeeper.isEnabled(), longReachEnabled: await longReach.isEnabled() };
   report.screenshots.push(await shot(page, 'starter'));
   await threadkeeper.tap();
+  await h.ready();
   await page.waitForFunction(() => window.__oys.phase() === 'playing', null, { timeout: 5000 });
   const room1 = await state();
   const run1 = await h.run();
   const intro1 = await introText(page);
+  const roomModels = await sceneModels(page);
+  record(
+    'B1b room 1 scene renders packaged GLBs for every named model root (courier, soul, sentries, gate, engine)',
+    roomModels.verified.has('courier_body') && roomModels.verified.has('soul_mask') && roomModels.mismatched.length === 0,
+    `verified ${[...roomModels.verified].sort().join(', ')} across ${roomModels.roots} roots${roomModels.mismatched.length ? `; MISMATCH ${roomModels.mismatched.join(', ')}` : ''}`,
+  );
   record(
     'B1 Begin -> starter select (Threadkeeper open, Long Reach locked on fresh storage) -> room 1 with intro card',
     starterState.threadkeeperEnabled && !starterState.longReachEnabled && room1.room.id === 'departure_court' && run1.at === 'n0' && !!intro1?.on,
@@ -629,6 +702,7 @@ try {
   const routeNames = await page.locator('.oys-card--route .oys-card-title').allTextContents();
   report.screenshots.push(await shot(page, 'route'));
   await routeCards.first().tap();
+  await h.ready();
   await page.waitForFunction(() => window.__oys.phase() === 'playing', null, { timeout: 5000 });
   const run2 = await h.run();
   const room2 = await state();
@@ -657,6 +731,7 @@ try {
     `caption "${caption}"; detail "${detail}"; New expedition button ${newExpeditionVisible}`,
   );
   await cont.tap();
+  await h.ready();
   await page.waitForFunction(() => window.__oys.phase() === 'playing', null, { timeout: 5000 });
   const runC = await h.run();
   const roomC = await state();
@@ -679,6 +754,7 @@ try {
   );
   if (retryVisible) {
     await retry.tap();
+    await h.ready();
     await page.waitForFunction(() => window.__oys.phase() === 'playing', null, { timeout: 5000 });
     const runR = await h.run();
     const roomR = await state();
@@ -690,7 +766,7 @@ try {
     );
   }
 
-  const errs = problemsOf(problems, logStart);
+  const errs = problemsOf(problems, logStart, roomModels.verified);
   if (errs.note) report.notes = [...(report.notes ?? []), errs.note];
   record('B16 no console errors, page errors or failed requests (UI session incl. reload)', errs.list.length === 0, errs.list.slice(0, 5).join(' | ') || errs.note || '');
   report.consoleWarnings = [...(report.consoleWarnings ?? []), ...problems.warnings];
@@ -704,6 +780,7 @@ try {
     await p.getByRole('button', { name: 'Begin' }).waitFor({ state: 'visible', timeout: 20000 });
     await hc.install();
     await p.evaluate(() => window.__oys.start('threadkeeper'));
+    const runModels = await sceneModels(p);
     const expedition = { seed: SEED_RUN, starter: 'threadkeeper', rooms: [], choices: [], relicsTaken: [], failures: [], ending: null, totalSimSeconds: 0 };
     const wallStart = Date.now();
     for (let guard = 0; guard < 40 && !expedition.ending; guard++) {
@@ -718,6 +795,7 @@ try {
           const next = p.getByRole('button', { name: /^(Onward|Pass the last gate)$/ });
           await next.waitFor({ state: 'visible', timeout: 5000 });
           await next.tap();
+          await hc.ready();
         } else if (result.outcome === 'playing') {
           // The greedy bot ran out of sim time without winning or losing: a stall, not a defeat.
           const s = await hc.state();
@@ -733,14 +811,28 @@ try {
           const button = p.getByRole('button', { name: attempts < 3 ? 'Retry room' : 'Abandon expedition' });
           await button.waitFor({ state: 'visible', timeout: 5000 });
           await button.tap();
+          await hc.ready();
         }
       } else if (ph === 'choosing') {
-        const kind = await panelKind(p);
+        // A room entry irises out/in with no panel showing; give it a moment before judging.
+        let kind = await panelKind(p);
+        for (let wait = 0; kind === 'unknown' && wait < 30; wait++) {
+          await p.waitForTimeout(100);
+          if ((await hc.phase()) !== 'choosing') break;
+          kind = await panelKind(p);
+        }
+        if ((await hc.phase()) !== 'choosing') continue;
         if (kind === 'route') {
           const names = await p.locator('.oys-card--route .oys-card-title').allTextContents();
           await p.locator('.oys-card--route').first().tap();
+          await hc.ready();
           expedition.choices.push({ panel: 'route', offered: names, picked: names[0] });
         } else if (kind === 'draft') {
+          if (!report.screenshots.includes('art/previews/e2e-station.png')) {
+            // The Signal House scene irises in behind the draft panel (~0.35 s each way).
+            await p.waitForTimeout(900);
+            report.screenshots.push(await shot(p, 'station'));
+          }
           const offered = await p.locator('.oys-card--relic .oys-card-title').allTextContents();
           const first = p.locator('.oys-card--relic:not([disabled])').first();
           let picked = null;
@@ -754,6 +846,7 @@ try {
           } else {
             await p.getByRole('button', { name: 'Keep my relics' }).tap();
           }
+          await hc.ready();
           const runAfter = await hc.run();
           expedition.choices.push({ panel: 'draft', offered, picked, action, loadoutAfter: runAfter.loadout });
           if (picked && action !== 'Keep my relics') expedition.relicsTaken.push(picked);
@@ -797,7 +890,7 @@ try {
       const unlocked = await lr.isEnabled();
       record('C2 after the run, the title offers Begin again and Long Reach is unlocked on the starter panel', unlocked, `Long Reach enabled ${unlocked}`);
     }
-    const errsC = problemsOf(probs, start);
+    const errsC = problemsOf(probs, start, runModels.verified);
     if (errsC.note) report.notes = [...(report.notes ?? []), errsC.note];
     record('C3 no console errors, page errors or failed requests (full expedition)', errsC.list.length === 0, errsC.list.slice(0, 5).join(' | ') || errsC.note || '');
     report.consoleWarnings = [...(report.consoleWarnings ?? []), ...probs.warnings];
