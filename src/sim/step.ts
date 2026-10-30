@@ -126,7 +126,7 @@ const PRIORITY: Readonly<Record<Kind, number>> = {
   // Boss: a heart strike beats armour at the same instant (player-favouring), its
   // charge hits rank with other hits, and its timers follow the ordinary ones.
   bossHeart: 1,
-  bossGuard: 1.5,
+  bossGuard: 2.5, // ends dash protection, so it resolves after same-instant hits
   bossHit: 2,
   bossHome: 4,
   bossLeg: 5,

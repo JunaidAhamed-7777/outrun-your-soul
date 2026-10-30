@@ -152,7 +152,8 @@ export function bossCollisions(
   dashing: boolean,
 ): BossCandidate[] {
   const b = state.boss;
-  if (!b || b.phase === 'dead' || b.phase === 'dormant') return [];
+  // A dormant boss is still armoured: only its heart and charge need it awake.
+  if (!b || b.phase === 'dead') return [];
   const out: BossCandidate[] = [];
   const B0 = bossBodyAt(bp, ta);
   const vB = bp.vel;
