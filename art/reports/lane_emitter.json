@@ -2,7 +2,7 @@
   "asset_id": "lane_emitter",
   "status": "exported",
   "author": "original (script-authored in Blender via the pinned Blender MCP bridge)",
-  "created_at": "2026-10-30T15:15:09+00:00",
+  "created_at": "2026-10-30T15:24:55+00:00",
   "blender_version": "5.2.2 LTS",
   "exporter_version": "5.2.40",
   "source_path": "art/source/environment.blend",
@@ -21,18 +21,18 @@
     ],
     "material_count": 3,
     "bounds_min": [
-      0.0,
-      0.0,
-      0.0
+      0,
+      0,
+      0
     ],
     "bounds_max": [
-      1.0,
-      1.0,
+      1,
+      1,
       0.9
     ],
     "dimensions": [
-      1.0,
-      1.0,
+      1,
+      1,
       0.9
     ],
     "parts": [
@@ -46,5 +46,87 @@
     "materials": 3
   },
   "within_budget": true,
-  "notes": "Replaces one perimeter wall tile; footprint exactly [0,1]^2, height <= 0.9 m. Aperture empty at the front (-Y) face, rod height 0.2 m; rotate about the tile centre (0.5, 0.5) so it faces the lane. lane_violet glass rod sits in an open-topped trough so the tilted camera sees it at any yaw."
+  "notes": "Replaces one perimeter wall tile; footprint exactly [0,1]^2, height <= 0.9 m. Aperture empty at the front (-Y) face, rod height 0.2 m; rotate about the tile centre (0.5, 0.5) so it faces the lane. lane_violet glass rod sits in an open-topped trough so the tilted camera sees it at any yaw.",
+  "glb_verification": {
+    "asset_id": "lane_emitter",
+    "file": "public/assets/models/lane_emitter.glb",
+    "sha256": "0811eb7ce6428832c29d07b1b7c8ca62f97c436dbd812ac5427cdd46b40d2f81",
+    "bytes": 31364,
+    "generator": "Khronos glTF Blender I/O v5.2.40",
+    "triangles": 564,
+    "materials": [
+      "gold_dark",
+      "gold",
+      "lane_violet"
+    ],
+    "bounds_gltf_yup": {
+      "min": [
+        0,
+        0,
+        -1
+      ],
+      "max": [
+        1,
+        0.9,
+        0
+      ]
+    },
+    "parts": [
+      "lane_emitter",
+      "lane_emitter_aperture",
+      "lane_emitter_body"
+    ],
+    "checks": [
+      {
+        "name": "triangles within budget (600)",
+        "pass": true
+      },
+      {
+        "name": "materials within budget (3)",
+        "pass": true
+      },
+      {
+        "name": "single root named lane_emitter",
+        "pass": true
+      },
+      {
+        "name": "all part nodes prefixed with the asset id",
+        "pass": true
+      },
+      {
+        "name": "materials are palette keys",
+        "pass": true
+      },
+      {
+        "name": "no cameras or lights",
+        "pass": true
+      },
+      {
+        "name": "footprint x exactly [0,1]",
+        "pass": true
+      },
+      {
+        "name": "footprint glTF z exactly [-1,0]",
+        "pass": true
+      },
+      {
+        "name": "grounded, height <= 0.9",
+        "pass": true
+      },
+      {
+        "name": "parts body + aperture",
+        "pass": true
+      },
+      {
+        "name": "aperture on the front (-Y Blender) face centre",
+        "pass": true
+      },
+      {
+        "name": "violet only as the lens (one lane_violet material)",
+        "pass": true
+      }
+    ],
+    "pass": true,
+    "verified_at": "2026-10-30T15:25:07Z"
+  }
 }
