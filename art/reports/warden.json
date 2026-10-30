@@ -1,0 +1,53 @@
+{
+  "asset_id": "warden",
+  "status": "exported",
+  "author": "original (script-authored in Blender via the pinned Blender MCP bridge)",
+  "created_at": "2026-10-30T15:17:23+00:00",
+  "blender_version": "5.2.2 LTS",
+  "exporter_version": "5.2.40",
+  "source_path": "art/source/actors.blend",
+  "export": {
+    "path": "public/assets/models/warden.glb",
+    "bytes": 126936,
+    "sha256": "3c242b4f043f37835d823a99ea04e281e992056ece3d8c91315ddd5e49655f0d"
+  },
+  "preview": "art/previews/warden-game-camera.png",
+  "measured": {
+    "triangles": 2210,
+    "materials": [
+      "gold",
+      "ivory",
+      "vermilion_dark"
+    ],
+    "material_count": 3,
+    "bounds_min": [
+      -0.4388,
+      -0.4388,
+      0.0
+    ],
+    "bounds_max": [
+      0.4388,
+      0.4388,
+      1.28
+    ],
+    "dimensions": [
+      0.8777,
+      0.8777,
+      1.28
+    ],
+    "parts": [
+      "warden",
+      "warden_base",
+      "warden_body",
+      "warden_core",
+      "warden_muzzle",
+      "warden_shield"
+    ]
+  },
+  "budget": {
+    "triangles": 4000,
+    "materials": 3
+  },
+  "within_budget": true,
+  "notes": "Warden: broad armoured ivory/gold statue-sentry on a heavy plinth; tall curved tower shield with gold rim and sun emblem in front (-Y); crested helm with a vermilion_dark visor slit; gold glaive at the right side. warden_shield pivots on its lower hinge (world 0, -0.37, 0.20): a POSITIVE local-X rotation lowers it forward (80 deg shown in warden-exposed-game-camera.png). warden_core (vermilion_dark gem in a gold ring, chest height 0.62) is hidden from the game camera by the raised shield and exposed when it lowers. warden_muzzle at the frontal sweep origin (0, -0.5, 0.26)."
+}
