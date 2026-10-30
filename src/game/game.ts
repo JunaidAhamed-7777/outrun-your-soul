@@ -5,7 +5,7 @@
  * run-layer transitions and checkpoint writes.
  */
 import { createAudio, type GameAudio } from '../audio/audio';
-import { DEPARTURE_COURT, ROOMS } from '../content/rooms';
+import { DEPARTURE_COURT, roomFor } from '../content/rooms';
 import { bindLifecycle, createFixedLoop, type FixedLoop } from '../core';
 import { bindPointerInput, GestureMachine } from '../input';
 import { createRenderer, isWebGL2Available, type GameRenderer, type RenderOverlay } from '../render/renderer';
@@ -49,12 +49,14 @@ function safeStorage(): Storage | null {
   }
 }
 
-/** Content registry lookup; unknown templates fall back to a known room so a run never dead-ends. */
-function resolveRoom(roomId: string, _variant: number): RoomDef {
-  const room = ROOMS[roomId];
-  if (room) return room;
-  console.warn(`[rooms] '${roomId}' is not authored yet; using Departure Court`);
-  return DEPARTURE_COURT;
+/** Content registry lookup; an unknown template falls back to a known room so a run never dead-ends. */
+function resolveRoom(roomId: string, variant: number): RoomDef {
+  try {
+    return roomFor(roomId, variant);
+  } catch {
+    console.warn(`[rooms] '${roomId}' is not authored; using Departure Court`);
+    return DEPARTURE_COURT;
+  }
 }
 
 export interface GameHandle {
