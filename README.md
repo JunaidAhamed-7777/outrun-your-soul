@@ -91,4 +91,7 @@ These are automated checks only. They do not replace real-phone testing or testi
 
 ## Rights and credits
 
+**Music:** "Cathedral in the forest (ambient loop)" by [congusbongus](https://opengameart.org/users/congusbongus), from [OpenGameArt](https://opengameart.org/content/cathedral-in-the-forest-ambient-loop), dedicated to the public domain under CC0 1.0. Credit is not required; it is given with thanks. Record: [art/provenance-audio.csv](art/provenance-audio.csv). All sound effects are synthesized in the browser; all 3D models are original (see [art/provenance.csv](art/provenance.csv)).
+
+
 No open-source license has been selected. Public visibility alone does not grant a blanket reuse license. Keep third-party licenses and attribution with their assets. Credit AI-assisted work accurately according to the platform and jam rules. Do not commit private prize-contact answers, credentials or correspondence.

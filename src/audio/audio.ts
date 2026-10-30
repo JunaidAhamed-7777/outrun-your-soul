@@ -4,9 +4,10 @@
  * (unlock), everything tolerates missing WebAudio, and mute applies instantly.
  *
  * Graph: voices -> sfx bus ┐
- *        pad/bells -> music duck -> music bus ┼-> master -> compressor -> out
+ *  music track (or pad/bells fallback) -> music duck -> music bus ┼-> master -> compressor -> out
  *        sends -> courtyard reverb -> return ┘
  */
+import { startMusic } from './music';
 import type { SimEvent, SimState } from '../sim/types';
 import { createCueMemory, cueContext, cuesForEvent, panFor, type CueRequest } from './cues';
 import { degreeHz } from './scale';
@@ -93,6 +94,8 @@ export function createAudio(): GameAudio {
   const live = new Map<number, SynthVoice>();
   const decor = lcg(0xbe11);
   let bellTimer = 4;
+  /** True once the licensed music track is looping (the procedural bells then stay quiet). */
+  let trackPlaying = false;
 
   function build(ctx: AudioContext): Engine {
     const master = ctx.createGain();
@@ -123,7 +126,11 @@ export function createAudio(): GameAudio {
 
     const synth = new Synth(ctx, sfx, reverb);
     const hum = buildSoulHum(ctx, synth, sfx);
-    buildPad(ctx, musicDuck);
+    // Licensed track first; the procedural drone and distant bells only if it cannot play.
+    void startMusic(ctx, musicDuck).then((ok) => {
+      if (ok) trackPlaying = true;
+      else buildPad(ctx, musicDuck);
+    });
     return { ctx, synth, master, sfx, music, musicDuck, hum, lane: null };
   }
 
@@ -334,7 +341,7 @@ export function createAudio(): GameAudio {
       bellTimer -= Math.max(0, realDt);
       if (bellTimer <= 0) {
         bellTimer = 5 + decor() * 5;
-        if (!muted && !suspended && e.ctx.state === 'running' && !danger) {
+        if (!trackPlaying && !muted && !suspended && e.ctx.state === 'running' && !danger) {
           const deg = [0, 1, 2, 4, 5][Math.floor(decor() * 5)] ?? 0;
           e.synth.bell(t + 0.01, degreeHz(deg, 1), {
             gain: 0.03,
