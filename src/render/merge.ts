@@ -10,7 +10,7 @@
  */
 import { BufferAttribute, BufferGeometry, Color, Matrix4, Mesh, MeshToonMaterial, Object3D, type Material } from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
-import { CONTRACT_PARTS } from './contract';
+import { ANIMATED_PARTS } from './contract';
 import { toonGradient } from './materials';
 
 /**
@@ -20,7 +20,7 @@ import { toonGradient } from './materials';
  */
 function isPart(node: Object3D, id: string): boolean {
   if (node.name.includes(':')) return false;
-  if ((CONTRACT_PARTS[id] ?? []).some((p) => node.name === `${id}_${p}`)) return true;
+  if ((ANIMATED_PARTS[id] ?? []).some((p) => node.name === `${id}_${p}`)) return true;
   return node.name.startsWith(`${id}_`) && !(node instanceof Mesh);
 }
 

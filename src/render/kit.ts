@@ -149,24 +149,28 @@ export function buildKit(room: RoomDef, lib: ModelLibrary, wallHeight: number, s
     const rows: number[] = [];
     for (let y = Math.floor(room.exit.y); y < room.exit.y + room.exit.h; y++) rows.push(y);
     rows.push(room.height);
+    const placements: Placement[] = [];
     for (const y of rows) {
       for (let x = room.exit.x; x + 2 <= room.exit.x + room.exit.w + 1e-6; x += 2) {
-        const inlay = lib.instance('threshold_inlay', true);
-        inlay.position.set(x, 0, -y);
-        inlay.traverse((node) => {
-          if (!(node instanceof Mesh)) return;
-          for (const m of Array.isArray(node.material) ? node.material : [node.material]) {
-            if (m instanceof MeshToonMaterial) {
-              m.emissive = new Color('#d9a43c');
-              m.emissiveIntensity = 0;
-              thresholdMaterials.push(m);
-              disposables.push(m);
-            }
-          }
-        });
-        group.add(inlay);
+        placements.push({ matrix: new Matrix4().makeTranslation(x, 0, -y) });
       }
     }
+    // One instanced batch per inlay mesh, each with this room's own glowable material.
+    const template = lib.template('threshold_inlay');
+    template.updateMatrixWorld(true);
+    template.traverse((node) => {
+      if (!(node instanceof Mesh) || Array.isArray(node.material) || !(node.material instanceof MeshToonMaterial)) return;
+      const own = node.material.clone();
+      own.emissive = new Color('#d9a43c');
+      own.emissiveIntensity = 0;
+      thresholdMaterials.push(own);
+      disposables.push(own);
+      const single = new Group();
+      const copy = new Mesh(node.geometry, own);
+      copy.applyMatrix4(node.matrixWorld);
+      single.add(copy);
+      group.add(instanceTemplate(single, placements, 'threshold_inlay'));
+    });
   }
 
   // Lane emitters replace the perimeter tile where a lane enters.

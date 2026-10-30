@@ -43,7 +43,6 @@ function flat(size: number, material: ShaderMaterial, renderOrder: number): Mesh
 export class RelicLayer {
   readonly group = new Group();
   private readonly halo: Mesh<PlaneGeometry, ShaderMaterial>;
-  private readonly haloFill: Mesh<CircleGeometry, MeshBasicMaterial>;
   private readonly streaks: StripMesh<ShaderMaterial>[];
   private readonly pips: Mesh<PlaneGeometry, MeshBasicMaterial>[] = [];
   private readonly knotPip: Mesh<PlaneGeometry, MeshBasicMaterial>;
@@ -56,10 +55,8 @@ export class RelicLayer {
   constructor(private readonly lib: ModelLibrary) {
     // Unit ring scaled to the halo radius every frame (radius may differ per relic tuning).
     this.halo = flat(2, ringMaterial({ color: color('soul_glow'), inner: 0.97, outer: 1, opacity: 0.85, segments: 24, gap: 0.25 }), 22);
-    const fillGeo = new CircleGeometry(1, 40);
-    fillGeo.rotateX(-Math.PI / 2);
-    this.haloFill = new Mesh(fillGeo, new MeshBasicMaterial({ color: color('soul_glow'), transparent: true, opacity: 0.07, depthWrite: false }));
-    this.haloFill.renderOrder = 4;
+    // Faint fill inside the ring (same quad, same draw call).
+    setUniform(this.halo.material, 'uFill', 0.08);
     this.streaks = [0, 1, 2].map(() => {
       const s = new StripMesh(streakMaterial(new Color('#dff6ff')), 2, 27);
       s.mesh.material.depthTest = false;
@@ -75,7 +72,7 @@ export class RelicLayer {
     }
     this.knotPip = new Mesh(pipGeo, new MeshBasicMaterial({ color: color('vermilion'), transparent: true, depthTest: false, depthWrite: false }));
     this.knotPip.renderOrder = 43;
-    this.group.add(this.haloFill, this.halo, ...this.streaks.map((s) => s.mesh), ...this.pips, this.knotPip);
+    this.group.add(this.halo, ...this.streaks.map((s) => s.mesh), ...this.pips, this.knotPip);
   }
 
   /** Current halo radius in tiles (0 when no halo), for effects and tests. */
@@ -91,15 +88,12 @@ export class RelicLayer {
     const r = relics.haloRadius;
     this.haloRadius = r ?? 0;
     this.halo.visible = r !== null;
-    this.haloFill.visible = r !== null;
     if (r !== null) {
       const outer = r + HALO_BAND;
       this.halo.scale.setScalar(outer);
       setUniform(this.halo.material, 'uInner', (r - HALO_BAND) / outer);
       setUniform(this.halo.material, 'uStart', reducedMotion ? 0 : this.time * 0.4);
       this.halo.position.set(soulPos.x, 0.03, -soulPos.y);
-      this.haloFill.scale.setScalar(r);
-      this.haloFill.position.set(soulPos.x, 0.011, -soulPos.y);
     }
 
     // Needlesong: three short streaks trailing the moving soul.
@@ -187,8 +181,6 @@ export class RelicLayer {
   dispose(): void {
     this.halo.geometry.dispose();
     this.halo.material.dispose();
-    this.haloFill.geometry.dispose();
-    this.haloFill.material.dispose();
     for (const s of this.streaks) s.dispose();
     this.pips[0]?.geometry.dispose();
     for (const pip of this.pips) pip.material.dispose();

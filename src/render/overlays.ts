@@ -270,7 +270,6 @@ export class TelegraphView {
   readonly group = new Group();
   private readonly line: StripMesh<ShaderMaterial>;
   private readonly reticle: Mesh<PlaneGeometry, ShaderMaterial>;
-  private readonly reticleInner: Mesh<PlaneGeometry, ShaderMaterial>;
   private readonly spot: Mesh<PlaneGeometry, ShaderMaterial>;
   private lastPhase: EnemyState['phase'] | null = null;
   private lockPoint: Vec2 = { x: 0, y: 0 };
@@ -281,13 +280,10 @@ export class TelegraphView {
     this.line.mesh.material.depthTest = false;
     const segments = target === 'soul' ? 3 : 4;
     this.reticle = flatPlane(0.95, ringMaterial({ color: color('warning_amber'), inner: 0.8, outer: 0.95, segments, gap: 0.45 }), 36);
-    this.reticleInner = flatPlane(
-      0.95,
-      ringMaterial({ color: color('warning_amber'), inner: 0.5, outer: 0.58, opacity: 0.8, segments: target === 'soul' ? 6 : 0, gap: 0.5 }),
-      36,
-    );
+    // Inner band (second ring in the same shader): solid for the body, dashed for the soul.
+    setUniform(this.reticle.material, 'uSegments2', target === 'soul' ? 6 : 0);
     this.spot = flatPlane(0.34, ringMaterial({ color: color('warning_amber'), inner: 0, outer: 1, opacity: 0.55 }), 36);
-    this.group.add(this.line.mesh, this.reticle, this.reticleInner, this.spot);
+    this.group.add(this.line.mesh, this.reticle, this.spot);
   }
 
   update(enemy: EnemyState, room: RoomDef, targetPos: Vec2, dt: number, reducedMotion: boolean): void {
@@ -331,18 +327,18 @@ export class TelegraphView {
       setUniform(this.spot.material, 'uOpacity', locked ? 0.35 + 0.4 * progress : 0.25);
     }
     place(this.reticle, at, 0.05);
-    place(this.reticleInner, at, 0.05);
     const shrink = locked ? 0.85 - progress * 0.25 : 1.05 + (reducedMotion ? 0 : 0.08 * Math.sin(this.time * 10));
     this.reticle.scale.setScalar(shrink);
-    this.reticleInner.scale.setScalar(shrink);
     setUniform(this.reticle.material, 'uStart', reducedMotion ? 0 : this.time * (this.target === 'soul' ? -2.4 : 2.4));
     setUniform(this.reticle.material, 'uOpacity', locked ? 1 : 0.75);
-    this.reticleInner.visible = locked || this.target === 'soul';
+    const inner = locked || this.target === 'soul';
+    setUniform(this.reticle.material, 'uInner2', inner ? 0.5 : 0);
+    setUniform(this.reticle.material, 'uOuter2', inner ? 0.58 : 0);
   }
 
   dispose(): void {
     this.line.dispose();
-    for (const m of [this.reticle, this.reticleInner, this.spot]) {
+    for (const m of [this.reticle, this.spot]) {
       m.geometry.dispose();
       m.material.dispose();
     }

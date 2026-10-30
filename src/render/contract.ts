@@ -59,3 +59,16 @@ export const CONTRACT_PARTS: Readonly<Record<string, readonly string[]>> = {
   lamp_post: ['lamp'],
   station_kiosk: ['house', 'bell', 'signal_arm'],
 };
+
+/**
+ * Parts the runtime animates or looks up. Contract parts not listed here (e.g. the courier's
+ * mask, which only rides on the head) may be merged into their parent to save draw calls.
+ */
+export const ANIMATED_PARTS: Readonly<Record<string, readonly string[]>> = {
+  ...CONTRACT_PARTS,
+  courier_body: ['body', 'head', 'scarf'],
+  lane_emitter: ['aperture'],
+  threshold_inlay: [],
+  urn: [],
+  lamp_post: [],
+};

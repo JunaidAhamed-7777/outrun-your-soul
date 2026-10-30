@@ -253,6 +253,10 @@ uniform float uArc;
 uniform float uStart;
 uniform float uSegments;
 uniform float uGap;
+uniform float uFill;
+uniform float uInner2;
+uniform float uOuter2;
+uniform float uSegments2;
 varying vec2 vUv;
 void main() {
   vec2 p = (vUv - 0.5) * 2.0;
@@ -265,6 +269,12 @@ void main() {
     float s = fract(t * uSegments);
     if (s > 1.0 - uGap) a = 0.0;
   }
+  if (uOuter2 > 0.0) {
+    float b = smoothstep(uInner2 - soft, uInner2, r) * (1.0 - smoothstep(uOuter2 - soft, uOuter2, r));
+    if (uSegments2 > 0.5 && fract(fract((atan(p.y, p.x) + uStart) / 6.2831853) * uSegments2) > 0.5) b = 0.0;
+    a = max(a, b * 0.8);
+  }
+  a = max(a, uFill * (1.0 - smoothstep(uInner - soft, uInner, r)));
   if (a < 0.01) discard;
   gl_FragColor = vec4(uColor, a * uOpacity);
   #include <colorspace_fragment>
@@ -279,6 +289,10 @@ void main() {
       uStart: { value: params.start ?? 0 },
       uSegments: { value: params.segments ?? 0 },
       uGap: { value: params.gap ?? 0.3 },
+      uFill: { value: 0 },
+      uInner2: { value: 0 },
+      uOuter2: { value: 0 },
+      uSegments2: { value: 0 },
     },
     params.additive ?? false,
   );
