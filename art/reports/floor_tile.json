@@ -26,7 +26,7 @@
     "bounds_max": [
       0.99,
       0.99,
-      0.0
+      0
     ],
     "dimensions": [
       0.98,
@@ -43,5 +43,72 @@
     "materials": 1
   },
   "within_budget": true,
-  "notes": "Chamfered flagstone; neighbours leave a 0.02 m V-groove grout line. Renderer should place a dark cobalt_deep base plane slightly below z=-0.03 so grout reads at phone size."
+  "notes": "Chamfered flagstone; neighbours leave a 0.02 m V-groove grout line. Renderer should place a dark cobalt_deep base plane slightly below z=-0.03 so grout reads at phone size.",
+  "glb_verification": {
+    "asset_id": "floor_tile",
+    "file": "public/assets/models/floor_tile.glb",
+    "sha256": "ae54b311595319da34f9a57491d9799b1573c6d8c407c7b543f61d3cf846b20f",
+    "bytes": 2208,
+    "generator": "Khronos glTF Blender I/O v5.2.40",
+    "triangles": 20,
+    "materials": [
+      "cobalt"
+    ],
+    "bounds_gltf_yup": {
+      "min": [
+        0.01,
+        -0.1,
+        -0.99
+      ],
+      "max": [
+        0.99,
+        0,
+        -0.01
+      ]
+    },
+    "parts": [
+      "floor_tile",
+      "floor_tile_slab"
+    ],
+    "checks": [
+      {
+        "name": "single root named floor_tile",
+        "pass": true
+      },
+      {
+        "name": "all part nodes prefixed with the asset id",
+        "pass": true
+      },
+      {
+        "name": "materials are palette keys",
+        "pass": true
+      },
+      {
+        "name": "no cameras or lights",
+        "pass": true
+      },
+      {
+        "name": "footprint x within [0,1]",
+        "pass": true
+      },
+      {
+        "name": "footprint glTF z within [-1,0] (Blender +Y = sim north)",
+        "pass": true
+      },
+      {
+        "name": "top surface at y=0",
+        "pass": true
+      },
+      {
+        "name": "slab extends downward",
+        "pass": true
+      },
+      {
+        "name": "part floor_tile_slab",
+        "pass": true
+      }
+    ],
+    "pass": true,
+    "verified_at": "2026-10-30T14:52:48Z"
+  }
 }
