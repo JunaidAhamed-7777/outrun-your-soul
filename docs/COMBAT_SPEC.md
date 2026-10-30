@@ -63,6 +63,15 @@ These are paper states, not validated encounters. Short out-and-back attacking l
 
 The visual language must distinguish a sharp attacking slash laying fresh thread from an unarmed gathering return. Physical contact now means what it looks like: the two selves really meet.
 
+
+### Exact reunion placement
+
+For a radius-based contact, use the body's position at the exact eligible contact time as the reunion anchor. The soul moves only the bounded remaining center gap (at most the combined endpoint radii plus numeric tolerance) to that anchor; both centers then coincide and the route has zero length. This is a local contact resolution, not a long-distance teleport.
+
+Contact-collapse is eligible only when the soul's full-radius swept corridor to the anchor, including its final footprint, is clear of walls. Near contact through a thin wall or blocked corner does not clear the route: retain normal path following until a legal reunion or route exhaustion. Preview uses the same eligibility and anchor rule.
+
+Sweep ordinary hazard/projectile contact tests across that bounded soul movement at the reunion event time, not only at its final position. Resolve earlier hits first; crossing an active lane or bolt during the snap remains a real hit. Apply normal attack-ID deduplication and global damage grace, with no additional invulnerability from reunion. Then stop the outward dash, clear the route once, and enter normal recovery. Record deterministic exact-tie priority in tests.
+
 ## Input contract
 
 Preferred first implementation candidate: relative drag/release for an outward dash; a short stationary tap for return.
