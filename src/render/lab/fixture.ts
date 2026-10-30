@@ -84,7 +84,8 @@ export function makeFixtureState(room: RoomDef = LAB_ROOM): SimState {
     contactArmed: true,
     enemies: [
       makeEnemy(1, 'n1', 'needler', { x: 2, y: 9 }, 'tracking', { x: 1.4, y: -3.6 }),
-      makeEnemy(2, 'k1', 'keeper', { x: 6.5, y: 7.5 }, 'locked', { x: -2.5, y: -5.3 }),
+      // Keeper forecast: locked on the soul's predicted point on the ribbon (optional sim field).
+      { ...makeEnemy(2, 'k1', 'keeper', { x: 6.5, y: 7.5 }, 'locked', { x: -2.5, y: -4.5 }), lockTarget: { x: 4, y: 3 } } as EnemyState,
       makeEnemy(3, 'n2', 'needler', { x: 6.3, y: 2.4 }, 'dormant', { x: -1, y: 0 }),
     ],
     projectiles: [makeProjectile(10, { x: 5.4, y: 6.1 }, { x: -2.5, y: -4.5 }), makeProjectile(11, { x: 1.2, y: 7.6 }, { x: 0.4, y: 5.9 })],

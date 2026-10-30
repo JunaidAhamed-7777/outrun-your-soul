@@ -17,10 +17,13 @@ import { TUNING } from '../sim/tuning';
 import type { Vec2 } from '../sim/vec';
 import { color } from './palette';
 import { rayToWalls } from './raycast';
+import { aimTarget, lockTarget } from './simext';
 import { dotLineMaterial, ribbonMaterial, ringMaterial, setUniform, stripShadowMaterial, telegraphMaterial } from './shaders';
 import { StripMesh } from './stripMesh';
 
 const RIBBON_POINTS = 160;
+const SHEEN = new Color('#ffb08a');
+const BOOST_SHEEN = new Color('#fff3e6');
 
 function flatPlane(size: number, material: ShaderMaterial, renderOrder: number, depthTest = false): Mesh<PlaneGeometry, ShaderMaterial> {
   const geo = new PlaneGeometry(size, size);
@@ -59,6 +62,7 @@ export class RibbonView {
   private readonly shadowPts: { x: number; y: number }[] = [];
   private time = 0;
   private flow = 0.3;
+  private boost = 0;
 
   constructor() {
     this.silk = new StripMesh(ribbonMaterial(), RIBBON_POINTS, 12);
@@ -73,7 +77,7 @@ export class RibbonView {
     this.group.add(this.shade.mesh, this.silk.mesh, this.knotA, this.knotB);
   }
 
-  update(state: SimState, soulPos: Vec2, bodyPos: Vec2, dt: number, reducedMotion: boolean): void {
+  update(state: SimState, soulPos: Vec2, bodyPos: Vec2, dt: number, reducedMotion: boolean, boosting = false): void {
     const route = state.route.points;
     if (route.length < 2) {
       this.silk.hide();
@@ -89,7 +93,10 @@ export class RibbonView {
     this.pts.push(bodyPos);
 
     const returning = state.body.mode === 'return';
-    this.flow += ((returning ? 2.2 : 0.3) - this.flow) * Math.min(1, dt * 6);
+    // RETURN gathers the thread toward the body; a Needlesong boost hurries the soul's flow.
+    this.flow += ((returning ? 2.2 : boosting ? 1.5 : 0.3) - this.flow) * Math.min(1, dt * 6);
+    this.boost += ((boosting ? 1 : 0) - this.boost) * Math.min(1, dt * 8);
+    (this.silk.mesh.material.uniforms.uSheen!.value as Color).copy(SHEEN).lerp(BOOST_SHEEN, this.boost);
     this.time += reducedMotion ? 0 : dt;
     setUniform(this.silk.mesh.material, 'uTime', this.time);
     setUniform(this.silk.mesh.material, 'uFlow', this.flow);
@@ -270,12 +277,18 @@ export class PreviewView {
   }
 }
 
-/** One sentry's warning line plus the reticle on its threatened endpoint. */
+/**
+ * One sentry's warning line plus the reticle on its threatened point. With forecast aim
+ * (EnemyState.lockTarget / aimTarget) the reticle sits on the predicted point, which for a
+ * keeper lies on the ribbon, and the locked band ends there while a thin flight line shows
+ * the bolt's full path beyond it.
+ */
 export class TelegraphView {
   readonly group = new Group();
   private readonly line: StripMesh<ShaderMaterial>;
   private readonly reticle: Mesh<PlaneGeometry, ShaderMaterial>;
   private readonly reticleInner: Mesh<PlaneGeometry, ShaderMaterial>;
+  private readonly spot: Mesh<PlaneGeometry, ShaderMaterial>;
   private lastPhase: EnemyState['phase'] | null = null;
   private lockPoint: Vec2 = { x: 0, y: 0 };
   private time = 0;
@@ -290,7 +303,8 @@ export class TelegraphView {
       ringMaterial({ color: color('warning_amber'), inner: 0.5, outer: 0.58, opacity: 0.8, segments: target === 'soul' ? 6 : 0, gap: 0.5 }),
       36,
     );
-    this.group.add(this.line.mesh, this.reticle, this.reticleInner);
+    this.spot = flatPlane(0.34, ringMaterial({ color: color('warning_amber'), inner: 0, outer: 1, opacity: 0.55 }), 36);
+    this.group.add(this.line.mesh, this.reticle, this.reticleInner, this.spot);
   }
 
   update(enemy: EnemyState, room: RoomDef, targetPos: Vec2, dt: number, reducedMotion: boolean): void {
@@ -312,10 +326,27 @@ export class TelegraphView {
     setUniform(mat, 'uMotion', reducedMotion ? 0 : 1);
     const progress = locked && enemy.phaseDuration > 0 ? Math.min(1, enemy.phaseTime / enemy.phaseDuration) : 0;
     setUniform(mat, 'uProgress', progress);
+    // Forecast aim: the locked band ends at the predicted point; the flight line continues.
+    const forecast = locked ? lockTarget(enemy) : aimTarget(enemy);
+    let mark = 1e5;
+    if (locked && forecast) {
+      const along = (forecast.x - origin.x) * enemy.aim.x + (forecast.y - origin.y) * enemy.aim.y;
+      mark = Math.max(0.3, Math.min(length, along + 0.2));
+      setUniform(mat, 'uLength', length);
+    }
+    setUniform(mat, 'uMark', mark);
     this.line.set([end, origin], locked ? 0.17 : 0.06, 0.05);
 
-    // Tracking: reticle follows the endpoint. Locked: it stays where the line was locked.
-    const at = locked ? this.lockPoint : targetPos;
+    // Reticle: on the forecast point when the sim provides one; otherwise tracking follows the
+    // endpoint and a locked line keeps the point it locked on (it never retargets).
+    const at = forecast ?? (locked ? this.lockPoint : targetPos);
+    this.spot.visible = !!forecast;
+    if (forecast) {
+      place(this.spot, forecast, 0.048);
+      const beat = reducedMotion ? 1 : 0.85 + 0.15 * Math.sin(this.time * 9);
+      this.spot.scale.setScalar(locked ? (0.7 + 0.3 * progress) * beat : 0.6);
+      setUniform(this.spot.material, 'uOpacity', locked ? 0.35 + 0.4 * progress : 0.25);
+    }
     place(this.reticle, at, 0.05);
     place(this.reticleInner, at, 0.05);
     const shrink = locked ? 0.85 - progress * 0.25 : 1.05 + (reducedMotion ? 0 : 0.08 * Math.sin(this.time * 10));
@@ -328,7 +359,7 @@ export class TelegraphView {
 
   dispose(): void {
     this.line.dispose();
-    for (const m of [this.reticle, this.reticleInner]) {
+    for (const m of [this.reticle, this.reticleInner, this.spot]) {
       m.geometry.dispose();
       m.material.dispose();
     }
