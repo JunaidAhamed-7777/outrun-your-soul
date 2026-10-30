@@ -23,9 +23,9 @@ import { aimToward, BOLT_MAX_AGE, isActive, sentryTuning, wakeEnemy } from './en
 import {
   circleEntersRect,
   circleTimeOfImpact,
+  circleTouchesRect,
   corridorClear,
   pointInRect,
-  rectSignedDistance,
   sweepCircle,
 } from './geom';
 import { mod, nextLaneBoundary, type LaneBoundary } from './lanes';
@@ -55,7 +55,10 @@ import { add, dist, len, lerp, normalize, scale, sub, ZERO, type Vec2 } from './
 const MAX_ITERATIONS_PER_STEP = 256;
 
 /** Counters for pathological situations; tests assert these stay zero. */
-export const simDiagnostics = { iterationOverflows: 0 };
+export const simDiagnostics: { iterationOverflows: number; lastOverflow: string | null } = {
+  iterationOverflows: 0,
+  lastOverflow: null,
+};
 
 type Kind =
   | 'cut'
@@ -251,6 +254,13 @@ function nextTimer(state: SimState, plan: Plan, limit: number): Candidate | null
   return selectBest(cands.filter((c) => c.tau <= limit));
 }
 
+/**
+ * Lane entries resolved this step as a shield (dash protection or grace) change no
+ * state; remembering them stops a grazing entry from being rediscovered at tau = 0.
+ */
+const shieldedThisStep = new Set<string>();
+const shieldKey = (lane: LaneState, ep: Endpoint): string => `${lane.id}:${lane.attackId}:${ep}`;
+
 function contactEligible(state: SimState, soulPos: Vec2, anchor: Vec2): boolean {
   return corridorClear(state.room, soulPos, anchor, TUNING.soulRadius);
 }
@@ -304,12 +314,14 @@ function findCollision(state: SimState, plan: Plan, span: number): Candidate | n
       const endpoints: [Endpoint, Vec2, Vec2, number][] = [[BODY, b0, vb, TUNING.bodyRadius]];
       if (plan.separated) endpoints.push([SOUL, s0, vs, TUNING.soulRadius]);
       for (const [ep, p0, v, r] of endpoints) {
-        if (rectSignedDistance(p0, lane.rect).d <= r) {
+        if (circleTouchesRect(p0, r, lane.rect)) {
           const eligible = state.graceLeft <= 0 && !(ep === BODY && dashing);
           if (eligible) found.push(candidate(ta, 'laneHit', lane.id, ep));
         } else if (dt > 0) {
           const frac = circleEntersRect(p0, scale(v, dt), r, lane.rect);
-          if (frac !== null) found.push(candidate(ta + frac * dt, 'laneHit', lane.id, ep));
+          if (frac !== null && !shieldedThisStep.has(shieldKey(lane, ep))) {
+            found.push(candidate(ta + frac * dt, 'laneHit', lane.id, ep));
+          }
         }
       }
     }
@@ -562,8 +574,11 @@ function resolve(state: SimState, ev: Candidate, events: SimEvent[], probe: Step
       const at = endpoint === 'body' ? body.pos : state.soul.pos;
       if (endpoint === 'body' && body.mode === 'dash') {
         events.push({ type: 'shielded', t, endpoint, attackId: lane.attackId, at, reason: 'dash' });
+        shieldedThisStep.add(shieldKey(lane, ev.endpoint));
       } else {
+        const before = state.health;
         applyDamage(state, endpoint, lane.attackId, 'lane', at, events);
+        if (state.health === before) shieldedThisStep.add(shieldKey(lane, ev.endpoint));
       }
       return;
     }
@@ -671,6 +686,7 @@ function settle(state: SimState, events: SimEvent[]): void {
 /** Advance one fixed step. `probe` lets previews observe execution internals. */
 export function stepInternal(state: SimState, commands: readonly Command[], probe?: StepProbe): SimEvent[] {
   const events: SimEvent[] = [];
+  shieldedThisStep.clear();
   state.body.prevPos = state.body.pos;
   state.soul.prevPos = state.soul.pos;
   for (const p of state.projectiles) p.prevPos = p.pos;
@@ -684,9 +700,11 @@ export function stepInternal(state: SimState, commands: readonly Command[], prob
 
     let remaining = STEP_SECONDS;
     let iterations = 0;
+    const recent: string[] = [];
     while (remaining > 1e-12 && state.outcome === 'playing') {
       if (++iterations > MAX_ITERATIONS_PER_STEP) {
         simDiagnostics.iterationOverflows += 1;
+        simDiagnostics.lastOverflow = recent.join(',');
         break;
       }
       const plan = buildPlan(state);
@@ -697,7 +715,10 @@ export function stepInternal(state: SimState, commands: readonly Command[], prob
       const dt = ev ? Math.min(ev.tau, remaining) : remaining;
       advance(state, plan, dt);
       remaining -= dt;
-      if (ev) resolve(state, ev, events, probe);
+      if (ev) {
+        if (iterations > MAX_ITERATIONS_PER_STEP - 6) recent.push(`${ev.kind}#${ev.id}@${ev.tau}`);
+        resolve(state, ev, events, probe);
+      }
       settle(state, events);
     }
   } else {

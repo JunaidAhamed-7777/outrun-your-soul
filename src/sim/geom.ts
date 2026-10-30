@@ -47,6 +47,14 @@ export function circleOverlapsRect(c: Vec2, radius: number, r: RectDef): boolean
   return rectSignedDistance(c, r).d <= radius;
 }
 
+/**
+ * Overlap test for non-wall regions (lanes) using the same touch band as the sweeps,
+ * so "already inside" and "entering now" can never disagree about a grazing circle.
+ */
+export function circleTouchesRect(c: Vec2, radius: number, r: RectDef): boolean {
+  return rectSignedDistance(c, r).d <= radius + TOUCH_TOLERANCE;
+}
+
 /** Entry time of segment p0 + t*d (t in [0,1]) into an AABB; Infinity if none. */
 function rayAabbEntry(p0: Vec2, d: Vec2, minX: number, minY: number, maxX: number, maxY: number): number {
   let tEnter = -Infinity;
@@ -184,7 +192,7 @@ export function circleTimeOfImpact(rel: Vec2, relVel: Vec2, reach: number, tMax:
  * (lanes, exits). Returns 0 when already overlapping, null when it never enters.
  */
 export function circleEntersRect(p0: Vec2, disp: Vec2, radius: number, r: RectDef): number | null {
-  if (rectSignedDistance(p0, r).d <= radius) return 0;
+  if (circleTouchesRect(p0, radius, r)) return 0;
   const hit = sweepCircleRect(p0, disp, radius, r);
   return hit ? hit.t : null;
 }
