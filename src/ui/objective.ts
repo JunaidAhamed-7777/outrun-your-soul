@@ -10,6 +10,8 @@ export interface ObjectiveView {
   readonly total: number;
   readonly title: string;
   readonly text: string;
+  /** 'bottom' slides the card down out of the way (e.g. so it does not cover the gate). */
+  readonly placement?: 'top' | 'bottom';
 }
 
 export interface ObjectiveCard {
@@ -31,6 +33,8 @@ const CSS = `
   transition: opacity 220ms ease, transform 220ms ease;
 }
 .oys-objective.is-on { opacity: 1; transform: translate(-50%, 0); }
+/* Slide to the bottom over 0.5 s; the distance is set in JS as --oys-drop. */
+.oys-objective.is-on.is-low { transform: translate(-50%, var(--oys-drop, 0px)); transition: opacity 220ms ease, transform 500ms cubic-bezier(.3,.7,.2,1); }
 .oys-objective.is-new { animation: oys-objective-pulse 900ms ease-in-out 3; }
 @keyframes oys-objective-pulse {
   0%, 100% { box-shadow: 0 0 0 1px rgba(8, 12, 40, 0.6), 0 8px 26px rgba(8, 12, 40, 0.55), 0 0 22px rgba(217, 164, 60, 0.35); }
@@ -84,14 +88,28 @@ export function createObjectiveCard(root: HTMLElement): ObjectiveCard {
   let calloutTimer: ReturnType<typeof setTimeout> | null = null;
   let pulseTimer: ReturnType<typeof setTimeout> | null = null;
 
+  /** Distance from the card's top slot down to a bottom slot above the safe area. */
+  function setPlacement(where: 'top' | 'bottom'): void {
+    const low = where === 'bottom';
+    if (low) {
+      const margin = 16;
+      const safeBottom = parseFloat(getComputedStyle(card).getPropertyValue('--safe-bottom')) || 14;
+      const drop = Math.max(0, root.clientHeight - card.offsetTop - card.offsetHeight - safeBottom - margin);
+      card.style.setProperty('--oys-drop', `${drop}px`);
+    }
+    card.classList.toggle('is-low', low);
+  }
+
   return {
     set(view) {
       if (!view) {
         shown = null;
-        card.classList.remove('is-on', 'is-done', 'is-new');
+        card.classList.remove('is-on', 'is-done', 'is-new', 'is-low');
         callout.classList.remove('is-on');
         return;
       }
+      // Placement can change without the step changing; apply it before the early return.
+      setPlacement(view.placement ?? 'top');
       const key = `${view.index}:${view.title}`;
       if (key === shown) return;
       shown = key;

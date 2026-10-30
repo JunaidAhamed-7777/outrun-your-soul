@@ -679,7 +679,18 @@ export async function startGame(container: HTMLElement): Promise<GameHandle | nu
         objective.flash();
         audio.ui('select');
       }
-      objective.set(view.step ? { index: view.index, total: view.total, title: view.step.title, text: view.step.text } : null);
+      objective.set(
+        view.step
+          ? {
+              index: view.index,
+              total: view.total,
+              title: view.step.title,
+              text: view.step.text,
+              // The last lesson points at the gate: slide the card down so it does not cover it.
+              placement: view.step.id === 'gate' ? 'bottom' : 'top',
+            }
+          : null,
+      );
     }
     if (phase === 'ending') {
       endingLeft -= realDt;
@@ -722,6 +733,10 @@ export async function startGame(container: HTMLElement): Promise<GameHandle | nu
       ready: () => roomReady,
       pause: () => pause('user'),
       resume,
+      /** Stop the real-time loop so only advance() moves the game (frame-exact capture). */
+      freeze: () => loop?.stop(),
+      /** Screen position (CSS px, canvas-relative) of a simulation point, for scripted gestures. */
+      toScreen: (p: { x: number; y: number }) => activeRenderer.groundToScreen(p),
       /** Drive the game synchronously (hidden/throttled browser panes do not fire frames). */
       advance: (seconds: number, frameSeconds = 1 / 60) => {
         for (let t = 0; t < seconds - 1e-9; t += frameSeconds) {
