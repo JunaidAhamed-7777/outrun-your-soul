@@ -160,16 +160,27 @@ for (const [title, actions] of groups) {
   panel.append(details);
 }
 
-let last = performance.now();
-function frame(now: number): void {
-  const dt = Math.min(0.1, (now - last) / 1000);
-  last = now;
+function advance(dt: number): void {
   if (running) state = { ...state, time: state.time + dt };
   const shown = withThread(state, thread);
   ui.update(shown, dt);
   audio.update(shown, dt);
+}
+
+let last = performance.now();
+function frame(now: number): void {
+  advance(Math.min(0.1, (now - last) / 1000));
+  last = now;
   requestAnimationFrame(frame);
 }
 requestAnimationFrame(frame);
+
+/** Manual stepping for automated checks when rAF is throttled in a background tab. */
+(window as unknown as { labStep: (seconds: number) => void }).labStep = (seconds: number) => {
+  for (let t = 0; t < seconds; t += 1 / 60) advance(1 / 60);
+};
+(window as unknown as { labClick: (label: string) => void }).labClick = (label: string) => {
+  [...document.querySelectorAll<HTMLButtonElement>('#lab button')].find((b) => b.textContent === label)?.click();
+};
 
 document.getElementById('toggle-lab')?.addEventListener('click', () => panel.classList.toggle('collapsed'));

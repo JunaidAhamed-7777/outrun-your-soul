@@ -185,7 +185,8 @@ export function createUI(container: HTMLElement, initialSettings: Settings, call
   const vignetteFlash = el('div', 'oys-vignette', { 'aria-hidden': 'true' });
   const hud = el('div', 'oys-hud', {}, [
     vignetteFlash,
-    el('div', 'oys-hud-top', {}, [health, gate, el('div', 'oys-hud-right', {}, [thread, pauseBtn])]),
+    el('div', 'oys-hud-top', {}, [health, el('div', 'oys-hud-right', {}, [thread, pauseBtn])]),
+    gate,
     hint,
   ]);
   hud.hidden = true;

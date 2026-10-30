@@ -112,12 +112,12 @@ export const CSS = /* css */ `
   top: var(--safe-top);
   left: var(--safe-left);
   right: var(--safe-right);
-  display: grid;
-  grid-template-columns: 1fr auto 1fr;
+  display: flex;
+  justify-content: space-between;
   align-items: center;
   gap: 8px;
 }
-.oys-health { display: flex; gap: 7px; align-items: center; justify-self: start; padding: 6px 2px; }
+.oys-health { display: flex; gap: 7px; align-items: center; padding: 6px 2px 6px 4px; }
 .oys-pip {
   width: 13px;
   height: 13px;
@@ -128,7 +128,15 @@ export const CSS = /* css */ `
 }
 .oys-pip.is-empty { background: ${rgba(p.cobalt_deep, 0.45)}; box-shadow: 0 0 0 1.5px ${rgba(p.ivory, 0.4)}; }
 .oys-gate {
-  justify-self: center;
+  position: absolute;
+  top: calc(var(--safe-top) + 52px);
+  left: 50%;
+  transform: translateX(-50%);
+  width: max-content;
+  max-width: 90vw;
+  padding: 4px 12px;
+  border-radius: 999px;
+  background: ${rgba(p.cobalt_deep, 0.45)};
   font-family: var(--font-display);
   font-size: 14px;
   letter-spacing: 0.1em;
@@ -139,7 +147,7 @@ export const CSS = /* css */ `
   transition: opacity 300ms ease;
 }
 .oys-gate.is-on { opacity: 1; }
-.oys-hud-right { justify-self: end; display: flex; align-items: center; gap: 8px; }
+.oys-hud-right { display: flex; align-items: center; gap: 10px; }
 .oys-thread { display: flex; align-items: center; gap: 5px; color: var(--ivory-dim); }
 .oys-thread svg { width: 16px; height: 16px; }
 .oys-thread-track {
@@ -184,6 +192,7 @@ export const CSS = /* css */ `
   position: absolute;
   left: 50%;
   bottom: calc(var(--safe-bottom) + 9vh);
+  width: max-content;
   max-width: min(86vw, 420px);
   padding: 10px 18px;
   border-radius: 14px;
@@ -288,6 +297,7 @@ export const CSS = /* css */ `
 }
 .oys-stats dt { text-align: left; color: var(--ivory-dim); }
 .oys-stats dd { text-align: right; font-variant-numeric: tabular-nums; font-family: var(--font-display); font-size: 17px; }
+.oys-result .oys-btn { margin-top: 12px; }
 .oys-result.is-victory .oys-heading { color: #fff3da; text-shadow: 0 0 24px ${rgba(p.gold, 0.55)}; }
 .oys-result.is-defeat .oys-heading { color: var(--ivory); }
 .oys-result.is-victory .oys-rule { border-color: var(--gold); }
