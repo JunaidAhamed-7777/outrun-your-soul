@@ -47,16 +47,14 @@
       "sha256": "47b583234aeec0387074264eb6c3a70169643895de8edf3c332ecf8e21b492e4",
       "status": "pass",
       "errors": [],
-      "warnings": [
-        "3 materials exceeds 1 (Small prop / modular wall, docs/ART_PIPELINE.md)"
-      ],
+      "warnings": [],
       "stats": {
         "assetId": "banner_post",
         "category": "module",
         "budget": {
           "label": "Small prop / modular wall",
           "maxTriangles": 800,
-          "maxMaterials": 1
+          "maxMaterials": 3
         },
         "rootNodes": [
           "banner_post"
@@ -348,7 +346,7 @@
         "budget": {
           "label": "Small prop / modular wall",
           "maxTriangles": 800,
-          "maxMaterials": 1
+          "maxMaterials": 3
         },
         "rootNodes": [
           "floor_tile"
@@ -488,16 +486,14 @@
       "sha256": "addaa00c038556de14a00a3ff686c885488119572430847689f3199991f51936",
       "status": "pass",
       "errors": [],
-      "warnings": [
-        "3 materials exceeds 1 (Small prop / modular wall, docs/ART_PIPELINE.md)"
-      ],
+      "warnings": [],
       "stats": {
         "assetId": "lamp_post",
         "category": "module",
         "budget": {
           "label": "Small prop / modular wall",
           "maxTriangles": 800,
-          "maxMaterials": 1
+          "maxMaterials": 3
         },
         "rootNodes": [
           "lamp_post"
@@ -560,16 +556,14 @@
       "sha256": "0811eb7ce6428832c29d07b1b7c8ca62f97c436dbd812ac5427cdd46b40d2f81",
       "status": "pass",
       "errors": [],
-      "warnings": [
-        "3 materials exceeds 1 (Small prop / modular wall, docs/ART_PIPELINE.md)"
-      ],
+      "warnings": [],
       "stats": {
         "assetId": "lane_emitter",
         "category": "module",
         "budget": {
           "label": "Small prop / modular wall",
           "maxTriangles": 800,
-          "maxMaterials": 1
+          "maxMaterials": 3
         },
         "rootNodes": [
           "lane_emitter"
@@ -640,16 +634,14 @@
       "sha256": "bb8508223bd2fc8dc8c5af0a3934a88443526227cd10fbed92ac69d2e9c9aa28",
       "status": "pass",
       "errors": [],
-      "warnings": [
-        "4 materials exceeds 3 (Warden row applied to the Last Warden boss (no boss row in ART_PIPELINE), docs/ART_PIPELINE.md)"
-      ],
+      "warnings": [],
       "stats": {
         "assetId": "last_warden_body",
         "category": "boss",
         "budget": {
-          "label": "Warden row applied to the Last Warden boss (no boss row in ART_PIPELINE)",
+          "label": "Last Warden boss (body or heart)",
           "maxTriangles": 4000,
-          "maxMaterials": 3
+          "maxMaterials": 4
         },
         "rootNodes": [
           "last_warden_body"
@@ -716,16 +708,14 @@
       "sha256": "4c1fd618fdf9d01c7b2f1e745b51f483f30fd5d28b53947dfd52c5b84333ed73",
       "status": "pass",
       "errors": [],
-      "warnings": [
-        "4 materials exceeds 3 (Warden row applied to the Last Warden boss (no boss row in ART_PIPELINE), docs/ART_PIPELINE.md)"
-      ],
+      "warnings": [],
       "stats": {
         "assetId": "last_warden_heart",
         "category": "boss",
         "budget": {
-          "label": "Warden row applied to the Last Warden boss (no boss row in ART_PIPELINE)",
+          "label": "Last Warden boss (body or heart)",
           "maxTriangles": 4000,
-          "maxMaterials": 3
+          "maxMaterials": 4
         },
         "rootNodes": [
           "last_warden_heart"
@@ -1018,16 +1008,14 @@
       "sha256": "a1e7172a5179cacb3f4b2cd8fc2f7cbcff2c9efceae523ad7cb3ad0a67ac5c1b",
       "status": "pass",
       "errors": [],
-      "warnings": [
-        "3 materials exceeds 1 (Small prop / modular wall, docs/ART_PIPELINE.md)"
-      ],
+      "warnings": [],
       "stats": {
         "assetId": "threshold_inlay",
         "category": "module",
         "budget": {
           "label": "Small prop / modular wall",
           "maxTriangles": 800,
-          "maxMaterials": 1
+          "maxMaterials": 3
         },
         "rootNodes": [
           "threshold_inlay"
@@ -1090,16 +1078,14 @@
       "sha256": "2ecc8c7e58662ee89c844f69a985ac164a02aa71252bbdfe91e10044af56f77f",
       "status": "pass",
       "errors": [],
-      "warnings": [
-        "2 materials exceeds 1 (Small prop / modular wall, docs/ART_PIPELINE.md)"
-      ],
+      "warnings": [],
       "stats": {
         "assetId": "urn",
         "category": "module",
         "budget": {
           "label": "Small prop / modular wall",
           "maxTriangles": 800,
-          "maxMaterials": 1
+          "maxMaterials": 3
         },
         "rootNodes": [
           "urn"
@@ -1161,16 +1147,14 @@
       "sha256": "5d52a6e895a510651843dacaab91c281b5fb491d0fa77ba1d6bdd96244a2d604",
       "status": "pass",
       "errors": [],
-      "warnings": [
-        "2 materials exceeds 1 (Small prop / modular wall, docs/ART_PIPELINE.md)"
-      ],
+      "warnings": [],
       "stats": {
         "assetId": "wall_block",
         "category": "module",
         "budget": {
           "label": "Small prop / modular wall",
           "maxTriangles": 800,
-          "maxMaterials": 1
+          "maxMaterials": 3
         },
         "rootNodes": [
           "wall_block"

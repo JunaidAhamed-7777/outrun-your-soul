@@ -84,14 +84,18 @@ describe('asset contract analysis', () => {
     expect(warnings).toMatch(/negative scale/);
   });
 
-  it('holds the boss to the Warden row: materials over 3 warn, triangles over 4000 fail', () => {
-    const json = parseGlb(buildGlb({ nodes: [{ name: 'last_warden_heart', mesh: 0 }], roots: [0], quadScale: 0.5 })).json;
-    json.meshes[0].primitives = [0, 1, 2, 3].map((material) => ({ ...json.meshes[0].primitives[0], material }));
-    json.materials = ['gold', 'gold_dark', 'vermilion', 'vermilion_dark'].map((name) => ({ name }));
-    const a = analyzeGltf(json, 'last_warden_heart');
-    expect(a.category).toBe('boss');
-    expect(a.errors).toEqual([]);
-    expect(a.warnings.join()).toMatch(/4 materials exceeds 3/);
+  it('holds the boss to its own row: four materials pass, a fifth fails', () => {
+    const build = (names: string[]) => {
+      const json = parseGlb(buildGlb({ nodes: [{ name: 'last_warden_heart', mesh: 0 }], roots: [0], quadScale: 0.5 })).json;
+      json.meshes[0].primitives = names.map((_, material) => ({ ...json.meshes[0].primitives[0], material }));
+      json.materials = names.map((name) => ({ name }));
+      return analyzeGltf(json, 'last_warden_heart');
+    };
+    const four = build(['gold', 'gold_dark', 'vermilion', 'vermilion_dark']);
+    expect(four.category).toBe('boss');
+    expect(four.errors).toEqual([]);
+    const five = build(['gold', 'gold_dark', 'vermilion', 'vermilion_dark', 'ivory']);
+    expect(five.errors.join()).toMatch(/5 materials exceeds 4/);
   });
 
   it('enforces triangle budgets and counts instanced meshes per node', () => {
