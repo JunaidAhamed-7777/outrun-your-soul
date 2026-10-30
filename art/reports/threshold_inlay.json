@@ -1,0 +1,49 @@
+{
+  "asset_id": "threshold_inlay",
+  "status": "exported",
+  "author": "original (script-authored in Blender via the pinned Blender MCP bridge)",
+  "created_at": "2026-10-30T15:18:16+00:00",
+  "blender_version": "5.2.2 LTS",
+  "exporter_version": "5.2.40",
+  "source_path": "art/source/environment.blend",
+  "export": {
+    "path": "public/assets/models/threshold_inlay.glb",
+    "bytes": 29836,
+    "sha256": "a1e7172a5179cacb3f4b2cd8fc2f7cbcff2c9efceae523ad7cb3ad0a67ac5c1b"
+  },
+  "preview": "art/previews/threshold_inlay-game-camera.png",
+  "measured": {
+    "triangles": 644,
+    "materials": [
+      "gold",
+      "gold_dark",
+      "ivory"
+    ],
+    "material_count": 3,
+    "bounds_min": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "bounds_max": [
+      2.0,
+      1.0,
+      0.002
+    ],
+    "dimensions": [
+      2.0,
+      1.0,
+      0.002
+    ],
+    "parts": [
+      "threshold_inlay",
+      "threshold_inlay_inlay"
+    ]
+  },
+  "budget": {
+    "triangles": 800,
+    "materials": 3
+  },
+  "within_budget": true,
+  "notes": "Exit-zone ground inlay, [0,2]x[0,1], bottom z=0, top z=0.002; coplanar non-overlapping regions (holes cut in the ivory field are filled exactly by the emblem pieces). Gate ring emblem plus north-pointing double chevrons."
+}
