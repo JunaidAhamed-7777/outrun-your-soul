@@ -1,4 +1,5 @@
 /** Room-entry state construction. */
+import { createBoss } from './boss';
 import { createEnemy } from './enemies';
 import { laneCycleTime, laneStatusAt } from './lanes';
 import { seedRng } from './rng';
@@ -46,6 +47,7 @@ export function createSim(room: RoomDef, options: CreateOptions): SimState {
     return { id: nextId++, key: def.id, rect: def.rect, status, attackId: null, cycleTime };
   });
   for (const lane of lanes) if (lane.status === 'active') lane.attackId = nextId++;
+  const boss = room.boss ? createBoss(room.boss, nextId++) : null;
   const health = Math.min(TUNING.maxHealth, Math.max(1, options.health ?? TUNING.maxHealth));
   return {
     rulesVersion: RULES_VERSION,
@@ -73,11 +75,12 @@ export function createSim(room: RoomDef, options: CreateOptions): SimState {
     enemies,
     projectiles: [],
     lanes,
-    gate: enemies.length === 0 ? 'open' : 'sealed',
+    gate: enemies.length === 0 && !boss ? 'open' : 'sealed',
     outcome: 'playing',
     buffered: null,
     bufferedAge: 0,
     stats: { dashes: 0, returns: 0, cuts: 0, kills: 0, hits: 0, contactReunions: 0, exhaustionReunions: 0 },
     relicState: initialRelicState(options.relics, options.charges),
+    boss,
   };
 }

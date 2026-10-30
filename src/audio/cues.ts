@@ -158,6 +158,7 @@ const HANDLERS: { readonly [T in SimEventType]: Handler<T> } = {
   // Warden and relic events (added by the simulation; dedicated cues pending from the audio owner).
   guarded: () => [],
   sweep: () => [],
+  boss: () => [],
   soulBoost: () => [],
   soulBoostEnd: () => [],
   halo: () => [],

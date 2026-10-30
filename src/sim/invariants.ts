@@ -2,6 +2,7 @@
  * Structural invariants from COMBAT_SPEC "Assert after each step". Returns readable
  * violations; tests run this after every step and dev builds may log it.
  */
+import { bossInvariants } from './boss';
 import { circleClear, corridorClear } from './geom';
 import { isActive } from './enemies';
 import { polylineLength } from './route';
@@ -56,7 +57,8 @@ export function checkInvariants(state: SimState): string[] {
     errors.push(`buffered command while body is ${body.mode}`);
   }
 
-  const cleared = state.enemies.every((e) => e.phase === 'dead');
+  const cleared = state.enemies.every((e) => e.phase === 'dead') && (!state.boss || state.boss.phase === 'dead');
+  errors.push(...bossInvariants(state));
   const expectedGate = !cleared ? 'sealed' : pts.length > 0 ? 'ready' : 'open';
   if (state.outcome === 'playing' && state.gate !== expectedGate) {
     errors.push(`gate ${state.gate} but expected ${expectedGate}`);

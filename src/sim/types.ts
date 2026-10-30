@@ -78,6 +78,23 @@ export interface RoomDef {
   readonly enemies: readonly EnemySpawn[];
   readonly lanes: readonly LaneDef[];
   readonly hints?: readonly HintDef[];
+  /** The Last Warden boss, if this is the boss arena (optional; ordinary rooms have none). */
+  readonly boss?: BossSpawn;
+}
+
+export type BossPatternKind = 'charge' | 'fan';
+
+export interface BossSpawn {
+  readonly id: string;
+  readonly at: Vec2;
+  readonly facing?: Vec2;
+  readonly dormant?: boolean;
+  readonly wake?: WakeTrigger;
+  /**
+   * Pattern order per stage (one stage per heart hit). Defaults to BOSS_TUNING.stages:
+   * two learned patterns, then a remix. Data, so the arena author can tune it.
+   */
+  readonly stages?: readonly (readonly BossPatternKind[])[];
 }
 
 // ---------------------------------------------------------------------------
@@ -284,6 +301,48 @@ export interface SimState {
   stats: RunStats;
   /** Relic runtime state. Always populated by createSim (optional only for test fixtures). */
   relicState?: RelicRuntimeState;
+  /** The Last Warden, when the room has one. */
+  boss?: BossState | null;
+}
+
+/**
+ * dormant -> idle -> aimCharge (route telegraphed, frozen) -> charge (body runs the route,
+ * heart trails it) -> recover (until the heart catches up) -> idle -> aimFan (bolt lines
+ * telegraphed, frozen) -> fire -> idle ... A heart hit staggers it and advances the stage.
+ */
+export type BossPhase = 'dormant' | 'idle' | 'aimCharge' | 'charge' | 'recover' | 'aimFan' | 'stagger' | 'dead';
+
+export interface BossState {
+  readonly id: EntityId;
+  readonly key: string;
+  phase: BossPhase;
+  phaseTime: number;
+  phaseDuration: number;
+  /** Armoured body (guards every angle). */
+  pos: Vec2;
+  prevPos: Vec2;
+  facing: Vec2;
+  /** Vulnerable heart: follows the boss's own route at a slower speed, like the soul. */
+  heart: Vec2;
+  heartPrev: Vec2;
+  /** Boss tether, heart (index 0) to body (last); empty when the heart is home. */
+  route: RouteState;
+  /** Telegraphed charge path starting at the body; frozen once shown. Empty otherwise. */
+  path: Vec2[];
+  /** Index of the leg currently being run (path[legIndex] -> path[legIndex + 1]). */
+  legIndex: number;
+  /** Telegraphed fan directions (unit), frozen once shown. Empty otherwise. */
+  fan: Vec2[];
+  /** Activation ID of the current charge (its body damages endpoints it runs through). */
+  attackId: AttackId | null;
+  /** Endpoints this charge already met (hit or shielded): each is met at most once per charge. */
+  chargeTouched: ('body' | 'soul')[];
+  hp: number;
+  readonly maxHp: number;
+  /** Current stage (0-based); advances with each heart hit. */
+  stage: number;
+  /** Position in the current stage's pattern list. */
+  step: number;
 }
 
 // ---------------------------------------------------------------------------
@@ -356,7 +415,7 @@ export type SimEvent =
       /** 'dash' for a direct outward-dash kill; 'burst' for a Mourning Bell burst. */
       readonly cause?: 'dash' | 'burst';
     }
-  | { readonly type: 'hit'; readonly t: number; readonly endpoint: 'body' | 'soul'; readonly attackId: AttackId; readonly at: Vec2; readonly health: number; readonly source: 'bolt' | 'lane' | 'sweep' }
+  | { readonly type: 'hit'; readonly t: number; readonly endpoint: 'body' | 'soul'; readonly attackId: AttackId; readonly at: Vec2; readonly health: number; readonly source: 'bolt' | 'lane' | 'sweep' | 'charge' }
   | { readonly type: 'shielded'; readonly t: number; readonly endpoint: 'body' | 'soul'; readonly attackId: AttackId; readonly at: Vec2; readonly reason: 'grace' | 'dash' | 'spent' }
   | { readonly type: 'wake'; readonly t: number; readonly enemyId: EntityId }
   | { readonly type: 'telegraph'; readonly t: number; readonly enemyId: EntityId; readonly phase: 'tracking' | 'locked'; readonly target: 'body' | 'soul' }
@@ -382,6 +441,19 @@ export type SimEvent =
       readonly facing: Vec2;
       readonly range: number;
       readonly halfAngle: number;
+    }
+  /** The Last Warden: one event type with a discriminator keeps the surface small. */
+  | {
+      readonly type: 'boss';
+      readonly t: number;
+      readonly what: 'wake' | 'telegraph' | 'charge' | 'fan' | 'heartHit' | 'stagger' | 'reunited' | 'defeated';
+      readonly at: Vec2;
+      readonly pattern?: BossPatternKind;
+      /** Telegraphed charge route (for 'telegraph' of a charge). */
+      readonly path?: readonly Vec2[];
+      /** Telegraphed bolt directions (for 'telegraph' of a fan). */
+      readonly directions?: readonly Vec2[];
+      readonly hp?: number;
     }
   /** Needlesong: a cut sped up the soul (refreshes, never stacks). */
   | { readonly type: 'soulBoost'; readonly t: number; readonly multiplier: number; readonly seconds: number }

@@ -18,7 +18,18 @@
  * Same kind: ascending entity ID, then body before soul.
  */
 import { applyCommand, executeBuffered, type StepProbe } from './actions';
-import { applyDamage } from './combat';
+import {
+  advanceBoss,
+  bossAlive,
+  bossCollisions,
+  bossTimers,
+  buildBossPlan,
+  resolveBoss,
+  wakeBoss,
+  type BossKind,
+  type BossPlan,
+} from './boss';
+import { applyDamage, stopDashGuarded } from './combat';
 import {
   aimPointFor,
   aimToward,
@@ -89,7 +100,8 @@ type Kind =
   | 'recoverEnd'
   | 'haloEnter'
   | 'haloExit'
-  | 'boostEnd';
+  | 'boostEnd'
+  | BossKind;
 
 const PRIORITY: Readonly<Record<Kind, number>> = {
   cut: 0,
@@ -110,6 +122,15 @@ const PRIORITY: Readonly<Record<Kind, number>> = {
   haloEnter: 3,
   haloExit: 3,
   boostEnd: 9,
+  // Boss: a heart strike beats armour at the same instant (player-favouring), its
+  // charge hits rank with other hits, and its timers follow the ordinary ones.
+  bossHeart: 1,
+  bossGuard: 1.5,
+  bossHit: 2,
+  bossHome: 4,
+  bossLeg: 5,
+  bossPhase: 7,
+  bossWake: 8,
 };
 
 const BODY = 0;
@@ -280,7 +301,7 @@ function soulAt(plan: Plan, tau: number): Vec2 {
 // Event discovery
 // ---------------------------------------------------------------------------
 
-function nextTimer(state: SimState, plan: Plan, limit: number): Candidate | null {
+function nextTimer(state: SimState, plan: Plan, bp: BossPlan | null, limit: number): Candidate | null {
   const cands: Candidate[] = [];
   const body = state.body;
   if (plan.bodyKind === 'dash' && body.dash) {
@@ -312,6 +333,7 @@ function nextTimer(state: SimState, plan: Plan, limit: number): Candidate | null
     cands.push({ ...candidate(boundary.dt, 'lane', lane.id), boundary });
   }
   for (const p of state.projectiles) cands.push(candidate(Math.max(0, BOLT_MAX_AGE - p.age), 'boltExpire', p.id));
+  if (bp) for (const c of bossTimers(state, bp)) cands.push(c);
   return selectBest(cands.filter((c) => c.tau <= limit));
 }
 
@@ -326,7 +348,7 @@ function contactEligible(state: SimState, soulPos: Vec2, anchor: Vec2): boolean 
   return corridorClear(state.room, soulPos, anchor, TUNING.soulRadius);
 }
 
-function findCollision(state: SimState, plan: Plan, span: number): Candidate | null {
+function findCollision(state: SimState, plan: Plan, bp: BossPlan | null, span: number): Candidate | null {
   const cands: Candidate[] = [];
   const dashing = plan.bodyKind === 'dash';
   const room = state.room;
@@ -336,7 +358,7 @@ function findCollision(state: SimState, plan: Plan, span: number): Candidate | n
     if (hit) cands.push(candidate(hit.t * span, 'boltWall', p.id));
   }
 
-  const inner = plan.breaks.filter((b) => b > 1e-12 && b < span - 1e-12).sort((a, b) => a - b);
+  const inner = [...plan.breaks, ...(bp?.breaks ?? [])].filter((b) => b > 1e-12 && b < span - 1e-12).sort((a, b) => a - b);
   const bounds = [0, ...inner, span];
   const reach = TUNING.bodyRadius + TUNING.soulRadius;
   const activeLanes = state.lanes.filter(
@@ -412,6 +434,11 @@ function findCollision(state: SimState, plan: Plan, span: number): Candidate | n
       }
     }
 
+    if (bp) {
+      const soul = plan.separated ? { p0: s0, v: vs } : null;
+      for (const c of bossCollisions(state, bp, ta, dt, { p0: b0, v: vb }, soul, dashing)) found.push(c);
+    }
+
     if (found.length > 0) {
       cands.push(...found);
       break;
@@ -424,8 +451,9 @@ function findCollision(state: SimState, plan: Plan, span: number): Candidate | n
 // Advancing time
 // ---------------------------------------------------------------------------
 
-function advance(state: SimState, plan: Plan, dt: number): void {
+function advance(state: SimState, plan: Plan, bp: BossPlan | null, dt: number): void {
   if (dt <= 0) return;
+  if (bp) advanceBoss(state, bp, dt);
   const body = state.body;
   const route = state.route;
   if (plan.bodyKind === 'dash' && body.dash) {
@@ -539,19 +567,8 @@ function killEnemy(state: SimState, e: EnemyState, cause: 'dash' | 'burst', even
     }
   }
   wakeWhere(state, events, (s) => s.wake?.kind === 'enemyKilled' && s.wake.enemy === e.key);
-}
-
-/** A dash that struck a warden's guarded front stops at contact. Nobody is hurt. */
-function guardStop(state: SimState, e: EnemyState, events: SimEvent[]): void {
-  const body = state.body;
-  if (!body.dash) return;
-  const at = body.pos;
-  if (isSeparated(state.route)) setTail(state.route, at);
-  body.dash = null;
-  body.mode = 'recover';
-  body.recoverLeft = TUNING.recoverySeconds;
-  events.push({ type: 'guarded', t: state.time, enemyId: e.id, at });
-  events.push({ type: 'dashEnd', t: state.time, at, reason: 'guarded' });
+  const bossWake = state.room.boss?.wake;
+  if (bossWake?.kind === 'enemyKilled' && bossWake.enemy === e.key) wakeBoss(state, events);
 }
 
 /** Warden cycle: idle (turning) -> locked windup (frozen sector) -> sweep -> exposed -> idle. */
@@ -771,6 +788,10 @@ function enemyTransition(state: SimState, e: EnemyState, events: SimEvent[]): vo
 function resolve(state: SimState, ev: Candidate, events: SimEvent[], probe: StepProbe | undefined): void {
   const t = state.time;
   const body = state.body;
+  if (ev.kind.startsWith('boss')) {
+    resolveBoss(state, ev.kind as BossKind, ev.endpoint, events);
+    return;
+  }
   switch (ev.kind) {
     case 'cut': {
       const p = removeProjectile(state, ev.id);
@@ -806,7 +827,7 @@ function resolve(state: SimState, ev: Candidate, events: SimEvent[], probe: Step
     case 'kill': {
       const e = state.enemies.find((q) => q.id === ev.id);
       if (!e || e.phase === 'dead') return;
-      if (wardenGuards(e, body.pos)) guardStop(state, e, events);
+      if (wardenGuards(e, body.pos)) stopDashGuarded(state, e.id, events);
       else killEnemy(state, e, 'dash', events);
       return;
     }
@@ -908,6 +929,7 @@ function settle(state: SimState, events: SimEvent[]): void {
     state.contactArmed = true;
     events.push({ type: 'separated', t });
     wakeWhere(state, events, (s) => s.wake?.kind === 'separated');
+    if (state.room.boss?.wake?.kind === 'separated') wakeBoss(state, events);
   }
   wakeWhere(
     state,
@@ -915,7 +937,11 @@ function settle(state: SimState, events: SimEvent[]): void {
     (s) => s.wake?.kind === 'bodyWithin' && dist(body.pos, s.at) <= s.wake.radius,
   );
 
-  const cleared = state.enemies.every((e) => e.phase === 'dead');
+  const bossWake = state.room.boss?.wake;
+  if (state.boss?.phase === 'dormant' && bossWake?.kind === 'bodyWithin' && dist(body.pos, state.boss.pos) <= bossWake.radius) {
+    wakeBoss(state, events);
+  }
+  const cleared = state.enemies.every((e) => e.phase === 'dead') && !bossAlive(state);
   const gate = !cleared ? 'sealed' : separated ? 'ready' : 'open';
   if (gate !== state.gate) {
     if (state.gate === 'sealed') events.push({ type: 'roomCleared', t });
@@ -942,6 +968,10 @@ export function stepInternal(state: SimState, commands: readonly Command[], prob
   state.body.prevPos = state.body.pos;
   state.soul.prevPos = state.soul.pos;
   for (const p of state.projectiles) p.prevPos = p.pos;
+  if (state.boss) {
+    state.boss.prevPos = state.boss.pos;
+    state.boss.heartPrev = state.boss.heart;
+  }
 
   if (state.outcome === 'playing') {
     commands.forEach((cmd, i) => {
@@ -960,12 +990,13 @@ export function stepInternal(state: SimState, commands: readonly Command[], prob
         break;
       }
       const plan = buildPlan(state);
-      const timer = nextTimer(state, plan, remaining);
+      const bp = state.boss && state.boss.phase !== 'dead' ? buildBossPlan(state.boss) : null;
+      const timer = nextTimer(state, plan, bp, remaining);
       const span = timer ? timer.tau : remaining;
-      const collision = findCollision(state, plan, span);
+      const collision = findCollision(state, plan, bp, span);
       const ev = selectBest([collision, timer].filter((c): c is Candidate => c !== null));
       const dt = ev ? Math.min(ev.tau, remaining) : remaining;
-      advance(state, plan, dt);
+      advance(state, plan, bp, dt);
       remaining -= dt;
       if (ev) {
         if (iterations > MAX_ITERATIONS_PER_STEP - 6) recent.push(`${ev.kind}#${ev.id}@${ev.tau}`);
