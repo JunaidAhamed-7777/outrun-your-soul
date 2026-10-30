@@ -193,6 +193,52 @@ export function keeperPlaceholder(): Group {
   return root;
 }
 
+/**
+ * Warden: broad armoured sentry with a big hinged frontal shield (lowers when exposed) and a
+ * chest core that glows gold during its opening. Parts: warden_base, warden_head (turns to aim),
+ * warden_shield (hinge at its lower front edge), warden_core.
+ */
+export function wardenPlaceholder(): Group {
+  const root = part('warden');
+  const coreMat = toon('gold', { emissive: '#ffcf6a', emissiveIntensity: 0.05 });
+  coreMat.name = 'core';
+
+  const plinth = piece(new CylinderGeometry(0.5, 0.56, 0.14, 8), 'cobalt_deep', 0, 0.07, 0);
+  const trim = piece(new CylinderGeometry(0.47, 0.5, 0.05, 8), 'gold', 0, 0.165, 0);
+  const torso = piece(new CylinderGeometry(0.27, 0.36, 0.5, 6), 'ivory', 0, 0.44, -0.04);
+  const belt = piece(new CylinderGeometry(0.33, 0.34, 0.07, 6), 'gold', 0, 0.3, -0.04);
+  const pauldronL = piece(new OctahedronGeometry(0.15, 0), 'gold', -0.36, 0.66, -0.04);
+  const pauldronR = piece(new OctahedronGeometry(0.15, 0), 'gold', 0.36, 0.66, -0.04);
+  pauldronL.scale.set(1.2, 0.8, 1);
+  pauldronR.scale.set(1.2, 0.8, 1);
+  const base = part('warden_base', plinth, trim, torso, belt, pauldronL, pauldronR);
+
+  const helm = piece(new IcosahedronGeometry(0.16, 0), 'ivory', 0, 0, 0);
+  helm.scale.set(1, 1.15, 1);
+  const visor = piece(new BoxGeometry(0.22, 0.04, 0.05), 'mask_black', 0, 0.01, 0.14);
+  const crest = piece(new ConeGeometry(0.06, 0.24, 4), 'gold', 0, 0.22, -0.02);
+  const head = part('warden_head', helm, visor, crest);
+  head.position.set(0, 0.86, -0.04);
+
+  const core = piece(new OctahedronGeometry(0.11, 0), coreMat, 0, 0.5, 0.2);
+  core.name = 'warden_core_gem';
+  const coreGroup = part('warden_core', core);
+
+  const plate = piece(new BoxGeometry(0.86, 0.66, 0.07), 'ivory_shadow', 0, 0.33, 0);
+  const rimTop = piece(new BoxGeometry(0.9, 0.06, 0.09), 'gold', 0, 0.66, 0);
+  const rimL = piece(new BoxGeometry(0.06, 0.66, 0.09), 'gold', -0.43, 0.33, 0);
+  const rimR = piece(new BoxGeometry(0.06, 0.66, 0.09), 'gold', 0.43, 0.33, 0);
+  const boss = piece(new OctahedronGeometry(0.1, 0), 'gold', 0, 0.36, 0.05);
+  boss.scale.set(1, 1.3, 0.5);
+  const shield = part('warden_shield', plate, rimTop, rimL, rimR, boss);
+  // Hinge at the shield's lower front edge so it can drop forward when the warden is exposed.
+  shield.position.set(0, 0.06, 0.36);
+  shield.rotation.x = -0.12;
+
+  root.add(base, coreGroup, head, shield);
+  return root;
+}
+
 export function gatePlaceholder(): Group {
   const root = part('exit_gate');
   const pillarL = piece(new BoxGeometry(0.32, 1.5, 0.32), 'ivory', -1.16, 0.75, 0);
@@ -247,6 +293,8 @@ export function placeholderFor(id: ModelId): Group {
       return needlerPlaceholder();
     case 'keeper':
       return keeperPlaceholder();
+    case 'warden':
+      return wardenPlaceholder();
     case 'floor_tile':
       return floorTilePlaceholder();
     case 'wall_block':

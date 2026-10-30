@@ -137,12 +137,17 @@ uniform float uProgress;
 uniform float uLength;
 uniform float uTime;
 uniform float uMotion;
+uniform float uMark;
 varying vec2 vUv;
 void main() {
   float u = vUv.x;
   float c = abs(vUv.y - 0.5) * 2.0;
   float a;
-  if (uLocked < 0.5) {
+  if (uLocked > 0.5 && u > uMark) {
+    // Beyond a forecast aim point the bolt still flies on: steady thin flight line.
+    float dash = step(0.5, fract(u * 3.0));
+    a = (1.0 - smoothstep(0.12, 0.24, c)) * dash * 0.7;
+  } else if (uLocked < 0.5) {
     float dash = step(0.42, fract(u * 2.4 - uTime * 1.6 * uMotion));
     float core = 1.0 - smoothstep(0.18, 0.34, c);
     float flicker = 0.62 + 0.38 * sin(uTime * 28.0 * uMotion + u * 3.0);
@@ -170,6 +175,7 @@ void main() {
       uLength: { value: 1 },
       uTime: { value: 0 },
       uMotion: { value: 1 },
+      uMark: { value: 1e5 },
     },
   );
 }
@@ -324,5 +330,48 @@ void main() {
 `,
     { uColor: { value: c.clone() }, uOpacity: { value: 1 }, uLength: { value: 1 } },
     true,
+  );
+}
+
+/**
+ * Ground sector (warden guard arc and sweep telegraph). The quad's half-size is the radius;
+ * the sector is centred on local +X with half-angle uHalf. uFill (0..1) fills radially.
+ */
+export function sectorMaterial(c: Color, opts: { fillOpacity?: number; edgeOpacity?: number } = {}): ShaderMaterial {
+  return overlay(
+    /* glsl */ `
+uniform vec3 uColor;
+uniform float uOpacity;
+uniform float uHalf;
+uniform float uFill;
+uniform float uFillOpacity;
+uniform float uEdgeOpacity;
+uniform float uBaseOpacity;
+varying vec2 vUv;
+void main() {
+  vec2 p = (vUv - 0.5) * 2.0;
+  float r = length(p);
+  float ang = abs(atan(p.y, p.x));
+  if (r > 1.0 || ang > uHalf) discard;
+  float soft = fwidth(r) * 1.5 + 0.004;
+  float rim = smoothstep(1.0 - 0.06 - soft, 1.0 - 0.06, r);
+  float side = 1.0 - smoothstep(0.0, 0.05 / max(r, 0.05), uHalf - ang);
+  float edge = max(rim, side);
+  float fill = 1.0 - smoothstep(uFill - soft, uFill, r);
+  float a = max(edge * uEdgeOpacity, max(fill * uFillOpacity, uBaseOpacity));
+  if (a < 0.01) discard;
+  gl_FragColor = vec4(uColor, a * uOpacity);
+  #include <colorspace_fragment>
+}
+`,
+    {
+      uColor: { value: c.clone() },
+      uOpacity: { value: 1 },
+      uHalf: { value: 1 },
+      uFill: { value: 0 },
+      uFillOpacity: { value: opts.fillOpacity ?? 0.45 },
+      uEdgeOpacity: { value: opts.edgeOpacity ?? 0.9 },
+      uBaseOpacity: { value: 0 },
+    },
   );
 }

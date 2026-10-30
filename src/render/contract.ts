@@ -25,6 +25,7 @@ export const MODEL_IDS = [
   'soul_mask',
   'needler',
   'keeper',
+  'warden',
   'floor_tile',
   'wall_block',
   'exit_gate',
