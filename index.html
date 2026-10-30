@@ -88,6 +88,16 @@
       <div class="track" aria-hidden="true"><div class="thread"></div><div class="soul"></div><div class="body"></div></div>
       <div class="status">Loading the courtyard…</div>
     </div>
+    <script>
+      // If the game script never starts (e.g. only index.html was uploaded, or the files are
+      // nested in a sub-folder of the ZIP), say so instead of showing a loading screen forever.
+      setTimeout(function () {
+        var boot = document.getElementById('boot');
+        if (!boot || window.__oysScriptStarted) return;
+        var s = boot.querySelector('.status');
+        if (s) s.textContent = 'The game files did not load. Please reload; if you host this build, upload the whole ZIP with index.html at its top level.';
+      }, 12000);
+    </script>
     <script type="module" src="./src/main.ts"></script>
   </body>
 </html>
