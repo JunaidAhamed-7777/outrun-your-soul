@@ -1,3 +1,9 @@
-// Entry point. Wires simulation, input, renderer, audio and UI (integration lands after the core modules).
+import { startGame } from './game/game';
+
 const app = document.getElementById('app');
-if (app) app.textContent = 'OUTRUN YOUR SOUL — bootstrapping';
+if (app) {
+  void startGame(app).catch((err: unknown) => {
+    console.error(err);
+    app.textContent = 'Outrun Your Soul could not start. Please reload the page.';
+  });
+}
