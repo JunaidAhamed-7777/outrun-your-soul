@@ -347,12 +347,70 @@ async function botPlayRoom(page, onState) {
   };
 }
 
-/** Deliberately lose: stand still at spawn while awake sentries shoot the body. */
-async function idleUntilOver(page) {
-  let r = await page.evaluate(() => window.__oys.advance(0.5, 0.1));
-  while (r.outcome === 'playing' && r.t < SIM_LIMIT_SECONDS) r = await page.evaluate(() => window.__oys.advance(0.5, 0.1));
+/** Shortest distance from point p to segment ab. */
+function segmentDistance(a, b, p) {
+  const abx = b.x - a.x;
+  const aby = b.y - a.y;
+  const l2 = abx * abx + aby * aby;
+  const t = l2 > 0 ? Math.max(0, Math.min(1, ((p.x - a.x) * abx + (p.y - a.y) * aby) / l2)) : 0;
+  return Math.hypot(a.x + abx * t - p.x, a.y + aby * t - p.y);
+}
+
+/**
+ * Deliberately lose the current room, independent of its layout: walk (walls-aware) toward
+ * a sentry without ever sweeping close enough to kill one, then stand exposed in the open.
+ * If no damage lands for 8 s, move on to the next sentry. Standing still at spawn is not
+ * enough: some authored rooms (Silk Cloister) cover the spawn from every firing line.
+ */
+async function loseRoom(page) {
+  let s = revive(await page.evaluate(() => window.__e2eSerialise(window.__oys.state())));
+  let targetIndex = 0;
+  let lastHurtAt = s.time;
+  let lastHealth = s.health;
+  let dashes = 0;
+  while (s.outcome === 'playing' && s.time < SIM_LIMIT_SECONDS) {
+    if (s.health < lastHealth) {
+      lastHealth = s.health;
+      lastHurtAt = s.time;
+    }
+    const alive = s.enemies.filter((e) => e.phase !== 'dead');
+    alive.sort((a, b) => Math.hypot(a.pos.x - s.body.pos.x, a.pos.y - s.body.pos.y) - Math.hypot(b.pos.x - s.body.pos.x, b.pos.y - s.body.pos.y));
+    if (s.time - lastHurtAt > 8) {
+      targetIndex += 1;
+      lastHurtAt = s.time;
+    }
+    const target = alive.length ? alive[targetIndex % alive.length] : null;
+    let command = null;
+    if (target && s.body.mode === 'ready' && Math.hypot(target.pos.x - s.body.pos.x, target.pos.y - s.body.pos.y) > 2.2) {
+      const field = distanceField(s.room, target.pos);
+      let best = null;
+      for (let k = 0; k < 24; k++) {
+        for (const d of [1, 2, 3]) {
+          const a = (k / 24) * Math.PI * 2;
+          const aim = { x: Math.cos(a) * d, y: Math.sin(a) * d };
+          const preview = previewDash(s, aim);
+          if (!preview.valid) continue;
+          // Never sweep through a sentry (kill radius 0.72) and never end on top of one.
+          if (alive.some((e) => segmentDistance(preview.from, preview.end, e.pos) < 0.9)) continue;
+          if (Math.hypot(target.pos.x - preview.end.x, target.pos.y - preview.end.y) < 1.4) continue;
+          const score = field(preview.end);
+          if (!best || score < best.score) best = { score, aim };
+        }
+      }
+      if (best && best.score < field(s.body.pos) - 0.2) {
+        command = { kind: 'dash', aim: best.aim };
+        dashes += 1;
+      }
+    }
+    const json = await page.evaluate((cmd) => {
+      if (cmd) window.__oys.push(cmd);
+      window.__oys.advance(0.1, 0.1);
+      return window.__e2eSerialise(window.__oys.state());
+    }, command);
+    s = revive(json);
+  }
   await page.evaluate(() => window.__oys.advance(1.8, 0.05));
-  return r;
+  return { outcome: s.outcome, t: s.time, health: s.health, kills: s.stats.kills, dashes };
 }
 
 /** Which run panel is showing. */
@@ -608,13 +666,17 @@ try {
     `at ${entry2.at} -> ${runC.at}; room ${entry2.roomId} -> ${roomC.room.id}; health ${entry2.health} -> ${roomC.health}; sim t ${round(roomC.time)} s after Continue`,
   );
 
-  // Defeat path: stand still until the room is lost -> Retry room restarts it as attempt 2.
-  const lost = await idleUntilOver(page);
+  // Defeat path: deliberately lose the room -> Retry room restarts it as attempt 2.
+  const lost = await loseRoom(page);
   const retry = page.getByRole('button', { name: 'Retry room' });
   const retryVisible = await retry.isVisible();
   const abandonVisible = await page.getByRole('button', { name: 'Abandon expedition' }).isVisible();
   if (retryVisible) report.screenshots.push(await shot(page, 'defeat'));
-  record('B14 standing still loses the room and offers Retry room / Abandon expedition', lost.outcome === 'defeat' && retryVisible && abandonVisible, `outcome ${lost.outcome} at sim ${round(lost.t)} s, health ${lost.health}`);
+  record(
+    'B14 deliberately walking into firing lines (no kills) loses the room and offers Retry room / Abandon expedition',
+    lost.outcome === 'defeat' && lost.kills === 0 && retryVisible && abandonVisible,
+    `outcome ${lost.outcome} at sim ${round(lost.t)} s after ${lost.dashes} dashes, health ${lost.health}, kills ${lost.kills}`,
+  );
   if (retryVisible) {
     await retry.tap();
     await page.waitForFunction(() => window.__oys.phase() === 'playing', null, { timeout: 5000 });
