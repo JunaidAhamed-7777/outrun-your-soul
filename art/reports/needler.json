@@ -1,0 +1,51 @@
+{
+  "asset_id": "needler",
+  "status": "exported",
+  "author": "original (script-authored in Blender via the pinned Blender MCP bridge)",
+  "created_at": "2026-10-30T14:46:31+00:00",
+  "blender_version": "5.2.2 LTS",
+  "exporter_version": "5.2.40",
+  "source_path": "art/source/actors.blend",
+  "export": {
+    "path": "public/assets/models/needler.glb",
+    "bytes": 19212,
+    "sha256": "e8e9097b59ef6a4bf584fbee55df28cb1053f4c0c2a00842f9a7fb314ddf3fa4"
+  },
+  "preview": "art/previews/needler-game-camera.png",
+  "measured": {
+    "triangles": 284,
+    "materials": [
+      "gold",
+      "ivory",
+      "mask_black"
+    ],
+    "material_count": 3,
+    "bounds_min": [
+      -0.3095,
+      -0.7125,
+      0.0
+    ],
+    "bounds_max": [
+      0.3095,
+      0.3375,
+      0.9075
+    ],
+    "dimensions": [
+      0.619,
+      1.05,
+      0.9075
+    ],
+    "parts": [
+      "needler",
+      "needler_base",
+      "needler_head",
+      "needler_muzzle"
+    ]
+  },
+  "budget": {
+    "triangles": 2500,
+    "materials": 3
+  },
+  "within_budget": true,
+  "notes": "Needler: heron-like ceremonial sentry. Static stepped ivory plinth with thin gold bands; rotating ivory skull head with a black visor band, a long gold needle along -Y (art direction == locked attack direction) and a swept crest plus fins behind, so the head reads as an arrow from the high game camera. Head scaled 1.25x as a whole (baked into the mesh; node scale 1) for phone readability. Bolts spawn visually at needler_muzzle on the needle tip (~0.71 m ahead of the rotation axis after scale; the needle intentionally exceeds the 1.3x radius guideline because it IS the direction cue)."
+}
