@@ -27,7 +27,7 @@ import {
   type SimEvent,
   type SimState,
 } from '../sim';
-import { createUI, type GameUI } from '../ui/ui';
+import { BOSS_INTRO_SUBTITLE, createUI, type GameUI } from '../ui/ui';
 import { AimTracker } from './aim';
 import { Director, type Screen } from './director';
 import { roomMeta } from './room-meta';
@@ -149,6 +149,7 @@ export async function startGame(container: HTMLElement): Promise<GameHandle | nu
   function showTitle(): void {
     phase = 'title';
     ui.hideHud();
+    ui.setBoss(null);
     const canContinue = director.hasContinue();
     // Peek at the saved room for the Continue caption without disturbing the active run.
     const peek = canContinue ? new Director({ checkpoints, progress: new ProgressStore(browserStorage()), resolveRoom }).continueRun() : null;
@@ -237,7 +238,8 @@ export async function startGame(container: HTMLElement): Promise<GameHandle | nu
     ui.showHud(room);
     ui.setLoadout(loadoutChips(director.run, sim));
     const meta = roomMeta(entry.roomId);
-    const subtitle = screen.attempt > 1 ? `Attempt ${screen.attempt} — the room is as you entered it.` : meta.blurb;
+    const subtitle =
+      screen.attempt > 1 ? `Attempt ${screen.attempt} — the room is as you entered it.` : room.boss ? BOSS_INTRO_SUBTITLE : meta.blurb;
     ui.showRoomIntro(room.name || meta.name, subtitle, `${screen.label} · stop ${screen.depth + 1} of ${ROUTE_STOPS}`);
     phase = 'playing';
     loop?.resume();
@@ -353,6 +355,8 @@ export async function startGame(container: HTMLElement): Promise<GameHandle | nu
     if (phase === 'playing' || phase === 'paused' || phase === 'ending') {
       ui.update(sim, realDt);
       ui.setLoadout(loadoutChips(director.run, sim));
+      const boss = sim.boss;
+      ui.setBoss(boss ? { name: 'The Last Warden', heartHp: boss.hp, heartMax: boss.maxHp, stage: boss.stage, stages: boss.maxHp } : null);
     }
     audio.update(sim, realDt);
   }
