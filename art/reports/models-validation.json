@@ -408,15 +408,15 @@
       "errors": [],
       "warnings": [
         "not in MODEL_IDS (src/render/contract.ts): the runtime never requests it; remove it or add it to the contract",
-        "asset ID \"last_warden_body\" is not in the asset contract"
+        "4 materials exceeds 3 (Warden row applied to the Last Warden boss (no boss row in ART_PIPELINE), docs/ART_PIPELINE.md)"
       ],
       "stats": {
         "assetId": "last_warden_body",
-        "category": "unknown",
+        "category": "boss",
         "budget": {
-          "label": "Unknown asset ID: no documented budget",
-          "maxTriangles": 60000,
-          "maxMaterials": null
+          "label": "Warden row applied to the Last Warden boss (no boss row in ART_PIPELINE)",
+          "maxTriangles": 4000,
+          "maxMaterials": 3
         },
         "rootNodes": [
           "last_warden_body"
@@ -485,15 +485,15 @@
       "errors": [],
       "warnings": [
         "not in MODEL_IDS (src/render/contract.ts): the runtime never requests it; remove it or add it to the contract",
-        "asset ID \"last_warden_heart\" is not in the asset contract"
+        "4 materials exceeds 3 (Warden row applied to the Last Warden boss (no boss row in ART_PIPELINE), docs/ART_PIPELINE.md)"
       ],
       "stats": {
         "assetId": "last_warden_heart",
-        "category": "unknown",
+        "category": "boss",
         "budget": {
-          "label": "Unknown asset ID: no documented budget",
-          "maxTriangles": 60000,
-          "maxMaterials": null
+          "label": "Warden row applied to the Last Warden boss (no boss row in ART_PIPELINE)",
+          "maxTriangles": 4000,
+          "maxMaterials": 3
         },
         "rootNodes": [
           "last_warden_heart"
