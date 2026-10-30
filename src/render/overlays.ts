@@ -1,0 +1,337 @@
+/**
+ * State-bearing ground overlays: the living ribbon, dash preview, return meet marker,
+ * capacity arc and attack telegraphs. All drawn from simulation data each frame.
+ */
+import {
+  BoxGeometry,
+  CircleGeometry,
+  Color,
+  Group,
+  Mesh,
+  MeshBasicMaterial,
+  PlaneGeometry,
+  type ShaderMaterial,
+} from 'three';
+import type { DashPreview, EnemyState, ReturnPreview, RoomDef, SimState } from '../sim/types';
+import { TUNING } from '../sim/tuning';
+import type { Vec2 } from '../sim/vec';
+import { color } from './palette';
+import { rayToWalls } from './raycast';
+import { dotLineMaterial, ribbonMaterial, ringMaterial, setUniform, stripShadowMaterial, telegraphMaterial } from './shaders';
+import { StripMesh } from './stripMesh';
+
+const RIBBON_POINTS = 160;
+
+function flatPlane(size: number, material: ShaderMaterial, renderOrder: number, depthTest = false): Mesh<PlaneGeometry, ShaderMaterial> {
+  const geo = new PlaneGeometry(size, size);
+  geo.rotateX(-Math.PI / 2);
+  material.depthTest = depthTest;
+  const mesh = new Mesh(geo, material);
+  mesh.renderOrder = renderOrder;
+  mesh.frustumCulled = false;
+  return mesh;
+}
+
+function place(mesh: { position: { set(x: number, y: number, z: number): void } }, p: Vec2, h: number): void {
+  mesh.position.set(p.x, h, -p.y);
+}
+
+/** Flat cross glyph (invalid endpoint / cancel). */
+function crossGlyph(size: number, c: Color): Group {
+  const g = new Group();
+  const mat = new MeshBasicMaterial({ color: c, transparent: true, depthTest: false, depthWrite: false });
+  for (const angle of [Math.PI / 4, -Math.PI / 4]) {
+    const bar = new Mesh(new BoxGeometry(size, 0.001, size * 0.18), mat);
+    bar.rotation.y = angle;
+    bar.renderOrder = 41;
+    g.add(bar);
+  }
+  return g;
+}
+
+export class RibbonView {
+  readonly group = new Group();
+  private readonly silk: StripMesh<ShaderMaterial>;
+  private readonly shade: StripMesh<ShaderMaterial>;
+  private readonly knotA: Mesh<CircleGeometry, MeshBasicMaterial>;
+  private readonly knotB: Mesh<CircleGeometry, MeshBasicMaterial>;
+  private readonly pts: Vec2[] = [];
+  private readonly shadowPts: { x: number; y: number }[] = [];
+  private time = 0;
+  private flow = 0.3;
+
+  constructor() {
+    this.silk = new StripMesh(ribbonMaterial(), RIBBON_POINTS, 12);
+    this.shade = new StripMesh(stripShadowMaterial(0.3), RIBBON_POINTS, 11);
+    const knotGeo = new CircleGeometry(0.075, 10);
+    knotGeo.rotateX(-Math.PI / 2);
+    const knotMat = new MeshBasicMaterial({ color: color('vermilion_dark'), depthWrite: false, transparent: true });
+    this.knotA = new Mesh(knotGeo, knotMat);
+    this.knotB = new Mesh(knotGeo, knotMat);
+    this.knotA.renderOrder = 13;
+    this.knotB.renderOrder = 13;
+    this.group.add(this.shade.mesh, this.silk.mesh, this.knotA, this.knotB);
+  }
+
+  update(state: SimState, soulPos: Vec2, bodyPos: Vec2, dt: number, reducedMotion: boolean): void {
+    const route = state.route.points;
+    if (route.length < 2) {
+      this.silk.hide();
+      this.shade.hide();
+      this.knotA.visible = false;
+      this.knotB.visible = false;
+      return;
+    }
+    // Endpoints follow the interpolated actors so the thread stays attached between steps.
+    this.pts.length = 0;
+    this.pts.push(soulPos);
+    for (let i = 1; i < route.length - 1; i++) this.pts.push(route[i]!);
+    this.pts.push(bodyPos);
+
+    const returning = state.body.mode === 'return';
+    this.flow += ((returning ? 2.2 : 0.3) - this.flow) * Math.min(1, dt * 6);
+    this.time += reducedMotion ? 0 : dt;
+    setUniform(this.silk.mesh.material, 'uTime', this.time);
+    setUniform(this.silk.mesh.material, 'uFlow', this.flow);
+
+    this.silk.set(this.pts, 0.075, 0.032);
+    while (this.shadowPts.length < this.pts.length) this.shadowPts.push({ x: 0, y: 0 });
+    this.shadowPts.length = this.pts.length;
+    for (let i = 0; i < this.pts.length; i++) {
+      this.shadowPts[i]!.x = this.pts[i]!.x + 0.035;
+      this.shadowPts[i]!.y = this.pts[i]!.y - 0.045;
+    }
+    this.shade.set(this.shadowPts, 0.12, 0.008);
+    this.knotA.visible = true;
+    this.knotB.visible = true;
+    place(this.knotA, soulPos, 0.036);
+    place(this.knotB, bodyPos, 0.036);
+  }
+
+  dispose(): void {
+    this.silk.dispose();
+    this.shade.dispose();
+    this.knotA.geometry.dispose();
+    this.knotA.material.dispose();
+    this.group.removeFromParent();
+  }
+}
+
+export interface PreviewInput {
+  readonly dash: DashPreview | null;
+  readonly cancel: boolean;
+  readonly queued: boolean;
+  readonly ret: ReturnPreview | null;
+}
+
+export class PreviewView {
+  readonly group = new Group();
+  private readonly path: StripMesh<ShaderMaterial>;
+  private readonly overflow: StripMesh<ShaderMaterial>;
+  private readonly endRing: Mesh<PlaneGeometry, ShaderMaterial>;
+  private readonly contactRing: Mesh<PlaneGeometry, ShaderMaterial>;
+  private readonly capacityArc: Mesh<PlaneGeometry, ShaderMaterial>;
+  private readonly wallTick: Mesh<BoxGeometry, MeshBasicMaterial>;
+  private readonly invalidX: Group;
+  private readonly cancelGlyph: Group;
+  private readonly cancelRing: Mesh<PlaneGeometry, ShaderMaterial>;
+  private readonly meet: Mesh<PlaneGeometry, MeshBasicMaterial>;
+  private time = 0;
+  private readonly ivory = color('ivory');
+  private readonly grey = new Color('#8b90a8');
+
+  constructor() {
+    this.path = new StripMesh(dotLineMaterial(color('ivory'), 0.07, 0.24, 0), 2, 40);
+    this.path.mesh.material.depthTest = false;
+    this.overflow = new StripMesh(dotLineMaterial(color('vermilion'), 0.05, 0.2, 1), 2, 40);
+    this.overflow.mesh.material.depthTest = false;
+    this.endRing = flatPlane(
+      TUNING.bodyRadius * 2.4,
+      ringMaterial({ color: color('ivory'), inner: 0.72, outer: 0.9, segments: 8, gap: 0.25 }),
+      41,
+    );
+    this.contactRing = flatPlane(0.9, ringMaterial({ color: color('gold'), inner: 0.62, outer: 0.92 }), 42);
+    this.capacityArc = flatPlane(1.1, ringMaterial({ color: color('vermilion'), inner: 0.8, outer: 0.92, arc: 1 }), 39);
+    const tickMat = new MeshBasicMaterial({ color: color('ivory'), depthTest: false, depthWrite: false, transparent: true });
+    this.wallTick = new Mesh(new BoxGeometry(0.62, 0.001, 0.07), tickMat);
+    this.wallTick.renderOrder = 41;
+    this.invalidX = crossGlyph(0.42, this.grey);
+    this.cancelGlyph = crossGlyph(0.3, color('ivory'));
+    this.cancelRing = flatPlane(0.8, ringMaterial({ color: color('ivory'), inner: 0.8, outer: 0.95, opacity: 0.8 }), 41);
+    // Return meet point: a small gold diamond lying on the ribbon (distinct from round markers).
+    const meetGeo = new PlaneGeometry(0.2, 0.2);
+    meetGeo.rotateX(-Math.PI / 2);
+    meetGeo.rotateY(Math.PI / 4);
+    this.meet = new Mesh(meetGeo, new MeshBasicMaterial({ color: color('gold'), transparent: true, depthTest: false, depthWrite: false }));
+    this.meet.renderOrder = 38;
+    this.group.add(
+      this.capacityArc,
+      this.path.mesh,
+      this.overflow.mesh,
+      this.endRing,
+      this.contactRing,
+      this.wallTick,
+      this.invalidX,
+      this.cancelGlyph,
+      this.cancelRing,
+      this.meet,
+    );
+  }
+
+  update(state: SimState, bodyPos: Vec2, input: PreviewInput, dt: number, reducedMotion: boolean): void {
+    this.time += dt;
+    const { dash } = input;
+    const show = !!dash && !input.cancel;
+    this.path.mesh.visible = false;
+    this.overflow.mesh.visible = false;
+    this.endRing.visible = false;
+    this.contactRing.visible = false;
+    this.wallTick.visible = false;
+    this.invalidX.visible = false;
+    this.capacityArc.visible = false;
+    this.cancelGlyph.visible = input.cancel;
+    this.cancelRing.visible = input.cancel;
+    this.meet.visible = false;
+
+    if (input.cancel) {
+      place(this.cancelGlyph, bodyPos, 0.04);
+      place(this.cancelRing, bodyPos, 0.04);
+    }
+
+    if (show && dash) {
+      const valid = dash.valid;
+      const pathMat = this.path.mesh.material;
+      (pathMat.uniforms.uColor!.value as Color).copy(valid ? this.ivory : this.grey);
+      setUniform(pathMat, 'uTime', reducedMotion ? 0 : this.time);
+      setUniform(pathMat, 'uOpacity', valid ? 1 : 0.6);
+      this.path.set([dash.end, bodyPos], 0.07, 0.045);
+
+      if (!valid) {
+        this.invalidX.visible = true;
+        place(this.invalidX, dash.end, 0.05);
+      } else {
+        this.endRing.visible = true;
+        place(this.endRing, dash.end, 0.045);
+        const pulse = input.queued ? 1 + 0.18 * Math.sin(this.time * 14) : 1;
+        this.endRing.scale.setScalar(pulse);
+        setUniform(this.endRing.material, 'uOpacity', input.queued ? 0.6 + 0.4 * Math.sin(this.time * 14) : 1);
+        if (!reducedMotion) setUniform(this.endRing.material, 'uStart', this.time * 1.5);
+      }
+
+      const dx = dash.requestedEnd.x - dash.end.x;
+      const dy = dash.requestedEnd.y - dash.end.y;
+      const cut = Math.hypot(dx, dy);
+      if (dash.limitedBy === 'capacity' && cut > 0.05) {
+        // Thread budget ran out: show the unreachable remainder in ribbon colour.
+        const k = Math.min(1, 0.7 / cut);
+        this.overflow.set([{ x: dash.end.x + dx * k, y: dash.end.y + dy * k }, dash.end], 0.05, 0.044);
+      }
+      if (dash.limitedBy === 'wall' && cut > 1e-3) {
+        this.wallTick.visible = true;
+        place(this.wallTick, dash.end, 0.05);
+        this.wallTick.rotation.y = Math.atan2(dy, dx) + Math.PI / 2;
+        const off = 0.32 / cut;
+        this.wallTick.position.x = dash.end.x + dx * off;
+        this.wallTick.position.z = -(dash.end.y + dy * off);
+      }
+      if (dash.contact) {
+        this.contactRing.visible = true;
+        place(this.contactRing, dash.contact.at, 0.05);
+        const s = reducedMotion ? 1 : 1 + 0.08 * Math.sin(this.time * 8);
+        this.contactRing.scale.setScalar(s);
+      }
+      // Remaining thread after this dash, as a fraction of capacity.
+      this.capacityArc.visible = true;
+      place(this.capacityArc, bodyPos, 0.04);
+      const frac = Math.max(0, Math.min(1, dash.capacityAfter / Math.max(1e-6, state.params.tetherCapacity)));
+      setUniform(this.capacityArc.material, 'uArc', frac);
+      setUniform(this.capacityArc.material, 'uStart', Math.PI / 2 - frac * Math.PI);
+    }
+
+    const ret = input.ret;
+    if (!show && !input.cancel && ret?.valid && ret.meetAt && state.route.points.length > 1 && state.body.mode !== 'return') {
+      this.meet.visible = true;
+      place(this.meet, ret.meetAt, 0.05);
+      const bob = reducedMotion ? 1 : 1 + 0.12 * Math.sin(this.time * 4);
+      this.meet.scale.setScalar(bob);
+    }
+  }
+
+  dispose(): void {
+    this.path.dispose();
+    this.overflow.dispose();
+    this.group.traverse((node) => {
+      if (node instanceof Mesh) {
+        node.geometry.dispose();
+        (node.material as { dispose(): void }).dispose();
+      }
+    });
+    this.group.removeFromParent();
+  }
+}
+
+/** One sentry's warning line plus the reticle on its threatened endpoint. */
+export class TelegraphView {
+  readonly group = new Group();
+  private readonly line: StripMesh<ShaderMaterial>;
+  private readonly reticle: Mesh<PlaneGeometry, ShaderMaterial>;
+  private readonly reticleInner: Mesh<PlaneGeometry, ShaderMaterial>;
+  private lastPhase: EnemyState['phase'] | null = null;
+  private lockPoint: Vec2 = { x: 0, y: 0 };
+  private time = 0;
+
+  constructor(private readonly target: 'body' | 'soul') {
+    this.line = new StripMesh(telegraphMaterial(), 2, 35);
+    this.line.mesh.material.depthTest = false;
+    const segments = target === 'soul' ? 3 : 4;
+    this.reticle = flatPlane(0.95, ringMaterial({ color: color('warning_amber'), inner: 0.8, outer: 0.95, segments, gap: 0.45 }), 36);
+    this.reticleInner = flatPlane(
+      0.95,
+      ringMaterial({ color: color('warning_amber'), inner: 0.5, outer: 0.58, opacity: 0.8, segments: target === 'soul' ? 6 : 0, gap: 0.5 }),
+      36,
+    );
+    this.group.add(this.line.mesh, this.reticle, this.reticleInner);
+  }
+
+  update(enemy: EnemyState, room: RoomDef, targetPos: Vec2, dt: number, reducedMotion: boolean): void {
+    this.time += dt;
+    const active = enemy.phase === 'tracking' || enemy.phase === 'locked';
+    if (enemy.phase === 'locked' && this.lastPhase !== 'locked') this.lockPoint = targetPos;
+    this.lastPhase = enemy.phase;
+    this.group.visible = active;
+    if (!active) return;
+
+    const locked = enemy.phase === 'locked';
+    const origin = { x: enemy.pos.x + enemy.aim.x * enemy.radius, y: enemy.pos.y + enemy.aim.y * enemy.radius };
+    const length = rayToWalls(origin, enemy.aim, room);
+    const end = { x: origin.x + enemy.aim.x * length, y: origin.y + enemy.aim.y * length };
+    const mat = this.line.mesh.material;
+    setUniform(mat, 'uLocked', locked ? 1 : 0);
+    setUniform(mat, 'uLength', length);
+    setUniform(mat, 'uTime', this.time);
+    setUniform(mat, 'uMotion', reducedMotion ? 0 : 1);
+    const progress = locked && enemy.phaseDuration > 0 ? Math.min(1, enemy.phaseTime / enemy.phaseDuration) : 0;
+    setUniform(mat, 'uProgress', progress);
+    this.line.set([end, origin], locked ? 0.17 : 0.06, 0.05);
+
+    // Tracking: reticle follows the endpoint. Locked: it stays where the line was locked.
+    const at = locked ? this.lockPoint : targetPos;
+    place(this.reticle, at, 0.05);
+    place(this.reticleInner, at, 0.05);
+    const shrink = locked ? 0.85 - progress * 0.25 : 1.05 + (reducedMotion ? 0 : 0.08 * Math.sin(this.time * 10));
+    this.reticle.scale.setScalar(shrink);
+    this.reticleInner.scale.setScalar(shrink);
+    setUniform(this.reticle.material, 'uStart', reducedMotion ? 0 : this.time * (this.target === 'soul' ? -2.4 : 2.4));
+    setUniform(this.reticle.material, 'uOpacity', locked ? 1 : 0.75);
+    this.reticleInner.visible = locked || this.target === 'soul';
+  }
+
+  dispose(): void {
+    this.line.dispose();
+    for (const m of [this.reticle, this.reticleInner]) {
+      m.geometry.dispose();
+      m.material.dispose();
+    }
+    this.group.removeFromParent();
+  }
+}
