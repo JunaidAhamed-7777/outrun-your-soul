@@ -10,7 +10,7 @@ import { createRenderer, type RenderOverlay } from '../renderer';
 import { LAB_ROOM, makeFeatureState, makeFixtureState, makeLane } from './fixture';
 import { MiniSim } from './minisim';
 import { RealSim } from './realsim';
-import { ROOMS, DEPARTURE_COURT, LAST_WARDEN_ARENA } from '../../content/rooms';
+import { ROOMS, ROOM_VARIANTS, DEPARTURE_COURT, LAST_WARDEN_ARENA } from '../../content/rooms';
 import { isRelicId, simHooksFor, type RelicId } from '../../run/relics';
 import type { RoomDef } from '../../sim/types';
 
@@ -32,7 +32,9 @@ const BOSS_TEST: RoomDef = {
   boss: { id: 'lw', at: { x: 4, y: 9 }, facing: { x: 0, y: -1 } },
 };
 const roomParam = params.get('room') ?? '';
-const realRoom = roomParam === 'boss_test' ? BOSS_TEST : (ROOMS[roomParam] ?? DEPARTURE_COURT);
+const roomVariants = ROOM_VARIANTS[roomParam];
+const variantRoom = roomVariants?.[Number(params.get('variant') ?? 0)] ?? roomVariants?.[0];
+const realRoom = roomParam === 'boss_test' ? BOSS_TEST : (variantRoom ?? ROOMS[roomParam] ?? DEPARTURE_COURT);
 const loadout = (params.get('relics') ?? '').split(',').filter(isRelicId) as RelicId[];
 renderer.setRoom(scene === 'sim' ? realRoom : LAB_ROOM);
 
