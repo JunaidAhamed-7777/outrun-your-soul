@@ -1,4 +1,4 @@
-"""Render the four actors side by side through the game camera, with the calibration tile
+"""Render the actors side by side through the game camera, with the calibration tile
 (appended from art/source/calibration.blend) and each actor's true simulation radius drawn
 as a ground ring, on a temporary checker floor. Evidence of relative scale and footprint.
 
@@ -16,6 +16,9 @@ ACTORS = [  # asset id, x position, simulation radius, ring colour key
     ('soul_mask', 1.05, 0.30, 'soul_glow'),
     ('needler', 2.25, 0.42, 'warning_amber'),
     ('keeper', 3.55, 0.42, 'warning_amber'),
+    ('warden', 5.0, 0.5, 'warning_amber'),
+    ('last_warden_body', 6.55, 0.55, 'vermilion'),
+    ('last_warden_heart', 7.85, 0.3, 'vermilion'),  # heart radius assumed until the sim defines it
 ]
 OUT = 'art/previews/actors-lineup-game-camera.png'
 TAG = ob.PREVIEW_TAG
@@ -61,8 +64,8 @@ try:
 
     # Checker floor (one tile = one unit) and simulation-radius rings.
     floor = ob.PartBuilder()
-    for ix in range(-3, 6):
-        for iy in range(-2, 2):
+    for ix in range(-4, 11):
+        for iy in range(-2, 4):
             floor.box((1.0, 1.0, 0.04), center=(ix + 0.5, iy + 0.5, -0.02),
                       key='cobalt' if (ix + iy) % 2 == 0 else 'cobalt_light')
     temp_mesh('oys_lineup_floor', floor)
@@ -84,11 +87,11 @@ try:
 
     cam_data = bpy.data.cameras.new('oys_lineup_cam')
     cam_data.type = 'ORTHO'
-    cam_data.ortho_scale = 6.6
+    cam_data.ortho_scale = 11.2
     cam = link_temp(bpy.data.objects.new('oys_lineup_cam', cam_data))
     pitch = math.radians(58.0)
     direction = Vector((0.0, math.cos(pitch), -math.sin(pitch)))
-    target = Vector((0.95, 0.0, 0.3))
+    target = Vector((3.05, 0.0, 0.35))
     cam.location = target - direction * 20
     cam.rotation_euler = direction.to_track_quat('-Z', 'Y').to_euler()
     sun_data = bpy.data.lights.new('oys_lineup_sun', 'SUN')
@@ -108,7 +111,7 @@ try:
         except TypeError:
             continue
     scene.view_settings.view_transform = 'Standard'
-    scene.render.resolution_x = 1600
+    scene.render.resolution_x = 2200
     scene.render.resolution_y = 640
     scene.render.film_transparent = False
     scene.render.filepath = str(ob.ROOT / OUT)
