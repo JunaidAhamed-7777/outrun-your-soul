@@ -92,6 +92,7 @@ export class WardenView {
     this.shadow = new Mesh(shadowGeo, new MeshBasicMaterial({ map: spot, color: new Color('#0a1035'), transparent: true, opacity: 0.45, depthWrite: false }));
     this.shadow.position.y = 0.006;
     this.shadow.renderOrder = 1;
+    this.shadow.visible = false;
     this.ring = groundRing(enemy.radius, color('gold'), 0.04, 0.6, 20);
     this.guard = sector(color('ivory'), { fillOpacity: 0, edgeOpacity: 0.55 }, 24);
     setUniform(this.guard.material, 'uBaseOpacity', 0.1);

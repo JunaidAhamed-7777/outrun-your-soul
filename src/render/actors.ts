@@ -105,6 +105,8 @@ function blobShadow(spot: Texture, size: number, opacity: number): Mesh<PlaneGeo
   const mesh = new Mesh(geo, mat);
   mesh.position.y = 0.006;
   mesh.renderOrder = 1;
+  // Drawn by the shared GroundBatch; kept for standalone use of a view.
+  mesh.visible = false;
   return mesh;
 }
 
@@ -222,6 +224,10 @@ export class SoulView {
   private yaw = 0;
   /** 0 = merged with the body (reunited), 1 = separated and following. */
   private apart = 0;
+  /** Separation factor for the shared shadow batch. */
+  get separation(): number {
+    return this.apart;
+  }
   private flash = 0;
   private pulse = 0;
   pos: Vec2 = { x: 0, y: 0 };
@@ -292,8 +298,6 @@ export class SoulView {
     const glowSize = 0.6 + 0.3 * k + this.pulse * 0.6;
     this.glow.scale.set(glowSize, glowSize, 1);
     this.ring.visible = k > 0.5 && state.body.mode !== 'dead';
-    this.shadow.visible = k > 0.3;
-    this.shadow.material.opacity = 0.22 * k;
 
     this.flash = Math.max(0, this.flash - dt * 4);
     if (this.flash > 0) this.tint.apply(HIT, this.flash);
@@ -349,6 +353,7 @@ export class SentryView {
     this.headYaw = yawForFacing(enemy.aim);
     this.shadow = blobShadow(spot, 1.0, 0.4);
     this.ring = groundRing(enemy.radius, color('gold'), 0.035, 0.55, 16);
+    this.ring.visible = false;
     const chargeMat = new SpriteMaterial({
       map: spot,
       color: color('warning_amber'),

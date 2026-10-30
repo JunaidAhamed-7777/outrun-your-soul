@@ -45,6 +45,7 @@ function shadowDisc(spot: Texture, size: number): Mesh<PlaneGeometry, MeshBasicM
   const mesh = new Mesh(geo, new MeshBasicMaterial({ map: spot, color: new Color('#0a1035'), transparent: true, opacity: 0.45, depthWrite: false }));
   mesh.position.y = 0.006;
   mesh.renderOrder = 1;
+  mesh.visible = false;
   return mesh;
 }
 

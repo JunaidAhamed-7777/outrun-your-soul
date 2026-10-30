@@ -27,6 +27,7 @@ import { buildBackdrop, type Backdrop } from './backdrop';
 import { fitCamera, type CameraFit } from './camera';
 import { MODEL_IDS, worldToSim } from './contract';
 import { EffectSystem } from './effects';
+import { GroundBatch } from './groundBatch';
 import { BOLT_HEIGHT, BoltLayer, LaneLayer } from './hazards';
 import { disposeSharedMaterials } from './materials';
 import { PreviewView, RibbonView, TelegraphView } from './overlays';
@@ -149,13 +150,14 @@ export async function createRenderer(container: HTMLElement, options: RendererOp
   effects.reducedMotion = reducedMotion;
   const sentries = new Map<number, SentryView | WardenView | HeartView | BossBodyView>();
   const relicLayer = new RelicLayer(lib);
+  const ground = new GroundBatch(spot);
   const bossLayer = new BossLayer(lib, spot);
   let cpuMs = 0;
   let cpuMsMax = 0;
   let cpuWindowMax = 0;
   let cpuWindowStart = 0;
   const telegraphs = new Map<number, TelegraphView>();
-  scene.add(lanes.group, ribbon.group, relicLayer.group, bossLayer.group, soul.root, body.root, bolts.group, preview.group, effects.group);
+  scene.add(ground.shadows, ground.rings, lanes.group, ribbon.group, relicLayer.group, bossLayer.group, soul.root, body.root, bolts.group, preview.group, effects.group);
 
   const raycaster = new Raycaster();
   const groundPlane = new Plane(new Vector3(0, 1, 0), 0);
@@ -331,12 +333,22 @@ export async function createRenderer(container: HTMLElement, options: RendererOp
 
     body.update(state, alpha, dt, time, reducedMotion);
     soul.update(state, alpha, dt, time, reducedMotion, body.pos);
+    ground.begin();
+    if (state.body.mode !== 'exited') ground.shadow(body.pos, 0.85, 0.9);
+    if (soul.separation > 0.3) ground.shadow(soul.pos, 0.6, 0.45 * soul.separation);
 
     const seen = seenEnemies;
     seen.clear();
     for (const enemy of state.enemies) {
       seen.add(enemy.id);
       const kind = roleKind(enemy);
+      if (enemy.phase !== 'dead') {
+        if (kind === 'boss_heart') ground.shadow(enemy.pos, 0.5, 0.4);
+        else {
+          ground.shadow(enemy.pos, kind === 'warden' ? 1.3 : kind === 'boss_body' ? 1.4 : 1.0, 0.8);
+          if (kind === 'needler' || kind === 'keeper' || kind === 'unknown') ground.ring(enemy.pos, enemy.radius);
+        }
+      }
       let view = sentries.get(enemy.id);
       if (!view) {
         if (kind === 'warden') view = new WardenView(lib, spot, enemy);
@@ -374,6 +386,7 @@ export async function createRenderer(container: HTMLElement, options: RendererOp
       telegraphs.delete(id);
     }
 
+    ground.end(time, reducedMotion);
     const relics = relicView(state);
     ribbon.update(state, soul.pos, body.pos, dt, reducedMotion, relics.boosting);
     relicLayer.update(state, relics, soul.pos, body.pos, dt, reducedMotion);
@@ -563,6 +576,7 @@ export async function createRenderer(container: HTMLElement, options: RendererOp
       clearDynamic();
       relicLayer.dispose();
       bossLayer.dispose();
+      ground.dispose();
       iris.remove();
       body.dispose();
       soul.dispose();
