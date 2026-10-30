@@ -257,7 +257,7 @@ export interface DashPreview {
   readonly limitedBy: DashLimit;
   /** Predicted genuine body-soul contact during this dash, if any. end === contact.at then. */
   readonly contact: { readonly at: Vec2; readonly soulAt: Vec2 } | null;
-  /** Tether capacity left after the dash completes (0 when it reunites). */
+  /** Tether capacity free when the dash completes (the full capacity when it ends in a reunion). */
   readonly capacityAfter: number;
   /** Seconds for the soul to reach the dash endpoint along the route at current speed (forecast). */
   readonly soulArrivalSeconds: number;

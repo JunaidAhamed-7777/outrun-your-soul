@@ -183,6 +183,28 @@ At a safe reunited boundary, persist a versioned room-entry snapshot containing 
 
 Exact mid-room suspend is stretch. It would additionally require the full ordered route and endpoint progress, active movement, enemy/projectile timers and IDs, damage grace, objective state, pending committed command and RNG. Saving only endpoints and drawing a straight line is invalid.
 
+## Implemented resolution policy (simulation v1, 30 October 2026)
+
+This records what `src/sim` actually does. It is implementation evidence for automated tests only; none of it has been validated on a phone or with players.
+
+**Event ordering.** Each fixed step (1/120 s) is resolved as a sequence of exact events. Movers are piecewise linear (straight dash, soul and RETURN through route corners, straight bolts); collisions use closed-form times of impact, timers use remaining time, and the earliest event is resolved before anything else moves on. Entity array order never decides an outcome.
+
+**Exact ties** (events within 1e-7 s):
+
+1. projectile cuts, then outward-dash kills (player-favouring);
+2. endpoint hits, evaluated while dash protection and grace are still in their pre-tie state, so a contact or arrival at the same instant does not strip protection first;
+3. bolt removal at walls;
+4. body–soul contact or route exhaustion (reunion);
+5. dash arrival (protection ends), then lane, sentry, wake and bolt-age timers, then grace expiry, then recovery end (which runs a buffered intent).
+
+Within a kind: ascending entity ID, then body before soul. One attack ID damages at most once; a bolt is consumed by any endpoint contact and deals damage only outside grace. Lane overlap is re-evaluated when protection or grace ends, so standing in an active lane after either expires is a hit; entering it during dash travel or grace is reported as `shielded` and does not damage.
+
+**Contact.** Contact arms once the endpoints separate beyond combined radii + 0.12. At contact the anchor is the body position; the soul's full-radius sweep to it must be wall-clear (a convex corner can refuse it), and bolts/active lanes crossed by that bounded snap are resolved earliest-first as real soul hits. A refused contact keeps following and is re-checked while the endpoints overlap. Reunion cause is reported as `contact` (ended a dash, or a loop shortcut), `return`, or `exhaustion` (ordinary arrival along the route).
+
+**Previews** run the real step function on a private copy of the state (including the one-intent buffer), so walls, capacity, vertex cap, contact stops and queued execution match execution exactly; tests assert equality to 1e-12.
+
+**Tuning in use** (`src/sim/tuning.ts`, `ENEMY_TUNING` in `src/sim/enemies.ts`; all unvalidated): body/soul radius 0.3; dash 3 tiles at 15 tiles/s, minimum 0.35; recovery 0.15 s; input buffer 0.18 s; soul 2 tiles/s; RETURN 9 tiles/s; tether 6 tiles, 64 vertices; health 5; hit grace 0.75 s; wall skin 0.02. Needler: cooldown 1.7 s, tracking 0.9 s, locked 0.6 s, bolt 6 tiles/s radius 0.15, targets body. Keeper: cooldown 2.0 s, tracking 1.1 s, locked 0.6 s, bolt 4.5 tiles/s radius 0.17, targets soul. Sentry radius 0.42, one dash kills; RETURN after reunion also applies normal recovery. A valid outward dash issued during RETURN interrupts it from the current point.
+
 ## Mandatory acceptance cases — not yet passed
 
 1. Starting co-located dash departs normally; contact arms only after separation; tiny movements still reunite by route exhaustion.
