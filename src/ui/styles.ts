@@ -50,9 +50,12 @@ export const CSS = /* css */ `
 .oys-ui [hidden] { display: none !important; }
 
 /* ---------- buttons ---------- */
-.oys-ui button {
+/* Zero-specificity base so component classes below always win. */
+:where(.oys-ui) button {
   font: inherit;
   color: inherit;
+}
+.oys-ui button {
   pointer-events: auto;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
@@ -68,7 +71,7 @@ export const CSS = /* css */ `
   border-radius: 999px;
   background: linear-gradient(180deg, ${rgba('#ff6a3d', 1)}, var(--vermilion) 55%, var(--vermilion-dark));
   box-shadow: 0 1px 0 ${rgba('#ffffff', 0.35)} inset, 0 8px 22px ${rgba(p.vermilion_dark, 0.45)};
-  font-family: var(--font-display) !important;
+  font-family: var(--font-display);
   font-size: 19px;
   letter-spacing: 0.16em;
   text-transform: uppercase;
@@ -83,20 +86,21 @@ export const CSS = /* css */ `
   min-height: 46px;
   min-width: 180px;
 }
-.oys-toggle-row { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+.oys-toggle-row { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
 .oys-toggle {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   min-height: 44px;
-  padding: 0 16px 0 12px;
+  padding: 0 13px 0 10px;
   border-radius: 999px;
   border: 1px solid ${rgba(p.ivory, 0.3)};
   background: ${rgba(p.cobalt_deep, 0.4)};
-  font-size: 14px;
+  font-size: 13px;
   letter-spacing: 0.02em;
+  white-space: nowrap;
 }
-.oys-toggle svg { width: 20px; height: 20px; }
+.oys-toggle svg { width: 18px; height: 18px; }
 .oys-toggle[aria-pressed="true"] { border-color: ${rgba(p.gold, 0.85)}; color: #fff7e4; }
 .oys-toggle .oys-toggle-state { color: var(--ivory-dim); font-variant: all-small-caps; letter-spacing: 0.08em; }
 .oys-toggle[aria-pressed="true"] .oys-toggle-state { color: var(--gold); }

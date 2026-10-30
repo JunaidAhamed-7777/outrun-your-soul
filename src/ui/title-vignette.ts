@@ -37,17 +37,17 @@ export function createTitleVignette(): TitleVignette {
   svg.appendChild(make('path', { d: 'M 6 126 H 314', stroke: palette.gold, 'stroke-opacity': 0.18, 'stroke-width': 1, 'stroke-dasharray': '2 6' }));
 
   const routeShadow = make('path', { d: ROUTE, fill: 'none', stroke: palette.cobalt_deep, 'stroke-opacity': 0.55, 'stroke-width': 7, 'stroke-linecap': 'round', 'stroke-linejoin': 'round', transform: 'translate(0 3)' });
-  const ribbon = make('path', { d: ROUTE, fill: 'none', stroke: palette.vermilion, 'stroke-width': 4.5, 'stroke-linecap': 'round', 'stroke-linejoin': 'round' });
+  const ribbon = make('path', { d: ROUTE, fill: 'none', stroke: palette.vermilion, 'stroke-width': 5, 'stroke-linecap': 'round', 'stroke-linejoin': 'round' });
   const sheen = make('path', { d: ROUTE, fill: 'none', stroke: '#ffd2b8', 'stroke-opacity': 0.55, 'stroke-width': 1.2, 'stroke-linecap': 'round', 'stroke-linejoin': 'round' });
   const streak = make('line', { stroke: palette.ivory, 'stroke-width': 5, 'stroke-linecap': 'round', 'stroke-opacity': 0 });
   const ring = make('circle', { r: 10, fill: 'none', stroke: palette.gold, 'stroke-width': 2, opacity: 0 });
 
-  const soulHalo = make('circle', { r: 9, fill: palette.soul_glow, opacity: 0.55, filter: 'url(#oys-soul-glow)' });
-  const soul = make('circle', { r: 6, fill: palette.soul_core, stroke: '#ffffff', 'stroke-width': 1.2 });
+  const soulHalo = make('circle', { r: 11, fill: palette.soul_glow, opacity: 0.55, filter: 'url(#oys-soul-glow)' });
+  const soul = make('circle', { r: 7, fill: palette.soul_core, stroke: '#ffffff', 'stroke-width': 1.2 });
   const body = make('g', {});
-  body.appendChild(make('circle', { r: 7.5, fill: palette.ivory, stroke: palette.cobalt_deep, 'stroke-width': 1.2 }));
-  body.appendChild(make('rect', { x: -4.5, y: -2.2, width: 9, height: 2.6, rx: 1.3, fill: palette.mask_black }));
-  body.appendChild(make('path', { d: 'M -6 4 Q -12 9 -15 6', stroke: palette.vermilion, 'stroke-width': 2.4, fill: 'none', 'stroke-linecap': 'round' }));
+  body.appendChild(make('path', { d: 'M -7 4 Q -14 10 -18 6', stroke: palette.vermilion, 'stroke-width': 2.8, fill: 'none', 'stroke-linecap': 'round' }));
+  body.appendChild(make('circle', { r: 9, fill: palette.ivory, stroke: palette.cobalt_deep, 'stroke-width': 1.4 }));
+  body.appendChild(make('rect', { x: -5.5, y: -2.6, width: 11, height: 3, rx: 1.5, fill: palette.mask_black }));
 
   for (const node of [routeShadow, ribbon, sheen, streak, ring, soulHalo, soul, body]) svg.appendChild(node);
 
@@ -74,10 +74,15 @@ export function createTitleVignette(): TitleVignette {
     const sb = f.body * len;
     const ss = f.soul * len;
     const span = Math.max(0, sb - ss);
-    const dash = `0 ${ss} ${span} ${len * 2}`;
-    ribbon.setAttribute('stroke-dasharray', dash);
-    sheen.setAttribute('stroke-dasharray', dash);
-    routeShadow.setAttribute('stroke-dasharray', dash);
+    // Dash of the unpaid span only, shifted to start at the soul. A zero-length dash
+    // would still draw a round cap, so hide the thread entirely when reunited.
+    const dash = `${span} ${len * 2}`;
+    const visible = span > 0.5 ? '1' : '0';
+    for (const path of [ribbon, sheen, routeShadow]) {
+      path.setAttribute('stroke-dasharray', dash);
+      path.setAttribute('stroke-dashoffset', String(-ss));
+      path.setAttribute('opacity', visible);
+    }
     const pb = ribbon.getPointAtLength(sb);
     const ps = ribbon.getPointAtLength(ss);
     body.setAttribute('transform', `translate(${pb.x} ${pb.y})`);
