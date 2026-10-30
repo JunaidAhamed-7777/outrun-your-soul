@@ -25,6 +25,14 @@ export const TUTORIAL_STEPS: readonly TutorialStep[] = [
 /** Steps that dismiss themselves after this many simulation seconds as the current step. */
 export const TIMED_STEPS: Readonly<Record<string, number>> = { locked: 8 };
 
+/**
+ * Minimum seconds a step stays on screen before it can tick off, so the prompt can be
+ * read even when the player completes it at once (the soul often catches up within a
+ * second). Steps not listed use DEFAULT_READ_SECONDS.
+ */
+export const READ_SECONDS: Readonly<Record<string, number>> = { follow: 5 };
+export const DEFAULT_READ_SECONDS = 2.5;
+
 export interface TutorialView {
   readonly index: number;
   readonly total: number;
@@ -36,6 +44,9 @@ export interface TutorialView {
 const dead = (s: SimState, key: string) => s.enemies.some((e) => e.key === key && e.phase === 'dead');
 
 export class TutorialCoach {
+  /** Lessons the player has performed (in any order). */
+  private readonly met = new Set<string>();
+  /** Steps ticked off on screen, always in order. */
   private readonly done = new Set<string>();
   private last: string | null = null;
   /** The step currently shown and the sim time it became current. */
@@ -45,23 +56,30 @@ export class TutorialCoach {
   update(events: readonly SimEvent[], state: SimState): void {
     this.last = null;
     for (const e of events) {
-      if (e.type === 'dashStart') this.complete('dash');
+      if (e.type === 'dashStart') this.met.add('dash');
       if (e.type === 'reunion') {
-        this.complete('follow');
-        if (e.cause === 'contact') this.complete('contact');
+        this.met.add('follow');
+        if (e.cause === 'contact') this.met.add('contact');
       }
-      if (e.type === 'returnStart') this.complete('return');
-      if (e.type === 'victory') this.complete('gate');
+      if (e.type === 'returnStart') this.met.add('return');
+      if (e.type === 'victory') this.met.add('gate');
     }
-    if (dead(state, 'dummy')) this.complete('strike');
-    if (dead(state, 'needler')) this.complete('locked');
-    if (dead(state, 'keeper')) this.complete('keeper');
-    // Timed steps read once, then step aside.
+    if (dead(state, 'dummy')) this.met.add('strike');
+    if (dead(state, 'needler')) this.met.add('locked');
+    if (dead(state, 'keeper')) this.met.add('keeper');
+
+    // Tick off the current step once it is met (or timed out) and has been readable long enough.
     const current = TUTORIAL_STEPS.find((s) => !this.done.has(s.id));
     if (!current) return;
     if (this.shown?.id !== current.id) this.shown = { id: current.id, since: state.time };
+    const shownFor = state.time - this.shown.since;
     const limit = TIMED_STEPS[current.id];
-    if (limit !== undefined && state.time - this.shown.since >= limit) this.complete(current.id);
+    if (limit !== undefined && shownFor >= limit) this.met.add(current.id);
+    const readFor = READ_SECONDS[current.id] ?? DEFAULT_READ_SECONDS;
+    if (this.met.has(current.id) && shownFor >= readFor) {
+      this.done.add(current.id);
+      this.last = current.id;
+    }
   }
 
   get view(): TutorialView {
@@ -74,14 +92,13 @@ export class TutorialCoach {
     };
   }
 
-  isDone(id: string): boolean {
-    return this.done.has(id);
+  /** The lesson was performed (it may still be waiting its turn on screen). */
+  isMet(id: string): boolean {
+    return this.met.has(id);
   }
 
-  private complete(id: string): void {
-    if (this.done.has(id)) return;
-    this.done.add(id);
-    this.last = id;
+  isDone(id: string): boolean {
+    return this.done.has(id);
   }
 }
 
