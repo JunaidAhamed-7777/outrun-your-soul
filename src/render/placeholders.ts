@@ -321,6 +321,67 @@ export function wallBlockPlaceholder(): Group {
   return root;
 }
 
+/** Lane emitter: replaces a perimeter wall tile; aperture on the -Y (Three +Z) face, 0.2 m up. */
+export function laneEmitterPlaceholder(): Group {
+  const root = part('lane_emitter');
+  const block = piece(new BoxGeometry(1, 0.5, 1), 'gold_dark', 0.5, 0.25, -0.5);
+  const rod = piece(new CylinderGeometry(0.08, 0.08, 0.8, 6), 'lane_violet', 0.5, 0.56, -0.5);
+  rod.rotation.z = Math.PI / 2;
+  const body = part('lane_emitter_body', block, rod);
+  const aperture = new Object3D();
+  aperture.name = 'lane_emitter_aperture';
+  aperture.position.set(0.5, 0.2, 0);
+  root.add(body, aperture);
+  return root;
+}
+
+/** 2 x 1 exit-zone inlay, origin lower-left, top just above the floor. */
+export function thresholdInlayPlaceholder(): Group {
+  const root = part('threshold_inlay');
+  const slab = piece(new BoxGeometry(1.96, 0.02, 0.96), 'ivory_shadow', 1, -0.008, -0.5);
+  const rim = piece(new BoxGeometry(1.7, 0.024, 0.08), 'gold', 1, -0.006, -0.5);
+  root.add(part('threshold_inlay_inlay', slab, rim));
+  return root;
+}
+
+export function urnPlaceholder(): Group {
+  const root = part('urn');
+  root.add(part('urn_vessel', piece(new CylinderGeometry(0.14, 0.1, 0.32, 7), 'ivory', 0, 0.16, 0), piece(new CylinderGeometry(0.15, 0.15, 0.04, 7), 'gold', 0, 0.33, 0)));
+  return root;
+}
+
+export function bannerPostPlaceholder(): Group {
+  const root = part('banner_post');
+  const post = part('banner_post_post', piece(new CylinderGeometry(0.03, 0.04, 1.9, 5), 'gold', 0, 0.95, 0), piece(new BoxGeometry(0.7, 0.04, 0.04), 'gold', 0.33, 1.82, 0));
+  const cloth = part('banner_post_cloth', piece(new BoxGeometry(0.5, 0.8, 0.02), 'cobalt', 0, -0.42, 0));
+  cloth.position.set(0.33, 1.8, 0);
+  root.add(post, cloth);
+  return root;
+}
+
+export function lampPostPlaceholder(): Group {
+  const root = part('lamp_post');
+  root.add(part('lamp_post_lamp', piece(new CylinderGeometry(0.035, 0.05, 1.3, 5), 'gold_dark', 0, 0.65, 0), piece(new IcosahedronGeometry(0.12, 0), 'ivory', 0, 1.4, 0)));
+  return root;
+}
+
+/** "Signal House" station kiosk: house, swinging bell, semaphore arm on a mast at x = +1.2. */
+export function stationKioskPlaceholder(): Group {
+  const root = part('station_kiosk');
+  const house = part(
+    'station_kiosk_house',
+    piece(new BoxGeometry(1.6, 1.2, 1.2), 'ivory', 0, 0.6, 0),
+    piece(new ConeGeometry(1.2, 0.9, 4), 'cobalt', 0, 1.65, 0),
+    piece(new CylinderGeometry(0.04, 0.05, 2.6, 5), 'gold_dark', 1.2, 1.3, 0.07),
+  );
+  const bell = part('station_kiosk_bell', piece(new ConeGeometry(0.16, 0.24, 7), 'gold', 0, -0.12, 0));
+  bell.position.set(0, 2.84, 0);
+  const arm = part('station_kiosk_signal_arm', piece(new BoxGeometry(0.7, 0.07, 0.04), 'ivory', 0.35, 0, 0));
+  arm.position.set(1.2, 2.62, 0.07);
+  root.add(house, bell, arm);
+  return root;
+}
+
 export function placeholderFor(id: ModelId): Group {
   switch (id) {
     case 'courier_body':
@@ -345,5 +406,17 @@ export function placeholderFor(id: ModelId): Group {
       return gatePlaceholder();
     case 'distant_engine':
       return part('distant_engine');
+    case 'lane_emitter':
+      return laneEmitterPlaceholder();
+    case 'threshold_inlay':
+      return thresholdInlayPlaceholder();
+    case 'urn':
+      return urnPlaceholder();
+    case 'banner_post':
+      return bannerPostPlaceholder();
+    case 'lamp_post':
+      return lampPostPlaceholder();
+    case 'station_kiosk':
+      return stationKioskPlaceholder();
   }
 }
