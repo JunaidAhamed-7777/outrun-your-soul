@@ -244,7 +244,9 @@ export class SoulView {
     });
     this.glow = new Sprite(glowMat);
     this.glow.scale.set(0.75, 0.75, 1);
-    this.glow.renderOrder = 25;
+    // Drawn before the model and pushed back along the view so it halos the mask instead of
+    // washing over it.
+    this.glow.renderOrder = -1;
     this.root.add(this.shadow, this.glow, this.model, this.ring);
   }
 
@@ -284,9 +286,10 @@ export class SoulView {
     this.model.position.set(0, (1 - k) * 0.5 + float, (1 - k) * -0.12);
     if (this.wisp) this.wisp.rotation.z = reducedMotion ? 0 : Math.sin(time * 2.7) * 0.18;
     if (this.mask) this.mask.rotation.z = reducedMotion ? 0 : Math.sin(time * 1.3) * 0.06;
-    this.glow.position.set(0, (0.55 * scale + (1 - k) * 0.5) + float, 0);
+    // Offset away from the camera (back along the 55 degree view: down and north).
+    this.glow.position.set(0, 0.55 * scale + (1 - k) * 0.5 + float - 0.25, -0.35);
     this.pulse = Math.max(0, this.pulse - dt * 2.5);
-    const glowSize = 0.6 + 0.45 * k + this.pulse * 0.7;
+    const glowSize = 0.6 + 0.3 * k + this.pulse * 0.6;
     this.glow.scale.set(glowSize, glowSize, 1);
     this.ring.visible = k > 0.5 && state.body.mode !== 'dead';
     this.shadow.visible = k > 0.3;
@@ -299,7 +302,7 @@ export class SoulView {
 
     // Defeat: the soul fades; victory: it rides into the gate with the body.
     const fading = state.outcome === 'defeat' ? 1 : 0;
-    (this.glow.material as SpriteMaterial).opacity = (0.55 + this.pulse * 0.35) * (1 - fading * 0.8);
+    (this.glow.material as SpriteMaterial).opacity = (0.4 + this.pulse * 0.4) * (1 - fading * 0.8);
   }
 
   dispose(): void {
@@ -428,7 +431,13 @@ export class GateView {
   private ready = 0;
   private flare = 0;
 
-  constructor(lib: ModelLibrary, spot: Texture, anchor: Vec2, private readonly exitGlow: Mesh<PlaneGeometry, MeshBasicMaterial>) {
+  constructor(
+    lib: ModelLibrary,
+    spot: Texture,
+    anchor: Vec2,
+    private readonly exitGlow: Mesh<PlaneGeometry, MeshBasicMaterial>,
+    private readonly threshold?: MeshToonMaterial,
+  ) {
     this.root.name = 'gate_view';
     const model = lib.instance('exit_gate');
     this.doorL = findPart(model, 'exit_gate', 'door_left');
@@ -466,7 +475,14 @@ export class GateView {
     (this.shaft.material as SpriteMaterial).opacity = Math.min(1, shaftOpacity);
     const shaftSize = 2.2 + this.open * 0.8 + this.flare * 3;
     this.shaft.scale.set(shaftSize, shaftSize * 1.15, 1);
-    this.exitGlow.material.opacity = 0.08 + this.ready * (1 - this.open) * (0.25 + 0.25 * pulse) + this.open * 0.85;
+    this.exitGlow.material.opacity = this.ready * (1 - this.open) * (0.2 + 0.2 * pulse) + this.open * 0.7;
+    if (this.threshold) {
+      // Sealed: dim slate. Ready: gold trim breathes. Open: the inlay glows.
+      const glow = this.ready * (1 - this.open) * (0.22 + 0.28 * pulse) + this.open * 0.75;
+      this.threshold.emissiveIntensity = glow;
+      const k = 0.62 + 0.38 * this.ready;
+      this.threshold.color.setRGB(k, k, k);
+    }
   }
 
   dispose(): void {

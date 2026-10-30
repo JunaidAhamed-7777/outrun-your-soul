@@ -5,6 +5,7 @@
  */
 import {
   AdditiveBlending,
+  Box3,
   BoxGeometry,
   BufferAttribute,
   Color,
@@ -14,6 +15,7 @@ import {
   Matrix4,
   Mesh,
   MeshBasicMaterial,
+  MeshToonMaterial,
   OctahedronGeometry,
   PlaneGeometry,
   Quaternion,
@@ -31,7 +33,7 @@ import { instanceTemplate, type Placement } from './instancing';
 import { sharedToon, toon } from './materials';
 import { color } from './palette';
 import { faceted } from './placeholders';
-import { softBox, stoneTile, verticalGradient } from './textures';
+import { softBox, stoneTile, thresholdInlay, verticalGradient } from './textures';
 
 /** Deterministic per-tile hash in [0, 1). Decorative only. */
 export function tileHash(x: number, y: number): number {
@@ -61,6 +63,8 @@ export interface RoomView {
   readonly gateAnchor: Vec2;
   /** Additive floor glow over the exit rect (opacity driven by gate state). */
   readonly exitGlow: Mesh<PlaneGeometry, MeshBasicMaterial>;
+  /** Threshold inlay material; its emissive gold is driven by the gate state. */
+  readonly thresholdMaterial: MeshToonMaterial;
   dispose(): void;
 }
 
@@ -145,12 +149,19 @@ export function buildRoomView(room: RoomDef, lib: ModelLibrary): RoomView {
   floorMaterial.map = stone;
   disposables.push(stone, floorMaterial);
   group.add(instanceTemplate(floorTemplate, floorPlacements, 'floor', floorMaterial));
-  group.add(instanceTemplate(floorTemplate, thresholdPlacements, 'threshold', sharedToon('wall_cap')));
+  // Exit threshold: dark slate inlay with gold trim, distinct from both floor and wall coping.
+  const inlay = thresholdInlay();
+  const thresholdMaterial = toon(new Color('#ffffff'));
+  thresholdMaterial.map = inlay;
+  thresholdMaterial.emissive = color('gold');
+  thresholdMaterial.emissiveIntensity = 0;
+  disposables.push(inlay, thresholdMaterial);
+  group.add(instanceTemplate(floorTemplate, thresholdPlacements, 'threshold', thresholdMaterial));
 
   // Interior walls and perimeter.
   const wallPlacements: Placement[] = [];
-  // Interior obstacles: warm sand caps, a step below the ivory of the courier.
-  const sand = new Color(0.88, 0.84, 0.8);
+  // Interior obstacles: warm stone caps a clear step below the ivory courier, deep cobalt sides.
+  const sand = new Color(0.8, 0.74, 0.7);
   for (const w of room.walls) {
     for (let y = w.y; y < w.y + w.h; y++) for (let x = w.x; x < w.x + w.w; x++) wallPlacements.push({ matrix: placeAt(x, y), tint: sand });
   }
@@ -170,6 +181,7 @@ export function buildRoomView(room: RoomDef, lib: ModelLibrary): RoomView {
   const shadowRects: { x: number; y: number; w: number; h: number; o: number }[] = [];
   for (const w of room.walls) {
     shadowRects.push({ x: w.x - 0.2, y: w.y - 0.12, w: w.w + 0.32, h: w.h + 0.5, o: 1 });
+    shadowRects.push({ x: w.x - 0.16, y: w.y - 0.16, w: w.w + 0.32, h: w.h + 0.32, o: 0.85 });
   }
   shadowRects.push({ x: room.width - 0.55, y: -0.2, w: 0.75, h: room.height + 0.4, o: 0.9 });
   shadowRects.push({ x: -0.2, y: room.height - 0.35, w: room.width + 0.4, h: 0.55, o: 0.6 });
@@ -214,6 +226,34 @@ export function buildRoomView(room: RoomDef, lib: ModelLibrary): RoomView {
     disposables.push(m.geometry, m.material);
   }
 
+  // Ink outline around every interior wall cap so obstacles read as solid blocks at phone size.
+  const capTop = new Box3().setFromObject(lib.template('wall_block')).max.y + 0.004;
+  const ink: BufferGeometry[] = [];
+  const lineW = 0.05;
+  for (const w of room.walls) {
+    const edges: [number, number, number, number][] = [
+      [w.x, w.y, w.w, lineW],
+      [w.x, w.y + w.h - lineW, w.w, lineW],
+      [w.x, w.y, lineW, w.h],
+      [w.x + w.w - lineW, w.y, lineW, w.h],
+    ];
+    for (const [ex, ey, ew, eh] of edges) {
+      const g = new PlaneGeometry(ew, eh);
+      g.rotateX(-Math.PI / 2);
+      g.translate(ex + ew / 2, capTop, -(ey + eh / 2));
+      ink.push(g);
+    }
+  }
+  if (ink.length) {
+    const inkGeo = mergeGeometries(ink)!;
+    ink.forEach((g) => g.dispose());
+    const inkMat = new MeshBasicMaterial({ color: new Color('#0c1440') });
+    const inkMesh = new Mesh(inkGeo, inkMat);
+    inkMesh.name = 'wall_ink';
+    group.add(inkMesh);
+    disposables.push(inkGeo, inkMat);
+  }
+
   // Exit glow: warm light rising from the threshold toward the gate.
   // Gate origin: centre of the 2-tile opening in the north perimeter row (docs/ASSET_CONTRACT.md).
   const gateAnchor: Vec2 = { x: room.exit.x + room.exit.w / 2, y: room.height + 0.5 };
@@ -244,6 +284,7 @@ export function buildRoomView(room: RoomDef, lib: ModelLibrary): RoomView {
     group,
     gateAnchor,
     exitGlow,
+    thresholdMaterial,
     dispose() {
       for (const d of disposables) d.dispose();
       group.removeFromParent();

@@ -219,7 +219,7 @@ export async function createRenderer(container: HTMLElement, options: RendererOp
       backdrop = buildBackdrop(next, pitch, lib);
       scene.background = backdrop.background;
       scene.add(backdrop.group);
-      gate = new GateView(lib, spot, roomView.gateAnchor, roomView.exitGlow);
+      gate = new GateView(lib, spot, roomView.gateAnchor, roomView.exitGlow, roomView.thresholdMaterial);
       scene.add(gate.root);
       // Warm low sun from the south-east so the camera sees lit faces.
       sun.position.set(next.width / 2 + 6, 9, -next.height / 2 + 7);
