@@ -461,6 +461,11 @@ export const CSS = /* css */ `
   .oys-ui *, .oys-ui *::before, .oys-ui *::after { animation-duration: 1ms !important; animation-iteration-count: 1 !important; }
 }
 @media (min-height: 760px) { .oys-hint { font-size: 16px; } }
+/* Narrow phones: keep both settings toggles on one row. */
+@media (max-width: 340px) {
+  .oys-toggle { font-size: 12px; padding: 0 10px 0 8px; gap: 5px; }
+  .oys-toggle svg { width: 16px; height: 16px; }
+}
 /* Short phones (e.g. 320x568): tighten the title so it never needs scrolling. */
 @media (max-height: 660px) {
   .oys-card { padding: 10px 12px; gap: 2px 12px; }
@@ -470,6 +475,10 @@ export const CSS = /* css */ `
   .oys-card-text { font-size: 13px; }
   .oys-cards { gap: 8px; }
   .oys-choice { padding-top: calc(var(--safe-top) + 8px); }
+  .oys-title .oys-controls-line { display: none; }
+  .oys-title.has-continue .oys-vignette-svg { width: min(62vw, 260px); }
+  .oys-title.has-continue .oys-title-bottom { gap: 8px; }
+  .oys-continue-cap { margin-top: -6px; }
   .oys-panel { gap: 12px; }
   .oys-title-top { margin-top: 0; gap: 8px; }
   .oys-wordmark .w1 { font-size: clamp(36px, 12vw, 64px); }

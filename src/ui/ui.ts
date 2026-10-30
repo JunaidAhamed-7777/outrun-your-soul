@@ -368,6 +368,7 @@ export function createUI(container: HTMLElement, initialSettings: Settings, call
     hideResult();
     hideChoice();
     const primary = buildTitleActions(opts);
+    title.classList.toggle('has-continue', opts.canContinue);
     titleVisible = true;
     title.hidden = false;
     vignette.start();
