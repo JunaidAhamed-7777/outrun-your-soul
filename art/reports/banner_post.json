@@ -1,0 +1,50 @@
+{
+  "asset_id": "banner_post",
+  "status": "exported",
+  "author": "original (script-authored in Blender via the pinned Blender MCP bridge)",
+  "created_at": "2026-10-30T15:16:21+00:00",
+  "blender_version": "5.2.2 LTS",
+  "exporter_version": "5.2.40",
+  "source_path": "art/source/environment.blend",
+  "export": {
+    "path": "public/assets/models/banner_post.glb",
+    "bytes": 21348,
+    "sha256": "47b583234aeec0387074264eb6c3a70169643895de8edf3c332ecf8e21b492e4"
+  },
+  "preview": "art/previews/banner_post-game-camera.png",
+  "measured": {
+    "triangles": 326,
+    "materials": [
+      "cobalt",
+      "gold",
+      "ivory"
+    ],
+    "material_count": 3,
+    "bounds_min": [
+      -0.14,
+      -0.14,
+      0.0
+    ],
+    "bounds_max": [
+      0.6313,
+      0.14,
+      2.12
+    ],
+    "dimensions": [
+      0.7713,
+      0.28,
+      2.12
+    ],
+    "parts": [
+      "banner_post",
+      "banner_post_cloth",
+      "banner_post_post"
+    ]
+  },
+  "budget": {
+    "triangles": 400,
+    "materials": 3
+  },
+  "within_budget": true,
+  "notes": "Nonblocking decor. Pennant part banner_post_cloth hangs from its pivot on the crossbar; sway it about local X. Prefer east/west/north placements (tall posts on the south edge cover the bottom rows)."
+}
