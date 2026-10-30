@@ -132,3 +132,40 @@ describe('cue helpers', () => {
     expect(panFor({ x: 4, y: 0 }, { roomWidth: 0, dashMax: 3 })).toBe(0);
   });
 });
+
+describe('defensive mapping for new and unknown events', () => {
+  const loose = (e: Record<string, unknown>) => cuesForEvent(e as unknown as SimEvent, ctx, createCueMemory());
+
+  it('ignores unknown or malformed event types safely', () => {
+    expect(loose({ type: 'somethingNew', t: 0 })).toEqual([]);
+    expect(loose({ t: 0 })).toEqual([]);
+    expect(loose({ type: 42 })).toEqual([]);
+    expect(loose({ type: 'toString' })).toEqual([]);
+    expect(loose({ type: '__proto__' })).toEqual([]);
+  });
+
+  it('maps relic and warden events announced by the simulation', () => {
+    const cases: [string, string][] = [
+      ['boost', 'boost'],
+      ['charge', 'bellCharge'],
+      ['burst', 'bellBurst'],
+      ['decoyPlaced', 'decoyPlace'],
+      ['decoyTaken', 'decoyTake'],
+      ['guarded', 'guardClang'],
+      ['sweep', 'sweepWhoosh'],
+      ['exposed', 'exposedChime'],
+    ];
+    for (const [type, cue] of cases) {
+      const out = loose({ type, t: 0, at: { x: 8, y: 2 } });
+      expect(out.map((c) => c.cue), type).toEqual([cue]);
+      expect(out[0]?.pan, type).toBeCloseTo(0.65);
+      expect(CUE_SPECS[out[0]?.cue ?? 'tug'], type).toBeDefined();
+    }
+  });
+
+  it('tolerates missing or bad positions on loose events', () => {
+    expect(loose({ type: 'guarded', t: 0 })[0]?.pan).toBe(0);
+    expect(loose({ type: 'guarded', t: 0, at: { x: 'a', y: 1 } })[0]?.pan).toBe(0);
+    expect(loose({ type: 'burst', t: 0, pos: { x: 0, y: 0 } })[0]?.pan).toBeCloseTo(-0.65);
+  });
+});

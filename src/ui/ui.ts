@@ -1,21 +1,40 @@
 /**
- * DOM overlay: title, HUD, hints, pause/settings, results and fatal errors.
- * Presentation only — it never advances or alters the simulation. The HUD layer is
- * pointer-transparent so gestures reach the play surface; only real buttons and
- * full-screen panels take input.
+ * DOM overlay: title, HUD, hints, pause/settings, results, run choices (starter,
+ * route, station draft), room intro, ending and fatal errors.
+ * Presentation only — it never advances or alters the simulation or the run. The
+ * HUD layer is pointer-transparent so gestures reach the play surface; only real
+ * buttons and full-screen panels take input.
  *
  * Button handlers update the overlay themselves (Begin hides the title, Resume hides
- * the pause panel, ...) and then notify the callbacks, so show/hide calls from the
- * integration are idempotent. Settings are not persisted here: onSettingsChange
- * receives a fresh copy for the integration to save and apply.
+ * the pause panel, a pick hides its choice panel, ...) and then notify the callbacks,
+ * so show/hide calls from the integration are idempotent. Settings are not persisted
+ * here: onSettingsChange receives a fresh copy for the integration to save and apply.
  */
+import type { UiSound } from '../audio/audio';
 import type { RoomDef, SimEvent, SimState } from '../sim/types';
 import type { Settings } from '../save/settings';
+import { button, el, iconSpan } from './dom';
+import type { DraftView, RelicView } from './draft-logic';
 import { HintTracker } from './hints';
 import { gateLabel, healthLabel, healthPips, resultStats, threadMeter, type ThreadState } from './hud-logic';
 import { ICONS } from './icons';
+import { relicIconSvg } from './relic-icons';
+import {
+  draftContent,
+  endingContent,
+  routeContent,
+  starterContent,
+  type EndingView,
+  type PanelContent,
+  type PanelEnv,
+  type RouteChoice,
+  type StarterOption,
+} from './run-panels';
 import { injectStyles } from './styles';
 import { createTitleVignette } from './title-vignette';
+
+export type { DraftView, RelicView } from './draft-logic';
+export type { EndingView, RouteChoice, StarterOption } from './run-panels';
 
 export interface UICallbacks {
   onStart(): void;
@@ -23,11 +42,42 @@ export interface UICallbacks {
   onRestart(): void;
   onPause(): void;
   onSettingsChange(s: Settings): void;
+  /** Title 'Continue' (room-entry checkpoint). Falls back to onStart when absent. */
+  onContinue?(): void;
+  /** Title 'New expedition' when a save exists. Falls back to onStart when absent. */
+  onNewRun?(): void;
+  /** Interface sounds for the new panels (wire to GameAudio.ui). */
+  onSound?(name: UiSound): void;
+}
+
+export interface TitleOptions {
+  readonly canContinue: boolean;
+  /** e.g. "Needle Gallery · 4 health"; shown under the Continue caption. */
+  readonly continueDetail?: string;
+}
+
+export interface ResultOptions {
+  readonly primaryLabel?: string;
+  /** Replaces onRestart for the primary button. */
+  readonly onPrimary?: () => void;
+  readonly secondaryLabel?: string;
+  readonly onSecondary?: () => void;
+  /** Replaces the default note under the buttons ('' hides it). */
+  readonly note?: string;
+}
+
+export interface LoadoutChip {
+  readonly id: string;
+  readonly name: string;
+  readonly charge?: number;
+  readonly maxCharge?: number;
+  /** e.g. a running Needlesong boost. */
+  readonly active?: boolean;
 }
 
 export interface GameUI {
   readonly root: HTMLElement;
-  showTitle(): void;
+  showTitle(opts?: TitleOptions): void;
   hideTitle(): void;
   showHud(room: RoomDef): void;
   hideHud(): void;
@@ -35,7 +85,7 @@ export interface GameUI {
   handleEvents(events: readonly SimEvent[], state: SimState): void;
   showPause(reason: 'user' | 'interrupted'): void;
   hidePause(): void;
-  showResult(kind: 'victory' | 'defeat', state: SimState): void;
+  showResult(kind: 'victory' | 'defeat', state: SimState, opts?: ResultOptions): void;
   hideResult(): void;
   showFatal(title: string, detail: string): void;
   setStorageNotice(available: boolean): void;
@@ -44,32 +94,28 @@ export interface GameUI {
   setSettings(s: Settings): void;
   /** Additive: remove listeners and DOM (labs, tests, hot reload). */
   destroy(): void;
-}
-
-type Attrs = Record<string, string>;
-
-function el<K extends keyof HTMLElementTagNameMap>(
-  tag: K,
-  className = '',
-  attrs: Attrs = {},
-  children: (Node | string)[] = [],
-): HTMLElementTagNameMap[K] {
-  const node = document.createElement(tag);
-  if (className) node.className = className;
-  for (const [k, v] of Object.entries(attrs)) node.setAttribute(k, v);
-  for (const child of children) node.append(child);
-  return node;
-}
-
-function iconSpan(svg: string): HTMLSpanElement {
-  const span = document.createElement('span');
-  span.style.display = 'contents';
-  span.innerHTML = svg; // static, author-controlled SVG strings only
-  return span;
+  // ---- run layer (phase 2) ----
+  showStarterSelect(options: readonly StarterOption[], onPick: (id: string) => void): void;
+  showRouteChoice(title: string, choices: readonly RouteChoice[], onPick: (id: string) => void): void;
+  showDraft(view: DraftView, onDone: (pick: string | null, replaceIndex?: number) => void): void;
+  showEnding(view: EndingView, onAgain: () => void): void;
+  /** Hide whichever choice panel (starter/route/draft/ending) is open. */
+  hideChoice(): void;
+  readonly choosing: boolean;
+  setLoadout(relics: readonly LoadoutChip[]): void;
+  showRoomIntro(name: string, subtitle: string, depthLabel: string): void;
+  setSaveNotice(available: boolean): void;
 }
 
 const STORAGE_NOTICE = 'Settings can’t be saved in this browser; they will reset when you leave.';
+const SAVE_NOTICE = 'Saving unavailable — progress lasts this session only.';
 const INTERRUPTED_NOTE = 'Paused — your gesture was cancelled.';
+/** Mirrors CONTINUE_LABEL in src/save/checkpoint.ts (asserted by tests). */
+export const CONTINUE_CAPTION = 'Continue restarts this room.';
+const CONFIRM_NEW = 'Tap again to replace your saved room';
+const CONFIRM_MS = 3500;
+/** Room intro: fade in, hold, fade out; never intercepts input. */
+export const ROOM_INTRO_MS = 1600;
 
 interface Toggle {
   readonly button: HTMLButtonElement;
@@ -79,30 +125,28 @@ interface Toggle {
 export function createUI(container: HTMLElement, initialSettings: Settings, callbacks: UICallbacks): GameUI {
   injectStyles(document);
   let settings: Settings = { ...initialSettings };
+  const sound = (name: UiSound): void => callbacks.onSound?.(name);
 
   const root = el('div', 'oys-ui');
   root.classList.toggle('is-reduced', settings.reducedMotion);
   container.appendChild(root);
 
   // ---------------------------------------------------------------- toggles
-  const toggles: Toggle[] = [];
+  const toggleSyncs: (() => void)[] = [];
   function makeToggle(label: string, read: () => boolean, onIcon: string, offIcon: string, flip: () => void): Toggle {
     const icon = iconSpan('');
     const state = el('span', 'oys-toggle-state');
-    const button = el('button', 'oys-toggle', { type: 'button' }, [icon, el('span', '', {}, [label]), state]);
+    const b = button('oys-toggle', [icon, el('span', '', {}, [label]), state]);
     const toggle: Toggle = {
-      button,
+      button: b,
       set(on: boolean) {
-        button.setAttribute('aria-pressed', String(on));
+        b.setAttribute('aria-pressed', String(on));
         state.textContent = on ? 'on' : 'off';
         icon.innerHTML = on ? onIcon : offIcon;
       },
     };
-    button.addEventListener('click', () => {
-      flip();
-    });
+    b.addEventListener('click', () => flip());
     toggle.set(read());
-    toggles.push(toggle);
     return toggle;
   }
 
@@ -114,24 +158,15 @@ export function createUI(container: HTMLElement, initialSettings: Settings, call
     if (notify) callbacks.onSettingsChange({ ...settings });
   }
 
-  const toggleSyncs: (() => void)[] = [];
   function toggleRow(): HTMLElement {
-    const sound = makeToggle(
-      'Sound',
-      () => !settings.muted,
-      ICONS.soundOn,
-      ICONS.soundOff,
-      () => applySettings({ ...settings, muted: !settings.muted }, true),
+    const soundToggle = makeToggle('Sound', () => !settings.muted, ICONS.soundOn, ICONS.soundOff, () =>
+      applySettings({ ...settings, muted: !settings.muted }, true),
     );
-    const motion = makeToggle(
-      'Reduced motion',
-      () => settings.reducedMotion,
-      ICONS.motion,
-      ICONS.motion,
-      () => applySettings({ ...settings, reducedMotion: !settings.reducedMotion }, true),
+    const motion = makeToggle('Reduced motion', () => settings.reducedMotion, ICONS.motion, ICONS.motion, () =>
+      applySettings({ ...settings, reducedMotion: !settings.reducedMotion }, true),
     );
-    toggleSyncs.push(() => sound.set(!settings.muted), () => motion.set(settings.reducedMotion));
-    return el('div', 'oys-toggle-row', {}, [sound.button, motion.button]);
+    toggleSyncs.push(() => soundToggle.set(!settings.muted), () => motion.set(settings.reducedMotion));
+    return el('div', 'oys-toggle-row', {}, [soundToggle.button, motion.button]);
   }
 
   const storageNotices: HTMLElement[] = [];
@@ -141,11 +176,19 @@ export function createUI(container: HTMLElement, initialSettings: Settings, call
     storageNotices.push(note);
     return note;
   }
+  const saveNotices: HTMLElement[] = [];
+  let saveAvailable = true;
+  function saveNote(): HTMLElement {
+    const note = el('p', 'oys-note', { role: 'status' }, [SAVE_NOTICE]);
+    note.hidden = saveAvailable;
+    saveNotices.push(note);
+    return note;
+  }
 
   // ---------------------------------------------------------------- title
   const vignette = createTitleVignette();
   vignette.setReducedMotion(settings.reducedMotion);
-  const beginBtn = el('button', 'oys-btn', { type: 'button' }, ['Begin']);
+  const titleActions = el('div', 'oys-stack');
   const title = el('section', 'oys-panel oys-title', { 'aria-label': 'Outrun Your Soul' }, [
     el('div', 'oys-title-top', {}, [
       el('div', 'oys-eyebrow', {}, ['A funeral-railway escape']),
@@ -154,57 +197,99 @@ export function createUI(container: HTMLElement, initialSettings: Settings, call
     ]),
     vignette.svg,
     el('div', 'oys-title-bottom', {}, [
-      beginBtn,
+      titleActions,
       toggleRow(),
       storageNote(),
+      saveNote(),
       el('p', 'oys-controls-line', {}, [el('b', '', {}, ['Drag']), ' to dash · ', el('b', '', {}, ['Tap']), ' to return']),
     ]),
   ]);
   title.hidden = true;
-  beginBtn.addEventListener('click', () => {
-    hideTitle();
-    callbacks.onStart();
-  });
+  let confirmTimer: ReturnType<typeof setTimeout> | null = null;
+
+  function buildTitleActions(opts: TitleOptions): HTMLElement {
+    if (confirmTimer) clearTimeout(confirmTimer);
+    confirmTimer = null;
+    if (!opts.canContinue) {
+      const begin = button('oys-btn', 'Begin');
+      begin.addEventListener('click', () => {
+        hideTitle();
+        callbacks.onStart();
+      });
+      titleActions.replaceChildren(begin);
+      return begin;
+    }
+    const cont = button('oys-btn', 'Continue', { 'aria-describedby': 'oys-continue-cap' });
+    cont.addEventListener('click', () => {
+      hideTitle();
+      (callbacks.onContinue ?? callbacks.onStart)();
+    });
+    const nodes: HTMLElement[] = [cont, el('p', 'oys-continue-cap', { id: 'oys-continue-cap' }, [CONTINUE_CAPTION])];
+    if (opts.continueDetail) nodes.push(el('p', 'oys-continue-detail', {}, [opts.continueDetail]));
+    // Starting over replaces the saved room, so it takes a deliberate second tap.
+    const fresh = button('oys-btn oys-btn--ghost', 'New expedition');
+    let armed = false;
+    fresh.addEventListener('click', () => {
+      if (!armed) {
+        armed = true;
+        fresh.textContent = CONFIRM_NEW;
+        fresh.classList.add('is-confirm');
+        confirmTimer = setTimeout(() => {
+          armed = false;
+          fresh.textContent = 'New expedition';
+          fresh.classList.remove('is-confirm');
+        }, CONFIRM_MS);
+        return;
+      }
+      if (confirmTimer) clearTimeout(confirmTimer);
+      hideTitle();
+      (callbacks.onNewRun ?? callbacks.onStart)();
+    });
+    nodes.push(fresh);
+    titleActions.replaceChildren(...nodes);
+    return cont;
+  }
 
   // ---------------------------------------------------------------- HUD
   const health = el('div', 'oys-health', { role: 'img', 'aria-label': 'Health' });
+  const relicStrip = el('div', 'oys-relics', { role: 'list', 'aria-label': 'Relics' });
   const gate = el('div', 'oys-gate', { 'aria-live': 'polite' });
   const threadFill = el('div', 'oys-thread-fill');
   const thread = el('div', 'oys-thread', { role: 'meter', 'aria-label': 'Thread in use', 'aria-valuemin': '0' }, [
     iconSpan(ICONS.spool),
     el('div', 'oys-thread-track', {}, [threadFill]),
   ]);
-  const pauseBtn = el('button', 'oys-icon-btn', { type: 'button', 'aria-label': 'Pause' });
-  pauseBtn.append(iconSpan(ICONS.pause));
+  const pauseBtn = button('oys-icon-btn', [iconSpan(ICONS.pause)], { 'aria-label': 'Pause' });
   pauseBtn.addEventListener('click', () => {
-    if (pauseVisible || resultVisible) return;
+    if (pauseVisible || resultVisible || choiceVisible) return;
     showPause('user');
     callbacks.onPause();
   });
   const hint = el('div', 'oys-hint', { 'aria-live': 'polite' });
   const vignetteFlash = el('div', 'oys-vignette', { 'aria-hidden': 'true' });
+  const intro = el('div', 'oys-intro', { 'aria-live': 'polite' });
   const hud = el('div', 'oys-hud', {}, [
     vignetteFlash,
-    el('div', 'oys-hud-top', {}, [health, el('div', 'oys-hud-right', {}, [thread, pauseBtn])]),
+    el('div', 'oys-hud-top', {}, [
+      el('div', 'oys-hud-left', {}, [health, relicStrip]),
+      el('div', 'oys-hud-right', {}, [thread, pauseBtn]),
+    ]),
     gate,
     hint,
   ]);
   hud.hidden = true;
 
   // ---------------------------------------------------------------- pause
-  const pauseReason = el('p', 'oys-sub', {}, []);
-  const resumeBtn = el('button', 'oys-btn', { type: 'button' }, ['Resume']);
-  const restartBtn = el('button', 'oys-btn oys-btn--ghost', { type: 'button' }, ['Restart room']);
+  const pauseReason = el('p', 'oys-sub');
+  const resumeBtn = button('oys-btn', 'Resume');
+  const restartBtn = button('oys-btn oys-btn--ghost', 'Restart room');
   const pausePanel = el('section', 'oys-panel oys-scrim oys-pause', { role: 'dialog', 'aria-modal': 'true', 'aria-labelledby': 'oys-pause-h' }, [
-    el('div', 'oys-stack', {}, [
-      el('h2', 'oys-heading', { id: 'oys-pause-h' }, ['Paused']),
-      pauseReason,
-      el('div', 'oys-rule'),
-    ]),
+    el('div', 'oys-stack', {}, [el('h2', 'oys-heading', { id: 'oys-pause-h' }, ['Paused']), pauseReason, el('div', 'oys-rule')]),
     el('div', 'oys-stack', {}, [resumeBtn, restartBtn]),
     toggleRow(),
     el('p', 'oys-note', {}, ['Restarting returns you to this room’s entrance.']),
     storageNote(),
+    saveNote(),
   ]);
   pausePanel.hidden = true;
   resumeBtn.addEventListener('click', () => {
@@ -220,33 +305,45 @@ export function createUI(container: HTMLElement, initialSettings: Settings, call
   const resultHeading = el('h2', 'oys-heading', { id: 'oys-result-h' });
   const resultSub = el('p', 'oys-sub');
   const resultStatsList = el('dl', 'oys-stats');
-  const resultBtn = el('button', 'oys-btn', { type: 'button' });
+  const resultBtn = button('oys-btn', '');
+  const resultSecondary = button('oys-btn oys-btn--ghost', '');
   const resultNote = el('p', 'oys-note');
   const resultPanel = el('section', 'oys-panel oys-scrim oys-result', { role: 'dialog', 'aria-modal': 'true', 'aria-labelledby': 'oys-result-h' }, [
-    el('div', 'oys-stack', {}, [resultHeading, resultSub, el('div', 'oys-rule'), resultStatsList, resultBtn, resultNote]),
+    el('div', 'oys-stack', {}, [resultHeading, resultSub, el('div', 'oys-rule'), resultStatsList, resultBtn, resultSecondary, resultNote]),
   ]);
   resultPanel.hidden = true;
+  let resultPrimary: () => void = () => callbacks.onRestart();
+  let resultSecondaryAction: (() => void) | null = null;
   resultBtn.addEventListener('click', () => {
     hideResult();
-    callbacks.onRestart();
+    resultPrimary();
   });
+  resultSecondary.addEventListener('click', () => {
+    hideResult();
+    resultSecondaryAction?.();
+  });
+
+  // ---------------------------------------------------------------- choice panel (starter / route / draft / ending)
+  const choicePanel = el('section', 'oys-panel oys-scrim oys-choice', { role: 'dialog', 'aria-modal': 'true', 'aria-labelledby': 'oys-choice-h' });
+  choicePanel.hidden = true;
 
   // ---------------------------------------------------------------- fatal
   const fatalHeading = el('h2', 'oys-heading');
   const fatalDetail = el('p', 'oys-note');
-  const reloadBtn = el('button', 'oys-btn oys-btn--ghost', { type: 'button' }, ['Reload']);
+  const reloadBtn = button('oys-btn oys-btn--ghost', 'Reload');
   reloadBtn.addEventListener('click', () => location.reload());
   const fatalPanel = el('section', 'oys-panel oys-fatal', { role: 'alert' }, [
     el('div', 'oys-stack', {}, [fatalHeading, el('div', 'oys-rule'), fatalDetail, reloadBtn]),
   ]);
   fatalPanel.hidden = true;
 
-  root.append(hud, title, pausePanel, resultPanel, fatalPanel);
+  root.append(hud, intro, title, pausePanel, resultPanel, choicePanel, fatalPanel);
 
   // ---------------------------------------------------------------- state
   let titleVisible = false;
   let pauseVisible = false;
   let resultVisible = false;
+  let choiceVisible = false;
   let fatalVisible = false;
   let hudVisible = false;
   const hints = new HintTracker();
@@ -255,24 +352,34 @@ export function createUI(container: HTMLElement, initialSettings: Settings, call
   let lastThread = '';
   let lastGate: string | null = null;
   let lastHintId: string | null = null;
+  let lastLoadout = '';
   let pips: HTMLElement[] = [];
+  let introTimers: ReturnType<typeof setTimeout>[] = [];
 
-  function focusSoon(node: HTMLElement): void {
+  function focusSoon(node: HTMLElement | null): void {
+    if (!node) return;
     // After display change; preventScroll keeps the fixed layout still.
     requestAnimationFrame(() => node.focus({ preventScroll: true }));
   }
 
-  function showTitle(): void {
+  function showTitle(opts: TitleOptions = { canContinue: false }): void {
     if (fatalVisible) return;
+    hidePause();
+    hideResult();
+    hideChoice();
+    const primary = buildTitleActions(opts);
+    title.classList.toggle('has-continue', opts.canContinue);
     titleVisible = true;
     title.hidden = false;
     vignette.start();
-    focusSoon(beginBtn);
+    focusSoon(primary);
   }
   function hideTitle(): void {
     titleVisible = false;
     title.hidden = true;
     vignette.stop();
+    if (confirmTimer) clearTimeout(confirmTimer);
+    confirmTimer = null;
   }
 
   function renderPips(state: SimState): void {
@@ -322,11 +429,53 @@ export function createUI(container: HTMLElement, initialSettings: Settings, call
     hud.hidden = true;
   }
 
+  function setLoadout(relics: readonly LoadoutChip[]): void {
+    const key = JSON.stringify(relics.map((r) => [r.id, r.name, r.charge ?? null, r.maxCharge ?? null, Boolean(r.active)]));
+    if (key === lastLoadout) return;
+    lastLoadout = key;
+    relicStrip.replaceChildren(
+      ...relics.slice(0, 2).map((r) => {
+        const max = Math.max(0, Math.floor(r.maxCharge ?? 0));
+        const charge = Math.max(0, Math.min(max, Math.floor(r.charge ?? 0)));
+        const charged = max > 0 && charge >= max;
+        let label = r.name;
+        if (max > 0) label += charged ? ', charged' : `, ${charge} of ${max}`;
+        if (r.active) label += ', active';
+        const chip = el('span', 'oys-relic', { role: 'listitem', 'aria-label': label, title: label }, [
+          iconSpan(relicIconSvg(r.id, 20)),
+        ]);
+        chip.classList.toggle('is-active', Boolean(r.active));
+        chip.classList.toggle('is-charged', charged);
+        if (max > 0) {
+          chip.append(
+            el('span', 'oys-charges', { 'aria-hidden': 'true' }, Array.from({ length: max }, (_, i) => el('span', i < charge ? 'oys-charge is-full' : 'oys-charge'))),
+          );
+        }
+        return chip;
+      }),
+    );
+  }
+
+  function showRoomIntro(name: string, subtitle: string, depthLabel: string): void {
+    if (fatalVisible) return;
+    for (const timer of introTimers) clearTimeout(timer);
+    intro.replaceChildren(
+      el('div', 'oys-intro-depth', {}, [depthLabel]),
+      el('div', 'oys-intro-name', {}, [name]),
+      el('div', 'oys-intro-sub', {}, [subtitle]),
+    );
+    intro.classList.remove('is-on');
+    // Next frame so the fade-in transition runs even when re-shown.
+    void intro.offsetWidth;
+    intro.classList.add('is-on');
+    sound('roomIntro');
+    introTimers = [setTimeout(() => intro.classList.remove('is-on'), ROOM_INTRO_MS - 300)];
+  }
+
   function paintHint(): void {
     const current = hints.current;
-    const shownGate = lastGate;
     // The gate label already says this; never show the same words twice.
-    const visible = current && current.text !== shownGate ? current : null;
+    const visible = current && current.text !== lastGate ? current : null;
     const id = visible?.id ?? null;
     if (id === lastHintId) return;
     lastHintId = id;
@@ -362,8 +511,8 @@ export function createUI(container: HTMLElement, initialSettings: Settings, call
       gate.classList.toggle('is-on', label !== null);
       lastHintId = '\u0000'; // force a hint repaint for de-duplication
     }
-    // Hints do not age while the game is paused or finished.
-    const dt = pauseVisible || resultVisible ? 0 : Math.max(0, realDt);
+    // Hints do not age while the game is paused, choosing or finished.
+    const dt = pauseVisible || resultVisible || choiceVisible ? 0 : Math.max(0, realDt);
     if (hints.tick(dt) || lastHintId === '\u0000') paintHint();
   }
 
@@ -381,8 +530,8 @@ export function createUI(container: HTMLElement, initialSettings: Settings, call
   }
 
   function showPause(reason: 'user' | 'interrupted'): void {
-    // Title, results and fatal screens are already static; never stack a pause over them.
-    if (fatalVisible || titleVisible || resultVisible) return;
+    // Title, results, choices and fatal screens are already static; never stack a pause over them.
+    if (fatalVisible || titleVisible || resultVisible || choiceVisible) return;
     pauseReason.textContent = reason === 'interrupted' ? INTERRUPTED_NOTE : 'The courtyard waits.';
     if (pauseVisible) return;
     pauseVisible = true;
@@ -394,7 +543,7 @@ export function createUI(container: HTMLElement, initialSettings: Settings, call
     pausePanel.hidden = true;
   }
 
-  function showResult(kind: 'victory' | 'defeat', state: SimState): void {
+  function showResult(kind: 'victory' | 'defeat', state: SimState, opts: ResultOptions = {}): void {
     if (fatalVisible) return;
     hidePause();
     resultVisible = true;
@@ -403,16 +552,18 @@ export function createUI(container: HTMLElement, initialSettings: Settings, call
     if (kind === 'victory') {
       resultHeading.textContent = 'The gate opens.';
       resultSub.textContent = 'Body and soul pass through together.';
-      resultBtn.textContent = 'Again';
-      resultNote.textContent = '';
-      resultNote.hidden = true;
     } else {
       resultHeading.textContent = 'Your soul was lost.';
       resultSub.textContent = 'The railway keeps what it catches.';
-      resultBtn.textContent = 'Retry room';
-      resultNote.textContent = 'Retrying restarts this room from its entrance.';
-      resultNote.hidden = false;
     }
+    resultBtn.textContent = opts.primaryLabel ?? (kind === 'victory' ? 'Again' : 'Retry room');
+    resultPrimary = opts.onPrimary ?? (() => callbacks.onRestart());
+    resultSecondaryAction = opts.onSecondary ?? null;
+    resultSecondary.textContent = opts.secondaryLabel ?? '';
+    resultSecondary.hidden = !opts.secondaryLabel;
+    const note = opts.note ?? (kind === 'defeat' ? 'Retrying restarts this room from its entrance.' : '');
+    resultNote.textContent = note;
+    resultNote.hidden = note === '';
     resultStatsList.replaceChildren(
       ...resultStats(state).flatMap((line) => [el('dt', '', {}, [line.label]), el('dd', '', {}, [line.value])]),
     );
@@ -426,24 +577,45 @@ export function createUI(container: HTMLElement, initialSettings: Settings, call
     resultPanel.hidden = true;
   }
 
+  // ---------------------------------------------------------------- choices
+  const env: PanelEnv = { sound, close: () => hideChoice() };
+  const endingSaveNote = saveNote();
+
+  function openChoice(kind: string, content: PanelContent): void {
+    if (fatalVisible) return;
+    hidePause();
+    hideResult();
+    hideTitle();
+    choicePanel.className = `oys-panel oys-scrim oys-choice oys-${kind}`;
+    choicePanel.replaceChildren(...content.nodes);
+    choicePanel.scrollTop = 0;
+    choiceVisible = true;
+    choicePanel.hidden = false;
+    hint.classList.remove('is-on');
+    lastHintId = null;
+    focusSoon(content.focus);
+  }
+  function hideChoice(): void {
+    choiceVisible = false;
+    choicePanel.hidden = true;
+  }
+
   function showFatal(heading: string, detail: string): void {
     fatalVisible = true;
     hideTitle();
     hidePause();
     hideResult();
+    hideChoice();
     hideHud();
+    intro.classList.remove('is-on');
     fatalHeading.textContent = heading;
     fatalDetail.textContent = detail;
     fatalPanel.hidden = false;
     focusSoon(reloadBtn);
   }
 
-  function setStorageNotice(available: boolean): void {
-    for (const note of storageNotices) note.hidden = available;
-  }
-
   function onKey(e: KeyboardEvent): void {
-    if (e.key !== 'Escape' || fatalVisible || titleVisible || resultVisible || !hudVisible) return;
+    if (e.key !== 'Escape' || fatalVisible || titleVisible || resultVisible || choiceVisible || !hudVisible) return;
     e.preventDefault();
     if (pauseVisible) {
       hidePause();
@@ -468,7 +640,9 @@ export function createUI(container: HTMLElement, initialSettings: Settings, call
     showResult,
     hideResult,
     showFatal,
-    setStorageNotice,
+    setStorageNotice(available: boolean): void {
+      for (const note of storageNotices) note.hidden = available;
+    },
     get paused() {
       return pauseVisible;
     },
@@ -478,7 +652,32 @@ export function createUI(container: HTMLElement, initialSettings: Settings, call
     destroy(): void {
       document.removeEventListener('keydown', onKey);
       vignette.stop();
+      for (const timer of introTimers) clearTimeout(timer);
+      if (confirmTimer) clearTimeout(confirmTimer);
       root.remove();
+    },
+    showStarterSelect(options, onPick): void {
+      openChoice('starter', starterContent(options, onPick, env));
+    },
+    showRouteChoice(heading, choices, onPick): void {
+      openChoice('route', routeContent(heading, choices, onPick, env));
+    },
+    showDraft(view, onDone): void {
+      openChoice('draft', draftContent(view, onDone, env));
+    },
+    showEnding(view, onAgain): void {
+      openChoice(view.escaped ? 'ending is-escaped' : 'ending is-failed', endingContent(view, onAgain, env, endingSaveNote));
+      sound(view.escaped ? 'escaped' : 'failed');
+    },
+    hideChoice,
+    get choosing() {
+      return choiceVisible;
+    },
+    setLoadout,
+    showRoomIntro,
+    setSaveNotice(available: boolean): void {
+      saveAvailable = available;
+      for (const note of saveNotices) note.hidden = available;
     },
   };
 }
