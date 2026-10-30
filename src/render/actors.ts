@@ -26,6 +26,8 @@ import { findPart } from './placeholders';
 import { ringMaterial, setUniform } from './shaders';
 
 const GROUND = 0.018;
+/** Presentation scale for actor art; collision rings always show the true simulation radius. */
+export const ACTOR_SCALE = 1.18;
 
 export function lerpVec(a: Vec2, b: Vec2, t: number): Vec2 {
   return { x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t };
@@ -165,7 +167,7 @@ export class BodyView {
     this.squashKick = Math.max(0, this.squashKick - dt * 5);
     const squash = reducedMotion ? 0 : Math.sin(this.squashKick * Math.PI) * 0.12;
     const s = this.stretch * 0.22;
-    this.model.scale.set(1 - s * 0.4 + squash, 1 - s * 0.25 - squash, 1 + s);
+    this.model.scale.set((1 - s * 0.4 + squash) * ACTOR_SCALE, (1 - s * 0.25 - squash) * ACTOR_SCALE, (1 + s) * ACTOR_SCALE);
     if (this.torso) this.torso.rotation.x = this.lean;
     if (this.head) {
       this.head.rotation.x = this.lean * 0.6;
@@ -275,7 +277,7 @@ export class SoulView {
     const float = reducedMotion ? 0 : Math.sin(time * 1.9 + 0.7) * 0.035;
     // Merged: a small mask riding just behind and above the courier's head.
     const k = this.apart;
-    const scale = 0.5 + 0.5 * k;
+    const scale = (0.5 + 0.5 * k) * ACTOR_SCALE;
     this.model.scale.setScalar(scale);
     this.model.position.set(0, (1 - k) * 0.5 + float, (1 - k) * -0.12);
     if (this.wisp) this.wisp.rotation.z = reducedMotion ? 0 : Math.sin(time * 2.7) * 0.18;
@@ -338,6 +340,7 @@ export class SentryView {
       for (const m of list) if (m instanceof MeshToonMaterial && (m.name === 'eye' || node.name.endsWith('_eye'))) this.eyeMaterials.push(m);
     });
     this.model.rotation.y = yawForFacing(enemy.facing);
+    this.model.scale.setScalar(ACTOR_SCALE);
     this.headYaw = yawForFacing(enemy.aim);
     this.shadow = blobShadow(spot, 1.0, 0.4);
     this.ring = groundRing(enemy.radius, color('gold'), 0.035, 0.55, 16);

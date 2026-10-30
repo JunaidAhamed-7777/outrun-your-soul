@@ -154,6 +154,8 @@ export function buildBackdrop(room: RoomDef, pitch: number, lib: ModelLibrary): 
   cards.name = 'cards';
   cards.position.set(cx, 0, -(terraceY + 0.6));
   cards.rotation.x = -pitch;
+  // Card content is authored at ~1.6x; scaling it down reads as distance.
+  cards.scale.setScalar(0.62);
   group.add(cards);
 
   const basic = (hex: string, opacity = 1): MeshBasicMaterial => {

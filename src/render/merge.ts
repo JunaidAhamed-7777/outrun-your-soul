@@ -1,11 +1,16 @@
 /**
- * Draw-call reduction for model templates: within each animated part (the asset root and
- * every `<asset_id>_<part>` node), merge the static meshes that share a material into one
- * mesh. Part pivots, named sockets and per-material identity (used for tints and eye glow)
- * are preserved, so procedural animation and the asset contract are unaffected.
+ * Draw-call reduction for model templates. Within each animated part (the asset root and
+ * every `<asset_id>_<part>` node):
+ *  - opaque, non-emissive, untextured toon meshes are baked to vertex colours and merged into
+ *    ONE mesh sharing a vertex-colour toon material;
+ *  - remaining meshes (glowing eyes, translucent soul pieces, textured parts) merge only with
+ *    meshes sharing their exact material.
+ * Part pivots, named sockets and `_eye` nodes are preserved, so procedural animation and the
+ * asset contract are unaffected.
  */
-import { BufferGeometry, Matrix4, Mesh, Object3D, type Material } from 'three';
+import { BufferAttribute, BufferGeometry, Color, Matrix4, Mesh, MeshToonMaterial, Object3D, type Material } from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
+import { toonGradient } from './materials';
 
 function isPart(node: Object3D, id: string): boolean {
   return node.name.startsWith(`${id}_`) && !(node instanceof Mesh);
@@ -22,6 +27,41 @@ function ownedMeshes(part: Object3D, id: string, out: Mesh[]): void {
   }
 }
 
+function bakeable(material: Material): material is MeshToonMaterial {
+  return (
+    material instanceof MeshToonMaterial &&
+    !material.transparent &&
+    !material.map &&
+    (material.emissive.getHex() === 0 || material.emissiveIntensity === 0) &&
+    material.name !== 'eye'
+  );
+}
+
+/** Non-indexed copy in part space with position/normal/colour only. */
+function bakedGeometry(mesh: Mesh, toPart: Matrix4, tint: Color | null): BufferGeometry {
+  const src = mesh.geometry.index ? mesh.geometry.toNonIndexed() : mesh.geometry.clone();
+  src.applyMatrix4(toPart);
+  const out = new BufferGeometry();
+  const pos = src.getAttribute('position');
+  out.setAttribute('position', pos);
+  if (src.getAttribute('normal')) out.setAttribute('normal', src.getAttribute('normal'));
+  else out.computeVertexNormals();
+  if (tint) {
+    const colors = new Float32Array(pos.count * 3);
+    const existing = src.getAttribute('color');
+    for (let i = 0; i < pos.count; i++) {
+      const r = existing ? existing.getX(i) : 1;
+      const g = existing ? existing.getY(i) : 1;
+      const b = existing ? existing.getZ(i) : 1;
+      colors[i * 3] = r * tint.r;
+      colors[i * 3 + 1] = g * tint.g;
+      colors[i * 3 + 2] = b * tint.b;
+    }
+    out.setAttribute('color', new BufferAttribute(colors, 3));
+  }
+  return out;
+}
+
 function attributeSignature(g: BufferGeometry): string {
   return Object.keys(g.attributes).sort().join(',') + (g.index ? ':i' : ':n');
 }
@@ -33,22 +73,49 @@ export function mergeStaticMeshes(root: Object3D, id: string): number {
   });
   let removed = 0;
   root.updateMatrixWorld(true);
+  let vcMaterial: MeshToonMaterial | null = null;
+
   for (const part of parts) {
     const meshes: Mesh[] = [];
     ownedMeshes(part, id, meshes);
+    const toPart = (mesh: Mesh): Matrix4 => new Matrix4().copy(part.matrixWorld).invert().multiply(mesh.matrixWorld);
+
+    // 1) Bake plain opaque toon meshes into one vertex-coloured mesh.
+    const plain = meshes.filter((m) => bakeable(m.material as Material));
+    if (plain.length >= 2) {
+      const geos = plain.map((m) => bakedGeometry(m, toPart(m), (m.material as MeshToonMaterial).color));
+      const merged = mergeGeometries(geos, false);
+      geos.forEach((g) => g.dispose());
+      if (merged) {
+        if (!vcMaterial) {
+          vcMaterial = new MeshToonMaterial({ color: '#ffffff', vertexColors: true, gradientMap: toonGradient() });
+          vcMaterial.name = 'vc';
+        }
+        const mesh = new Mesh(merged, vcMaterial);
+        mesh.name = `${part.name}:vc`;
+        part.add(mesh);
+        for (const old of plain) {
+          old.removeFromParent();
+          old.geometry.dispose();
+          removed++;
+        }
+      }
+    }
+
+    // 2) Merge the rest only with identical materials.
+    const rest = meshes.filter((m) => m.parent !== null);
     const groups = new Map<string, Mesh[]>();
-    for (const mesh of meshes) {
+    for (const mesh of rest) {
       const key = `${(mesh.material as Material).uuid}|${attributeSignature(mesh.geometry)}`;
       const list = groups.get(key) ?? [];
       list.push(mesh);
       groups.set(key, list);
     }
-    const partInverse = new Matrix4().copy(part.matrixWorld).invert();
     for (const list of groups.values()) {
       if (list.length < 2) continue;
       const geos = list.map((mesh) => {
         const g = (mesh.geometry.index ? mesh.geometry.toNonIndexed() : mesh.geometry.clone()) as BufferGeometry;
-        g.applyMatrix4(new Matrix4().multiplyMatrices(partInverse, mesh.matrixWorld));
+        g.applyMatrix4(toPart(mesh));
         return g;
       });
       const merged = mergeGeometries(geos, false);

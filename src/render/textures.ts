@@ -2,7 +2,7 @@
  * Tiny procedural canvas textures (no external image assets, so no provenance burden).
  * Browser-only: callers run inside the renderer, never in simulation tests.
  */
-import { CanvasTexture, ClampToEdgeWrapping, LinearFilter, SRGBColorSpace } from 'three';
+import { CanvasTexture, ClampToEdgeWrapping, LinearFilter, LinearMipmapLinearFilter, SRGBColorSpace } from 'three';
 
 function canvas(w: number, h: number): [HTMLCanvasElement, CanvasRenderingContext2D] {
   const c = document.createElement('canvas');
@@ -44,6 +44,66 @@ export function radialSpot(inner = 0.0, size = 128): CanvasTexture {
   g.addColorStop(1, 'rgba(255,255,255,0)');
   ctx.fillStyle = g;
   ctx.fillRect(0, 0, size, size);
+  return finish(c);
+}
+
+/**
+ * Stone tile face used as a multiplicative map on the floor: bevelled edges (light top-left,
+ * dark bottom-right), soft mottling and a few hairline veins. Deterministic.
+ */
+export function stoneTile(size = 128, seed = 7): CanvasTexture {
+  const [c, ctx] = canvas(size, size);
+  let s = seed >>> 0;
+  const rand = (): number => {
+    s = (Math.imul(s, 1664525) + 1013904223) >>> 0;
+    return s / 4294967296;
+  };
+  ctx.fillStyle = '#d9d9d9';
+  ctx.fillRect(0, 0, size, size);
+  for (let i = 0; i < 70; i++) {
+    const r = 3 + rand() * 14;
+    const light = rand() < 0.5;
+    ctx.fillStyle = light ? `rgba(255,255,255,${0.05 + rand() * 0.07})` : `rgba(90,90,110,${0.04 + rand() * 0.06})`;
+    ctx.beginPath();
+    ctx.arc(rand() * size, rand() * size, r, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.strokeStyle = 'rgba(120,120,150,0.18)';
+  ctx.lineWidth = 1;
+  for (let v = 0; v < 2; v++) {
+    ctx.beginPath();
+    let x = rand() * size;
+    let y = 0;
+    ctx.moveTo(x, y);
+    while (y < size) {
+      x += (rand() - 0.5) * 18;
+      y += 8 + rand() * 14;
+      ctx.lineTo(x, y);
+    }
+    ctx.stroke();
+  }
+  const bevel = Math.max(3, size * 0.045);
+  ctx.fillStyle = 'rgba(255,255,255,0.55)';
+  ctx.fillRect(0, 0, size, bevel);
+  ctx.fillRect(0, 0, bevel, size);
+  ctx.fillStyle = 'rgba(40,40,70,0.35)';
+  ctx.fillRect(0, size - bevel, size, bevel);
+  ctx.fillRect(size - bevel, 0, bevel, size);
+  const t = finish(c);
+  t.generateMipmaps = true;
+  t.minFilter = LinearMipmapLinearFilter;
+  return t;
+}
+
+/** Soft-edged box (contact and cast shadows). White in the alpha channel; tint by material. */
+export function softBox(size = 64, steps = 10): CanvasTexture {
+  const [c, ctx] = canvas(size, size);
+  const step = size / 2 / (steps + 1);
+  for (let i = 0; i < steps; i++) {
+    ctx.fillStyle = `rgba(255,255,255,${1 / steps})`;
+    const inset = i * step;
+    ctx.fillRect(inset, inset, size - inset * 2, size - inset * 2);
+  }
   return finish(c);
 }
 

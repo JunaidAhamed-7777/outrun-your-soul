@@ -5,7 +5,7 @@
  * "Screen height" s of a point at simulation y with height h is y*sin(pitch) + h*cos(pitch):
  * ground depth is foreshortened, heights are shortened by cos(pitch).
  */
-export const PITCH_DEG = 58;
+export const PITCH_DEG = 55;
 /** Tiles of floor visible beside the room on narrow (width-limited) screens. */
 export const SIDE_MARGIN = 0.35;
 /** Minimum screen-space room below the south edge (thumb rest area, outer plaza). */
@@ -13,7 +13,7 @@ export const BOTTOM_MIN = 0.9;
 /** Minimum screen-space room above the north floor edge (north wall, gate, skyline). */
 export const TOP_MIN = 2.6;
 /** Share of spare vertical space given to the bottom (thumb) area on tall phones. */
-export const BOTTOM_SHARE = 0.42;
+export const BOTTOM_SHARE = 0.36;
 
 export interface CameraFitInput {
   readonly roomWidth: number;

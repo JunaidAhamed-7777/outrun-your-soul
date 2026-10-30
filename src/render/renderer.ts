@@ -72,6 +72,8 @@ export interface GameRenderer {
   readonly contextLost: boolean;
   /** Draw-call/triangle numbers from the last frame (dev diagnostics). */
   stats(): RenderStats;
+  /** Dev diagnostics only: visible renderables grouped by top-level scene child. */
+  drawBreakdown(): Record<string, number>;
 }
 
 export function isWebGL2Available(): boolean {
@@ -392,6 +394,17 @@ export async function createRenderer(container: HTMLElement, options: RendererOp
         pixelRatio: gl.getPixelRatio(),
         models,
       };
+    },
+    drawBreakdown() {
+      const out: Record<string, number> = {};
+      for (const child of scene.children) {
+        let n = 0;
+        child.traverseVisible((node) => {
+          if ((node as { isMesh?: boolean; isSprite?: boolean }).isMesh || (node as { isSprite?: boolean }).isSprite) n++;
+        });
+        if (n) out[child.name || child.type] = (out[child.name || child.type] ?? 0) + n;
+      }
+      return out;
     },
     dispose() {
       observer?.disconnect();

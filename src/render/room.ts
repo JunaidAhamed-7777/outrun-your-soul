@@ -9,23 +9,27 @@ import {
   Color,
   CylinderGeometry,
   Group,
+  InstancedMesh,
   Matrix4,
   Mesh,
   MeshBasicMaterial,
   OctahedronGeometry,
   PlaneGeometry,
   Quaternion,
+  RingGeometry,
   Vector3,
+  type BufferGeometry,
   type Object3D,
 } from 'three';
+import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import type { RoomDef } from '../sim/types';
 import type { Vec2 } from '../sim/vec';
 import type { ModelLibrary } from './assets';
 import { instanceTemplate, type Placement } from './instancing';
-import { sharedToon } from './materials';
+import { sharedToon, toon } from './materials';
 import { color } from './palette';
 import { faceted } from './placeholders';
-import { verticalGradient } from './textures';
+import { softBox, stoneTile, verticalGradient } from './textures';
 
 /** Deterministic per-tile hash in [0, 1). Decorative only. */
 export function tileHash(x: number, y: number): number {
@@ -153,7 +157,15 @@ export function buildRoomView(room: RoomDef, lib: ModelLibrary): RoomView {
     }
   }
   const floorTemplate = lib.template('floor_tile');
-  group.add(instanceTemplate(floorTemplate, floorPlacements, 'floor'));
+  let floorMaterial: ReturnType<typeof toon> | undefined;
+  if (lib.source('floor_tile') === 'placeholder') {
+    // Placeholder slabs get a stone face; Blender tiles keep their own material.
+    const stone = stoneTile();
+    floorMaterial = toon('cobalt');
+    floorMaterial.map = stone;
+    disposables.push(stone, floorMaterial);
+  }
+  group.add(instanceTemplate(floorTemplate, floorPlacements, 'floor', floorMaterial));
   group.add(instanceTemplate(floorTemplate, thresholdPlacements, 'threshold', sharedToon('wall_cap')));
 
   // Interior walls and perimeter.
@@ -161,15 +173,65 @@ export function buildRoomView(room: RoomDef, lib: ModelLibrary): RoomView {
   for (const w of room.walls) {
     for (let y = w.y; y < w.y + w.h; y++) for (let x = w.x; x < w.x + w.w; x++) wallPlacements.push({ matrix: placeAt(x, y) });
   }
+  // Perimeter stone is tinted down so interior obstacles stay the brightest architecture.
+  const rim = new Color(0.6, 0.64, 0.8);
   for (let y = -1; y <= room.height; y++) {
-    wallPlacements.push({ matrix: placeAt(-1, y, 1.4) });
-    wallPlacements.push({ matrix: placeAt(room.width, y, 1.4) });
+    wallPlacements.push({ matrix: placeAt(-1, y, 1.4), tint: rim });
+    wallPlacements.push({ matrix: placeAt(room.width, y, 1.4), tint: rim });
   }
   for (let x = 0; x < room.width; x++) {
-    if (!inExitColumn(room, x)) wallPlacements.push({ matrix: placeAt(x, room.height, 1.7) });
-    wallPlacements.push({ matrix: placeAt(x, -1, 0.34) });
+    if (!inExitColumn(room, x)) wallPlacements.push({ matrix: placeAt(x, room.height, 1.7), tint: rim });
+    wallPlacements.push({ matrix: placeAt(x, -1, 0.34), tint: rim });
   }
   group.add(instanceTemplate(lib.template('wall_block'), wallPlacements, 'walls'));
+
+  // Soft contact/cast shadows: sun from the south-east throws them north-west.
+  const shadowRects: { x: number; y: number; w: number; h: number; o: number }[] = [];
+  for (const w of room.walls) {
+    shadowRects.push({ x: w.x - 0.2, y: w.y - 0.12, w: w.w + 0.32, h: w.h + 0.5, o: 1 });
+  }
+  shadowRects.push({ x: room.width - 0.55, y: -0.2, w: 0.75, h: room.height + 0.4, o: 0.9 });
+  shadowRects.push({ x: -0.2, y: room.height - 0.35, w: room.width + 0.4, h: 0.55, o: 0.6 });
+  shadowRects.push({ x: -0.2, y: -0.2, w: room.width + 0.4, h: 0.38, o: 0.5 });
+  shadowRects.push({ x: -0.2, y: -0.2, w: 0.42, h: room.height + 0.4, o: 0.45 });
+  const shadowTex = softBox();
+  const shadowGeo = new PlaneGeometry(1, 1);
+  shadowGeo.rotateX(-Math.PI / 2);
+  const shadowMat = new MeshBasicMaterial({ map: shadowTex, color: new Color('#ffffff'), transparent: true, opacity: 0.55, depthWrite: false });
+  const shadows = new InstancedMesh(shadowGeo, shadowMat, shadowRects.length);
+  const sm = new Matrix4();
+  shadowRects.forEach((r, i) => {
+    tmpP.set(r.x + r.w / 2, 0.004, -(r.y + r.h / 2));
+    tmpS.set(r.w, 1, r.h);
+    sm.compose(tmpP, tmpQ.identity(), tmpS);
+    shadows.setMatrixAt(i, sm);
+    shadows.setColorAt(i, new Color('#050a28').lerp(new Color('#2443a3'), 1 - r.o));
+  });
+  shadows.renderOrder = 3;
+  shadows.name = 'wall_shadows';
+  group.add(shadows);
+  disposables.push(shadowTex, shadowGeo, shadowMat);
+
+  // Plaza emblem below the room (thumb rest area): a gold sun ring around a cobalt disc.
+  const goldParts: BufferGeometry[] = [new RingGeometry(1.05, 1.18, 40), new RingGeometry(0.62, 0.68, 32)];
+  for (let k = 0; k < 12; k++) {
+    const ray = new PlaneGeometry(0.07, k % 2 ? 0.3 : 0.5);
+    ray.translate(0, 1.18 + (k % 2 ? 0.15 : 0.25), 0);
+    ray.rotateZ((k / 12) * Math.PI * 2);
+    goldParts.push(ray);
+  }
+  const goldGeo = mergeGeometries(goldParts.map((g) => g.toNonIndexed()))!;
+  goldParts.forEach((g) => g.dispose());
+  goldGeo.rotateX(-Math.PI / 2);
+  const discGeo = new RingGeometry(0.7, 1.05, 40);
+  discGeo.rotateX(-Math.PI / 2);
+  const emblemGold = new Mesh(goldGeo, new MeshBasicMaterial({ color: new Color('#a7803a') }));
+  const emblemDisc = new Mesh(discGeo, new MeshBasicMaterial({ color: new Color('#1f3486') }));
+  for (const m of [emblemGold, emblemDisc]) {
+    m.position.set(room.width / 2, -0.095, 2.6);
+    group.add(m);
+    disposables.push(m.geometry, m.material);
+  }
 
   // Exit glow: warm light rising from the threshold toward the gate.
   const gateAnchor: Vec2 = { x: room.exit.x + room.exit.w / 2, y: room.height + 0.12 };

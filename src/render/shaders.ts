@@ -151,7 +151,7 @@ void main() {
     float rail = smoothstep(0.74, 0.8, c) * (1.0 - smoothstep(0.93, 1.0, c));
     float chev = step(0.55, fract(u * 1.5 + c * 0.6 - uTime * 2.2 * uMotion));
     float filled = 1.0 - step(uProgress * uLength, u);
-    float inner = (1.0 - smoothstep(0.66, 0.74, c)) * mix(0.16, 0.62, filled) * (0.55 + 0.45 * chev);
+    float inner = (1.0 - smoothstep(0.66, 0.74, c)) * mix(0.3, 0.82, filled) * (0.6 + 0.4 * chev);
     a = max(rail * mix(0.75, 1.0, filled), inner);
   }
   float endFade = 1.0 - smoothstep(uLength - 0.2, uLength, u);

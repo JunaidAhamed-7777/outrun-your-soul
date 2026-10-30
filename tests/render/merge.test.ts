@@ -34,6 +34,15 @@ describe('mergeStaticMeshes', () => {
     expect(needler.getObjectByName(partName('needler', 'eye'))).toBeTruthy();
   });
 
+  it('bakes opaque parts to one vertex-coloured mesh per animated part', () => {
+    const budgets: Record<string, number> = { courier_body: 6, needler: 4, keeper: 4, exit_gate: 4, wall_block: 1 };
+    for (const [id, budget] of Object.entries(budgets)) {
+      const model = placeholderFor(id as never);
+      mergeStaticMeshes(model, id);
+      expect(meshCount(model), id).toBeLessThanOrEqual(budget);
+    }
+  });
+
   it('merges the gate down to a handful of draw calls', () => {
     const gate = placeholderFor('exit_gate');
     const before = meshCount(gate);
