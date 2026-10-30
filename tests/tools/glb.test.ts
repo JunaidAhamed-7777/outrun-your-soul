@@ -84,6 +84,16 @@ describe('asset contract analysis', () => {
     expect(warnings).toMatch(/negative scale/);
   });
 
+  it('holds the boss to the Warden row: materials over 3 warn, triangles over 4000 fail', () => {
+    const json = parseGlb(buildGlb({ nodes: [{ name: 'last_warden_heart', mesh: 0 }], roots: [0], quadScale: 0.5 })).json;
+    json.meshes[0].primitives = [0, 1, 2, 3].map((material) => ({ ...json.meshes[0].primitives[0], material }));
+    json.materials = ['gold', 'gold_dark', 'vermilion', 'vermilion_dark'].map((name) => ({ name }));
+    const a = analyzeGltf(json, 'last_warden_heart');
+    expect(a.category).toBe('boss');
+    expect(a.errors).toEqual([]);
+    expect(a.warnings.join()).toMatch(/4 materials exceeds 3/);
+  });
+
   it('enforces triangle budgets and counts instanced meshes per node', () => {
     // 401 instances of a 2-triangle quad = 802 triangles > 800 module budget.
     const children = Array.from({ length: 401 }, (_, i) => i + 1);

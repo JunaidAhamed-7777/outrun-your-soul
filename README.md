@@ -39,7 +39,7 @@ The foundation is a deterministic 2D combat simulation with an orthographic Thre
 
 ## Development commands
 
-Requires Node.js (developed with v26.8.1) and npm. Dependencies are pinned to exact versions in `package-lock.json` (TypeScript 7.0.2, Vite 8.3.5, Vitest 5.0.5, Three.js 0.187.0; release tooling uses fflate 0.8.3 and the Khronos glTF Validator 2.0.0-dev.3.10).
+Requires Node.js (developed with v26.8.1) and npm. Dependencies are pinned to exact versions in `package-lock.json` (TypeScript 7.0.2, Vite 8.3.5, Vitest 5.0.5, Three.js 0.187.0; release tooling uses fflate 0.8.3, the Khronos glTF Validator 2.0.0-dev.3.10 and playwright-core 1.64.1).
 
 | Command | What it does |
 |---|---|
@@ -53,6 +53,7 @@ Requires Node.js (developed with v26.8.1) and npm. Dependencies are pinned to ex
 | `npm run check:nested` | Serve `dist/` (or `-- --zip release/<name>.zip`, or `-- --zip latest`) under an itch-like nested, case-sensitive path inside a cross-origin iframe and crawl every reference; fails on any non-200. `-- --serve` keeps it running so the printed embed URL can be opened in a browser. |
 | `npm run check:models` | Validate `public/assets/models/*.glb` (shipping) and `art/exports/*.glb` (fixtures, never shipped) with the Khronos glTF Validator plus the asset-contract and budget checks; writes `art/reports/models-validation.json`. |
 | `npm run verify` | Typecheck, tests, build, package, model validation and the nested crawl of the exact new ZIP, with a summary. |
+| `npm run e2e` | Build, serve under the nested itch-like path, and drive an **already installed** Edge or Chrome (pinned playwright-core; it never downloads a browser) at 375x812, DPR 2, touch: production-URL checks, a real touch drag dash and tap RETURN, pause on hidden/blur, and a scripted Departure Court clear to the result panel. Writes `art/previews/e2e-*.png` and `art/reports/e2e-report-<browser>.json`. Options: `-- --zip release/<name>.zip` (test the exact upload), `-- --no-build`, `-- --browser chrome`, `-- --headed`. Exit 2 means no system browser was found. Its numbers come from a desktop browser and are not phone evidence. |
 
 These are automated checks only. They do not replace real-phone testing or testing the uploaded itch.io page; record those in [docs/EVIDENCE.md](docs/EVIDENCE.md).
 
