@@ -1,0 +1,112 @@
+{
+  "asset_id": "wall_block",
+  "status": "exported",
+  "author": "original (script-authored in Blender via the pinned Blender MCP bridge)",
+  "created_at": "2026-10-30T14:54:41+00:00",
+  "blender_version": "5.2.2 LTS",
+  "exporter_version": "5.2.40",
+  "source_path": "art/source/environment.blend",
+  "export": {
+    "path": "public/assets/models/wall_block.glb",
+    "bytes": 5224,
+    "sha256": "5d52a6e895a510651843dacaab91c281b5fb491d0fa77ba1d6bdd96244a2d604"
+  },
+  "preview": "art/previews/wall_block-game-camera.png",
+  "measured": {
+    "triangles": 64,
+    "materials": [
+      "wall_body",
+      "wall_cap"
+    ],
+    "material_count": 2,
+    "bounds_min": [
+      0,
+      0,
+      0
+    ],
+    "bounds_max": [
+      1,
+      1,
+      0.55
+    ],
+    "dimensions": [
+      1,
+      1,
+      0.55
+    ],
+    "parts": [
+      "wall_block",
+      "wall_block_block"
+    ]
+  },
+  "budget": {
+    "triangles": 150,
+    "materials": 2
+  },
+  "within_budget": true,
+  "notes": "Low wall module, visual footprint exactly [0,1]^2. Navy wall_body plinth/body (inset 0.02 for joints) under a chamfered, slightly crowned ivory wall_cap coping stone. Chosen after composite iterations: navy tops blended into the floor; framed tops read as UI tiles.",
+  "glb_verification": {
+    "asset_id": "wall_block",
+    "file": "public/assets/models/wall_block.glb",
+    "sha256": "5d52a6e895a510651843dacaab91c281b5fb491d0fa77ba1d6bdd96244a2d604",
+    "bytes": 5224,
+    "generator": "Khronos glTF Blender I/O v5.2.40",
+    "triangles": 64,
+    "materials": [
+      "wall_body",
+      "wall_cap"
+    ],
+    "bounds_gltf_yup": {
+      "min": [
+        0,
+        0,
+        -1
+      ],
+      "max": [
+        1,
+        0.55,
+        0
+      ]
+    },
+    "parts": [
+      "wall_block",
+      "wall_block_block"
+    ],
+    "checks": [
+      {
+        "name": "single root named wall_block",
+        "pass": true
+      },
+      {
+        "name": "all part nodes prefixed with the asset id",
+        "pass": true
+      },
+      {
+        "name": "materials are palette keys",
+        "pass": true
+      },
+      {
+        "name": "no cameras or lights",
+        "pass": true
+      },
+      {
+        "name": "footprint x exactly [0,1]",
+        "pass": true
+      },
+      {
+        "name": "footprint glTF z exactly [-1,0]",
+        "pass": true
+      },
+      {
+        "name": "height along +Y from 0 to ~0.55",
+        "pass": true
+      },
+      {
+        "name": "part wall_block_block",
+        "pass": true
+      }
+    ],
+    "pass": true,
+    "verified_at": "2026-10-30T14:54:52Z"
+  }
+}
