@@ -46,6 +46,10 @@ export interface UICallbacks {
   onSettingsChange(s: Settings): void;
   /** Title 'Continue' (room-entry checkpoint). Falls back to onStart when absent. */
   onContinue?(): void;
+  /** Title / pause 'Levels': open the level select. The button is shown only when provided. */
+  onLevels?(): void;
+  /** Pause 'Main menu': leave the room for the title screen. Shown only when provided. */
+  onMainMenu?(): void;
   /** Title 'New expedition' when a save exists. Falls back to onStart when absent. */
   onNewRun?(): void;
   /** Interface sounds for the new panels (wire to GameAudio.ui). */
@@ -212,6 +216,16 @@ export function createUI(container: HTMLElement, initialSettings: Settings, call
   title.hidden = true;
   let confirmTimer: ReturnType<typeof setTimeout> | null = null;
 
+  function levelsButton(): HTMLElement[] {
+    if (!callbacks.onLevels) return [];
+    const levels = button('oys-btn oys-btn--ghost', 'Levels');
+    levels.addEventListener('click', () => {
+      hideTitle();
+      callbacks.onLevels?.();
+    });
+    return [levels];
+  }
+
   function buildTitleActions(opts: TitleOptions): HTMLElement {
     if (confirmTimer) clearTimeout(confirmTimer);
     confirmTimer = null;
@@ -221,7 +235,7 @@ export function createUI(container: HTMLElement, initialSettings: Settings, call
         hideTitle();
         callbacks.onStart();
       });
-      titleActions.replaceChildren(begin);
+      titleActions.replaceChildren(begin, ...levelsButton());
       return begin;
     }
     const cont = button('oys-btn', 'Continue', { 'aria-describedby': 'oys-continue-cap' });
@@ -250,7 +264,7 @@ export function createUI(container: HTMLElement, initialSettings: Settings, call
       hideTitle();
       (callbacks.onNewRun ?? callbacks.onStart)();
     });
-    nodes.push(fresh);
+    nodes.push(fresh, ...levelsButton());
     titleActions.replaceChildren(...nodes);
     return cont;
   }
@@ -296,11 +310,32 @@ export function createUI(container: HTMLElement, initialSettings: Settings, call
   const pauseReason = el('p', 'oys-sub');
   const resumeBtn = button('oys-btn', 'Resume');
   const restartBtn = button('oys-btn oys-btn--ghost', 'Restart room');
+  const pauseExits: HTMLElement[] = [];
+  if (callbacks.onLevels) {
+    const levelsBtn = button('oys-btn oys-btn--ghost', 'Level select');
+    levelsBtn.addEventListener('click', () => {
+      hidePause();
+      callbacks.onLevels?.();
+    });
+    pauseExits.push(levelsBtn);
+  }
+  if (callbacks.onMainMenu) {
+    const menuBtn = button('oys-btn oys-btn--ghost', 'Main menu');
+    menuBtn.addEventListener('click', () => {
+      hidePause();
+      callbacks.onMainMenu?.();
+    });
+    pauseExits.push(menuBtn);
+  }
   const pausePanel = el('section', 'oys-panel oys-scrim oys-pause', { role: 'dialog', 'aria-modal': 'true', 'aria-labelledby': 'oys-pause-h' }, [
     el('div', 'oys-stack', {}, [el('h2', 'oys-heading', { id: 'oys-pause-h' }, ['Paused']), pauseReason, el('div', 'oys-rule')]),
-    el('div', 'oys-stack', {}, [resumeBtn, restartBtn]),
+    el('div', 'oys-stack', {}, [resumeBtn, restartBtn, ...pauseExits]),
     toggleRow(),
-    el('p', 'oys-note', {}, ['Restarting returns you to this room’s entrance.']),
+    el('p', 'oys-note', {}, [
+      pauseExits.length
+        ? 'Restarting returns you to this room’s entrance. Leaving keeps your expedition saved: Continue restarts this room.'
+        : 'Restarting returns you to this room’s entrance.',
+    ]),
     storageNote(),
     saveNote(),
   ]);

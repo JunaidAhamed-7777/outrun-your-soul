@@ -27,11 +27,24 @@ import {
   type SimEvent,
   type SimState,
 } from '../sim';
+import { createLevelSelect } from '../ui/levels';
 import { createObjectiveCard } from '../ui/objective';
+import { createStoryOverlay } from '../ui/story';
 import { BOSS_INTRO_SUBTITLE, createUI, type GameUI } from '../ui/ui';
 import { AimTracker } from './aim';
 import { bootFraction, bootScreen, SCRIPT_SHARE } from './boot';
 import { Director, type Screen } from './director';
+import {
+  isUnlocked,
+  LEVELS,
+  LEVELS_KEY,
+  levelIndex,
+  parseLevelProgress,
+  runStoryBeat,
+  serializeLevelProgress,
+  withCleared,
+  type LevelProgress,
+} from './levels';
 import { roomMeta } from './room-meta';
 import { TutorialCoach, TUTORIAL_DONE_KEY } from './tutorial';
 import { continueDetail, draftView, endingView, loadoutChips, routeChoices, starterOptions } from './views';
@@ -64,6 +77,31 @@ function resolveRoom(roomId: string, variant: number): RoomDef {
 
 /** Node id marking the onboarding room (it is not part of the expedition graph). */
 const TUTORIAL_NODE = 'tutorial';
+
+/** Node id for a level played from level select (no relics, no expedition save). */
+const PRACTICE_NODE = 'practice';
+
+function practiceScreen(room: RoomDef, attempt: number): RoomScreen {
+  return {
+    kind: 'room',
+    room,
+    label: 'Practice',
+    depth: -1,
+    attempt,
+    entry: {
+      nodeId: PRACTICE_NODE,
+      roomId: room.id as RoomEntry['roomId'],
+      variant: 0,
+      seed: 1,
+      health: TUNING.maxHealth,
+      maxHealth: TUNING.maxHealth,
+      loadout: [],
+      params: BASE_ROOM_PARAMS,
+      hooks: {},
+      charges: EMPTY_CHARGES,
+    },
+  };
+}
 
 function tutorialScreen(attempt: number): RoomScreen {
   return {
@@ -119,8 +157,23 @@ export async function startGame(container: HTMLElement): Promise<GameHandle | nu
   let invariantReported = false;
   const aim = new AimTracker();
   const machine = new GestureMachine();
-  /** Onboarding state while First Light is being played before the first expedition. */
-  let tutorial: { coach: TutorialCoach; starter: StarterId; attempt: number } | null = null;
+  /** Onboarding state while First Light is being played (before an expedition, or as practice). */
+  let tutorial: { coach: TutorialCoach; starter: StarterId; attempt: number; practice: boolean } | null = null;
+  let levelProgress: LevelProgress = (() => {
+    try {
+      return parseLevelProgress(storage?.getItem(LEVELS_KEY) ?? null);
+    } catch {
+      return parseLevelProgress(null);
+    }
+  })();
+  const markLevelCleared = (id: string): void => {
+    levelProgress = withCleared(levelProgress, id);
+    try {
+      storage?.setItem(LEVELS_KEY, serializeLevelProgress(levelProgress));
+    } catch {
+      // Unlocks then last this session only.
+    }
+  };
   const isTutorialRoom = () => current?.entry.nodeId === TUTORIAL_NODE;
   const tutorialDone = (): boolean => {
     if (params.get('tutorial') === '0') return true;
@@ -160,7 +213,10 @@ export async function startGame(container: HTMLElement): Promise<GameHandle | nu
       ui.hideResult();
       if (current) roomReady = enterRoom(current);
     },
-    onPause: () => pause('user'),
+    // Escape can reach the pause panel outside play (e.g. on level select): dismiss it there.
+    onPause: () => (phase === 'playing' ? pause('user') : ui.hidePause()),
+    onLevels: () => openLevels(),
+    onMainMenu: () => goMainMenu(),
     onSettingsChange: (next) => {
       settings = next;
       saveSettings(settings, storage);
@@ -194,6 +250,8 @@ export async function startGame(container: HTMLElement): Promise<GameHandle | nu
   // Keep the overlay above the canvas regardless of creation order.
   container.appendChild(ui.root);
   const objective = createObjectiveCard(ui.root);
+  const levelSelect = createLevelSelect(ui.root);
+  const story = createStoryOverlay(ui.root);
   const activeRenderer = renderer;
   activeRenderer.setRoom(room);
 
@@ -227,11 +285,89 @@ export async function startGame(container: HTMLElement): Promise<GameHandle | nu
   }
 
   /** First Light: the onboarding room, played once before the first expedition. */
-  function startTutorial(starter: StarterId, attempt: number): void {
+  function startTutorial(starter: StarterId, attempt: number, practice = false): void {
     ui.hideChoice();
     ui.hideResult();
-    tutorial = { coach: new TutorialCoach(), starter, attempt };
-    roomReady = enterRoom(tutorialScreen(attempt));
+    levelSelect.hide();
+    tutorial = { coach: new TutorialCoach(), starter, attempt, practice };
+    roomReady = enterRoom(tutorialScreen(attempt), attempt === 1 ? LEVELS[0]!.story : null);
+  }
+
+  // ------------------------------------------------------------- level select
+  function levelCards() {
+    return LEVELS.map((l, i) => {
+      const locked = !isUnlocked(levelProgress, l.id);
+      const prev = LEVELS[i - 1];
+      return {
+        id: l.id,
+        number: i + 1,
+        name: l.name,
+        blurb: l.blurb,
+        locked,
+        cleared: levelProgress.cleared.has(l.id),
+        ...(locked && prev ? { requirement: `Clear ${prev.name} to unlock` } : {}),
+      };
+    });
+  }
+
+  /** Leave whatever is running (room, panels) without touching the saved expedition. */
+  function leaveRoom(): void {
+    ++transitionToken;
+    loop?.resume();
+    ui.hidePause();
+    ui.hideResult();
+    ui.hideChoice();
+    ui.hideHud();
+    ui.setBoss(null);
+    objective.set(null);
+    tutorial = null;
+    current = null;
+    afterEnding = null;
+    pendingCommands = [];
+    aim.reset();
+    machine.cancel('interrupted');
+  }
+
+  function openLevels(): void {
+    void audio.unlock();
+    leaveRoom();
+    ui.hideTitle();
+    phase = 'choosing';
+    levelSelect.show(levelCards(), (id) => startPractice(id, 1), () => {
+      levelSelect.hide();
+      showTitle();
+    });
+  }
+
+  function goMainMenu(): void {
+    leaveRoom();
+    levelSelect.hide();
+    showTitle();
+  }
+
+  function startPractice(id: string, attempt: number): void {
+    if (!isUnlocked(levelProgress, id)) return;
+    levelSelect.hide();
+    if (id === LEVELS[0]!.id) {
+      startTutorial('threadkeeper', attempt, true);
+      return;
+    }
+    tutorial = null;
+    const level = LEVELS[levelIndex(id)];
+    roomReady = enterRoom(practiceScreen(resolveRoom(id, 0), attempt), attempt === 1 ? (level?.story ?? null) : null);
+  }
+
+  function nextLevelId(id: string): string | null {
+    const next = LEVELS[levelIndex(id) + 1];
+    return next && isUnlocked(levelProgress, next.id) ? next.id : null;
+  }
+
+  /** Result buttons after a practice clear: the next level if open, else back to the list. */
+  function practiceVictory(id: string) {
+    const next = nextLevelId(id);
+    return next
+      ? { primaryLabel: 'Next level', onPrimary: () => startPractice(next, 1), secondaryLabel: 'Levels', onSecondary: () => openLevels() }
+      : { primaryLabel: 'Levels', onPrimary: () => openLevels(), secondaryLabel: 'Main menu', onSecondary: () => goMainMenu() };
   }
 
   function leaveTutorial(): void {
@@ -249,7 +385,7 @@ export async function startGame(container: HTMLElement): Promise<GameHandle | nu
     ui.hidePause();
     switch (screen.kind) {
       case 'room':
-        roomReady = enterRoom(screen);
+        roomReady = enterRoom(screen, screen.attempt === 1 ? runStoryBeat(screen.depth) : null);
         return;
       case 'route':
         phase = 'choosing';
@@ -286,11 +422,17 @@ export async function startGame(container: HTMLElement): Promise<GameHandle | nu
   }
 
   /** Iris out, build the room (leaving any station scene), iris in. Stale transitions are dropped. */
-  async function enterRoom(screen: RoomScreen): Promise<void> {
+  async function enterRoom(screen: RoomScreen, storyLine: string | null = null): Promise<void> {
     const token = ++transitionToken;
     phase = 'choosing';
     await activeRenderer.transitionOut();
     if (token !== transitionToken) return;
+    if (storyLine) {
+      ui.hideHud();
+      objective.set(null);
+      await story.play(storyLine, settings.reducedMotion);
+      if (token !== transitionToken) return;
+    }
     activeRenderer.hideStation();
     startRoom(screen);
     await activeRenderer.transitionIn();
@@ -344,12 +486,19 @@ export async function startGame(container: HTMLElement): Promise<GameHandle | nu
       objective.set(null);
       if (sim.outcome === 'victory') {
         markTutorialDone();
+        markLevelCleared(LEVELS[0]!.id);
         afterEnding = () =>
-          ui.showResult('victory', sim, {
-            primaryLabel: 'Begin the expedition',
-            onPrimary: () => leaveTutorial(),
-            note: 'You know the thread now. The courtyards will not wait.',
-          });
+          ui.showResult(
+            'victory',
+            sim,
+            tutorial?.practice
+              ? { ...practiceVictory(LEVELS[0]!.id), note: 'You know the thread now.' }
+              : {
+                  primaryLabel: 'Begin the expedition',
+                  onPrimary: () => leaveTutorial(),
+                  note: 'You know the thread now. The courtyards will not wait.',
+                },
+          );
       } else {
         const attempt = (tutorial?.attempt ?? 1) + 1;
         afterEnding = () =>
@@ -363,7 +512,26 @@ export async function startGame(container: HTMLElement): Promise<GameHandle | nu
       }
       return;
     }
+    if (current?.entry.nodeId === PRACTICE_NODE) {
+      const id = current.entry.roomId;
+      const attempt = current.attempt;
+      if (sim.outcome === 'victory') {
+        markLevelCleared(id);
+        afterEnding = () => ui.showResult('victory', sim, { ...practiceVictory(id), note: 'Practice: no relics; only the unlock is kept.' });
+      } else {
+        afterEnding = () =>
+          ui.showResult('defeat', sim, {
+            primaryLabel: 'Retry level',
+            onPrimary: () => startPractice(id, attempt + 1),
+            secondaryLabel: 'Levels',
+            onSecondary: () => openLevels(),
+            note: '',
+          });
+      }
+      return;
+    }
     if (sim.outcome === 'victory') {
+      markLevelCleared(current?.entry.roomId ?? '');
       // Commit completion + reward + checkpoint now (idempotent), so a reload on the
       // result panel never replays a cleared room.
       const next = director.roomVictory(sim);
