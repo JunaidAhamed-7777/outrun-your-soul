@@ -1,0 +1,48 @@
+{
+  "asset_id": "urn",
+  "status": "exported",
+  "author": "original (script-authored in Blender via the pinned Blender MCP bridge)",
+  "created_at": "2026-10-30T15:17:16+00:00",
+  "blender_version": "5.2.2 LTS",
+  "exporter_version": "5.2.40",
+  "source_path": "art/source/environment.blend",
+  "export": {
+    "path": "public/assets/models/urn.glb",
+    "bytes": 15952,
+    "sha256": "2ecc8c7e58662ee89c844f69a985ac164a02aa71252bbdfe91e10044af56f77f"
+  },
+  "preview": "art/previews/urn-game-camera.png",
+  "measured": {
+    "triangles": 258,
+    "materials": [
+      "gold",
+      "ivory"
+    ],
+    "material_count": 2,
+    "bounds_min": [
+      -0.22,
+      -0.2092,
+      0.0
+    ],
+    "bounds_max": [
+      0.22,
+      0.2092,
+      0.84
+    ],
+    "dimensions": [
+      0.44,
+      0.4185,
+      0.84
+    ],
+    "parts": [
+      "urn",
+      "urn_vessel"
+    ]
+  },
+  "budget": {
+    "triangles": 300,
+    "materials": 2
+  },
+  "within_budget": true,
+  "notes": "Nonblocking decor: ivory urn with gold foot, belt, rim and knob. Origin ground centre."
+}
