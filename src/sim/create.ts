@@ -1,9 +1,10 @@
 /** Room-entry state construction. */
+import { createBoss } from './boss';
 import { createEnemy } from './enemies';
 import { laneCycleTime, laneStatusAt } from './lanes';
 import { seedRng } from './rng';
 import { TUNING } from './tuning';
-import type { LaneState, RoomDef, RoomParams, SimState } from './types';
+import type { LaneState, RelicRuntimeState, RoomDef, RoomParams, SimRelicCharges, SimRelicConfig, SimState } from './types';
 
 /** Bump when rules change in a way that invalidates saved room-entry checkpoints. */
 export const RULES_VERSION = 1;
@@ -12,6 +13,43 @@ export interface CreateOptions {
   readonly seed: number;
   readonly params?: Partial<RoomParams>;
   readonly health?: number;
+  /** Behavioural relics equipped for this room (reach relics come through params). */
+  readonly relics?: SimRelicConfig;
+  /** Earned relic charges carried in from the room-entry checkpoint. */
+  readonly charges?: SimRelicCharges;
+}
+
+/** Clamp carried charges to what the equipped relics can hold. */
+export function initialRelicState(config: SimRelicConfig = {}, charges?: SimRelicCharges): RelicRuntimeState {
+  const bell = config.mourningBell;
+  const kills = charges && Number.isFinite(charges.bellKills) ? Math.floor(charges.bellKills) : 0;
+  const equipped: string[] = [];
+  if (config.needlesong) equipped.push('needlesong');
+  if (config.glassLantern) equipped.push('glass_lantern');
+  if (config.mourningBell) equipped.push('mourning_bell');
+  if (config.travelersKnot) equipped.push('travelers_knot');
+  const relics: RelicRuntimeState = {
+    config,
+    equipped,
+    haloRadius: config.glassLantern?.haloRadius ?? null,
+    burstRadius: bell?.burstRadius ?? null,
+    bellKills: bell ? Math.min(Math.max(kills, 0), Math.max(0, bell.killsPerCharge - 1)) : 0,
+    bellCharged: Boolean(bell && charges?.bellCharged === true && bell.maxCharges > 0),
+    bellCharge: 0,
+    bellChargeMax: bell?.killsPerCharge ?? 0,
+    knotMarked: Boolean(config.travelersKnot && charges?.knotMarked === true && config.travelersKnot.maxMarks > 0),
+    knotReady: false,
+    decoy: null,
+    decoyClaimedBy: null,
+  };
+  syncRelicView(relics);
+  return relics;
+}
+
+/** Refresh the flat presentation fields after any relic mutation. */
+export function syncRelicView(relics: RelicRuntimeState): void {
+  relics.bellCharge = relics.bellCharged ? relics.bellChargeMax : relics.bellKills;
+  relics.knotReady = relics.knotMarked;
 }
 
 export function createSim(room: RoomDef, options: CreateOptions): SimState {
@@ -29,6 +67,7 @@ export function createSim(room: RoomDef, options: CreateOptions): SimState {
     return { id: nextId++, key: def.id, rect: def.rect, status, attackId: null, cycleTime };
   });
   for (const lane of lanes) if (lane.status === 'active') lane.attackId = nextId++;
+  const boss = room.boss ? createBoss(room.boss, nextId++) : null;
   const health = Math.min(TUNING.maxHealth, Math.max(1, options.health ?? TUNING.maxHealth));
   return {
     rulesVersion: RULES_VERSION,
@@ -56,10 +95,12 @@ export function createSim(room: RoomDef, options: CreateOptions): SimState {
     enemies,
     projectiles: [],
     lanes,
-    gate: enemies.length === 0 ? 'open' : 'sealed',
+    gate: enemies.length === 0 && !boss ? 'open' : 'sealed',
     outcome: 'playing',
     buffered: null,
     bufferedAge: 0,
     stats: { dashes: 0, returns: 0, cuts: 0, kills: 0, hits: 0, contactReunions: 0, exhaustionReunions: 0 },
+    relicState: initialRelicState(options.relics, options.charges),
+    boss,
   };
 }

@@ -67,24 +67,22 @@ export function draftView(screen: Extract<Screen, { kind: 'station' }>): DraftVi
   };
 }
 
-/** Relic chips for the HUD, with live charge/boost state when the sim reports it. */
+/** Relic chips for the HUD, with live charge/boost state from the simulation. */
 export function loadoutChips(run: RunState | null, sim: SimState | null): LoadoutChip[] {
   if (!run) return [];
-  const relicState = (sim as unknown as { relicState?: Record<string, unknown> } | null)?.relicState ?? {};
+  const relics = sim?.relicState;
   return run.loadout.map((id) => {
-    const chip: { id: string; name: string; charge?: number; maxCharge?: number; active?: boolean } = { id, name: RELICS[id].name };
-    if (id === 'needlesong') chip.active = (sim?.soul.boostLeft ?? 0) > 0;
-    if (id === 'mourning_bell') {
-      const bell = relicState['mourningBell'] as { charges?: number; kills?: number } | undefined;
-      chip.charge = bell?.charges ?? 0;
-      chip.maxCharge = 1;
+    const name = RELICS[id].name;
+    switch (id) {
+      case 'needlesong':
+        return { id, name, active: (sim?.soul.boostLeft ?? 0) > 0 };
+      case 'mourning_bell':
+        return { id, name, charge: relics?.bellCharge ?? 0, maxCharge: relics?.bellChargeMax ?? 1 };
+      case 'travelers_knot':
+        return { id, name, charge: relics?.knotReady || relics?.decoy ? 1 : 0, maxCharge: 1 };
+      default:
+        return { id, name };
     }
-    if (id === 'travelers_knot') {
-      const knot = relicState['travelersKnot'] as { marks?: number } | undefined;
-      chip.charge = knot?.marks ?? 0;
-      chip.maxCharge = 1;
-    }
-    return chip;
   });
 }
 

@@ -18,9 +18,33 @@
  * Same kind: ascending entity ID, then body before soul.
  */
 import { applyCommand, executeBuffered, type StepProbe } from './actions';
-import { applyDamage } from './combat';
-import { aimToward, BOLT_MAX_AGE, isActive, sentryTuning, wakeEnemy } from './enemies';
 import {
+  advanceBoss,
+  bossAlive,
+  bossCollisions,
+  bossTimers,
+  buildBossPlan,
+  resolveBoss,
+  wakeBoss,
+  type BossKind,
+  type BossPlan,
+} from './boss';
+import { applyDamage, stopDashGuarded } from './combat';
+import { syncRelicView } from './create';
+import {
+  aimPointFor,
+  aimToward,
+  BOLT_MAX_AGE,
+  ENEMY_TUNING,
+  inSweep,
+  isActive,
+  sentryTuning,
+  turnToward,
+  wakeEnemy,
+  wardenGuards,
+} from './enemies';
+import {
+  circleApproachTime,
   circleEntersRect,
   circleTimeOfImpact,
   circleTouchesRect,
@@ -50,7 +74,7 @@ import type {
   SimEvent,
   SimState,
 } from './types';
-import { add, dist, len, lerp, normalize, scale, sub, ZERO, type Vec2 } from './vec';
+import { add, dist, dot, len, lerp, normalize, scale, sub, ZERO, type Vec2 } from './vec';
 
 const MAX_ITERATIONS_PER_STEP = 256;
 
@@ -74,7 +98,11 @@ type Kind =
   | 'wake'
   | 'boltExpire'
   | 'graceEnd'
-  | 'recoverEnd';
+  | 'recoverEnd'
+  | 'haloEnter'
+  | 'haloExit'
+  | 'boostEnd'
+  | BossKind;
 
 const PRIORITY: Readonly<Record<Kind, number>> = {
   cut: 0,
@@ -91,6 +119,19 @@ const PRIORITY: Readonly<Record<Kind, number>> = {
   boltExpire: 9,
   graceEnd: 10,
   recoverEnd: 11,
+  // Halo crossings only change a bolt's speed; hits and cuts at the same instant win.
+  haloEnter: 3,
+  haloExit: 3,
+  boostEnd: 9,
+  // Boss: a heart strike beats armour at the same instant (player-favouring), its
+  // charge hits rank with other hits, and its timers follow the ordinary ones.
+  bossHeart: 1,
+  bossGuard: 2.5, // ends dash protection, so it resolves after same-instant hits
+  bossHit: 2,
+  bossHome: 4,
+  bossLeg: 5,
+  bossPhase: 7,
+  bossWake: 8,
 };
 
 const BODY = 0;
@@ -111,6 +152,47 @@ const candidate = (tau: number, kind: Kind, id = 0, endpoint: Endpoint = BODY): 
   id,
   endpoint,
 });
+
+/** Effective bolt velocity (Glass Lantern scales it inside the soul halo). */
+function boltVel(p: ProjectileState): Vec2 {
+  const k = p.speedScale ?? 1;
+  return k === 1 ? p.vel : scale(p.vel, k);
+}
+
+/** Squared-distance band treated as "on the halo boundary". */
+const HALO_TOLERANCE = 1e-9;
+/**
+ * Bolts slow when they cross the halo radius and recover only once they are this far
+ * outside it. Without the band, a boosted soul fleeing a slowed bolt makes the bolt
+ * flip in and out at the same instant forever (a sliding mode on the boundary).
+ */
+export const HALO_EXIT_BAND = 0.05;
+
+/** Earliest strict entry into a circle of radius r (relative motion); 0 if clearly inside. */
+function haloEntryTime(rel: Vec2, relVel: Vec2, r: number, tMax: number): number | null {
+  const c = dot(rel, rel) - r * r;
+  const b = dot(rel, relVel);
+  if (c < -HALO_TOLERANCE) return 0;
+  if (c <= HALO_TOLERANCE) return b < 0 ? 0 : null;
+  if (b >= 0) return null;
+  const a = dot(relVel, relVel);
+  const disc = b * b - a * c;
+  if (disc <= 0) return null; // tangent graze: never strictly inside
+  const t = (-b - Math.sqrt(disc)) / a;
+  return t <= tMax ? Math.max(0, t) : null;
+}
+
+/** Earliest exit from a circle of radius r (relative motion); 0 if clearly outside. */
+function haloExitTime(rel: Vec2, relVel: Vec2, r: number, tMax: number): number | null {
+  const c = dot(rel, rel) - r * r;
+  const b = dot(rel, relVel);
+  if (c > HALO_TOLERANCE) return 0;
+  if (c >= -HALO_TOLERANCE) return b > 0 ? 0 : null;
+  const a = dot(relVel, relVel);
+  if (a < 1e-30) return null;
+  const t = (-b + Math.sqrt(b * b - a * c)) / a;
+  return t <= tMax ? Math.max(0, t) : null;
+}
 
 /** Earliest candidate; among those within timeEpsilon of the earliest, the tie policy decides. */
 function selectBest(cands: readonly Candidate[]): Candidate | null {
@@ -220,7 +302,7 @@ function soulAt(plan: Plan, tau: number): Vec2 {
 // Event discovery
 // ---------------------------------------------------------------------------
 
-function nextTimer(state: SimState, plan: Plan, limit: number): Candidate | null {
+function nextTimer(state: SimState, plan: Plan, bp: BossPlan | null, limit: number): Candidate | null {
   const cands: Candidate[] = [];
   const body = state.body;
   if (plan.bodyKind === 'dash' && body.dash) {
@@ -228,6 +310,7 @@ function nextTimer(state: SimState, plan: Plan, limit: number): Candidate | null
   }
   if (body.mode === 'recover') cands.push(candidate(Math.max(0, body.recoverLeft), 'recoverEnd'));
   if (state.graceLeft > 0) cands.push(candidate(state.graceLeft, 'graceEnd'));
+  if (state.soul.boostLeft > 0) cands.push(candidate(state.soul.boostLeft, 'boostEnd'));
   if (plan.separated) {
     const closing =
       plan.bodyKind === 'return'
@@ -251,6 +334,7 @@ function nextTimer(state: SimState, plan: Plan, limit: number): Candidate | null
     cands.push({ ...candidate(boundary.dt, 'lane', lane.id), boundary });
   }
   for (const p of state.projectiles) cands.push(candidate(Math.max(0, BOLT_MAX_AGE - p.age), 'boltExpire', p.id));
+  if (bp) for (const c of bossTimers(state, bp)) cands.push(c);
   return selectBest(cands.filter((c) => c.tau <= limit));
 }
 
@@ -265,17 +349,17 @@ function contactEligible(state: SimState, soulPos: Vec2, anchor: Vec2): boolean 
   return corridorClear(state.room, soulPos, anchor, TUNING.soulRadius);
 }
 
-function findCollision(state: SimState, plan: Plan, span: number): Candidate | null {
+function findCollision(state: SimState, plan: Plan, bp: BossPlan | null, span: number): Candidate | null {
   const cands: Candidate[] = [];
   const dashing = plan.bodyKind === 'dash';
   const room = state.room;
 
   for (const p of state.projectiles) {
-    const hit = sweepCircle(room, p.pos, scale(p.vel, span), p.radius);
+    const hit = sweepCircle(room, p.pos, scale(boltVel(p), span), p.radius);
     if (hit) cands.push(candidate(hit.t * span, 'boltWall', p.id));
   }
 
-  const inner = plan.breaks.filter((b) => b > 1e-12 && b < span - 1e-12).sort((a, b) => a - b);
+  const inner = [...plan.breaks, ...(bp?.breaks ?? [])].filter((b) => b > 1e-12 && b < span - 1e-12).sort((a, b) => a - b);
   const bounds = [0, ...inner, span];
   const reach = TUNING.bodyRadius + TUNING.soulRadius;
   const activeLanes = state.lanes.filter(
@@ -292,20 +376,33 @@ function findCollision(state: SimState, plan: Plan, span: number): Candidate | n
     const vs = dt > 0 ? scale(sub(soulAt(plan, tb), s0), 1 / dt) : ZERO;
     const found: Candidate[] = [];
 
+    const halo = state.relicState?.config.glassLantern;
     for (const p of state.projectiles) {
-      const p0 = add(p.pos, scale(p.vel, ta));
-      const tBody = circleTimeOfImpact(sub(p0, b0), sub(p.vel, vb), TUNING.bodyRadius + p.radius, dt);
+      const pv = boltVel(p);
+      const p0 = add(p.pos, scale(pv, ta));
+      const tBody = circleTimeOfImpact(sub(p0, b0), sub(pv, vb), TUNING.bodyRadius + p.radius, dt);
       if (tBody !== null) found.push(candidate(ta + tBody, dashing ? 'cut' : 'boltHit', p.id, BODY));
       if (plan.separated) {
-        const tSoul = circleTimeOfImpact(sub(p0, s0), sub(p.vel, vs), TUNING.soulRadius + p.radius, dt);
+        const tSoul = circleTimeOfImpact(sub(p0, s0), sub(pv, vs), TUNING.soulRadius + p.radius, dt);
         if (tSoul !== null) found.push(candidate(ta + tSoul, 'boltHit', p.id, SOUL));
+      }
+      if (halo) {
+        // The halo is centred on the soul (on the body when reunited) and only changes bolt speed.
+        const tHalo = p.slowed
+          ? haloExitTime(sub(p0, s0), sub(pv, vs), halo.haloRadius + HALO_EXIT_BAND, dt)
+          : haloEntryTime(sub(p0, s0), sub(pv, vs), halo.haloRadius, dt);
+        if (tHalo !== null) found.push(candidate(ta + tHalo, p.slowed ? 'haloExit' : 'haloEnter', p.id));
       }
     }
 
     if (dashing) {
       for (const e of state.enemies) {
         if (e.phase === 'dead') continue;
-        const tKill = circleTimeOfImpact(sub(b0, e.pos), vb, TUNING.bodyRadius + e.radius, dt);
+        const reachE = TUNING.bodyRadius + e.radius;
+        const tKill =
+          e.role === 'warden'
+            ? circleApproachTime(sub(b0, e.pos), vb, reachE, dt)
+            : circleTimeOfImpact(sub(b0, e.pos), vb, reachE, dt);
         if (tKill !== null) found.push(candidate(ta + tKill, 'kill', e.id));
       }
     }
@@ -338,6 +435,11 @@ function findCollision(state: SimState, plan: Plan, span: number): Candidate | n
       }
     }
 
+    if (bp) {
+      const soul = plan.separated ? { p0: s0, v: vs } : null;
+      for (const c of bossCollisions(state, bp, ta, dt, { p0: b0, v: vb }, soul, dashing)) found.push(c);
+    }
+
     if (found.length > 0) {
       cands.push(...found);
       break;
@@ -350,12 +452,9 @@ function findCollision(state: SimState, plan: Plan, span: number): Candidate | n
 // Advancing time
 // ---------------------------------------------------------------------------
 
-function targetPos(state: SimState, e: EnemyState): Vec2 {
-  return e.target === 'body' ? state.body.pos : state.soul.pos;
-}
-
-function advance(state: SimState, plan: Plan, dt: number): void {
+function advance(state: SimState, plan: Plan, bp: BossPlan | null, dt: number): void {
   if (dt <= 0) return;
+  if (bp) advanceBoss(state, bp, dt);
   const body = state.body;
   const route = state.route;
   if (plan.bodyKind === 'dash' && body.dash) {
@@ -382,8 +481,17 @@ function advance(state: SimState, plan: Plan, dt: number): void {
   for (const e of state.enemies) {
     if (!isActive(e.phase)) continue;
     e.phaseTime += dt;
+    if (e.role === 'warden') {
+      if (e.phase === 'idle') {
+        e.facing = turnToward(e.facing, sub(state.body.pos, e.pos), ENEMY_TUNING.warden.turnRate * dt);
+        e.aim = e.facing;
+      }
+      continue;
+    }
     if (e.phase === 'tracking') {
-      e.aim = aimToward(e, targetPos(state, e));
+      const lockIn = Math.max(0, e.phaseDuration - e.phaseTime);
+      e.aimTarget = aimPointFor(state, e, lockIn + sentryTuning(e.role).locked);
+      e.aim = aimToward(e, e.aimTarget);
       e.facing = e.aim;
     }
   }
@@ -391,9 +499,10 @@ function advance(state: SimState, plan: Plan, dt: number): void {
     lane.cycleTime = mod(lane.cycleTime + dt, laneDef(state, lane).period);
   }
   for (const p of state.projectiles) {
-    p.pos = add(p.pos, scale(p.vel, dt));
+    p.pos = add(p.pos, scale(boltVel(p), dt));
     p.age += dt;
   }
+  if (state.soul.boostLeft > 0) state.soul.boostLeft = Math.max(0, state.soul.boostLeft - dt);
   if (state.buffered) state.bufferedAge += dt;
   state.time += dt;
 }
@@ -426,6 +535,128 @@ function wakeWhere(state: SimState, events: SimEvent[], test: (spawn: EnemySpawn
   }
 }
 
+/**
+ * Kill a sentry. Only direct outward-dash kills earn relic charge; burst kills never do,
+ * so a burst cannot cascade into another burst or a decoy.
+ */
+function killEnemy(state: SimState, e: EnemyState, cause: 'dash' | 'burst', events: SimEvent[]): void {
+  const t = state.time;
+  e.phase = 'dead';
+  e.phaseTime = 0;
+  e.phaseDuration = Infinity;
+  e.attackId = null;
+  e.aimTarget = null;
+  e.lockTarget = null;
+  state.stats.kills += 1;
+  events.push({ type: 'kill', t, enemyId: e.id, role: e.role, at: e.pos, cause });
+  const relics = state.relicState;
+  if (relics && relics.decoyClaimedBy === e.id) relics.decoyClaimedBy = null; // unlocked claim returns
+  if (relics && cause === 'dash') {
+    const bell = relics.config.mourningBell;
+    if (bell && !relics.bellCharged && bell.maxCharges > 0) {
+      relics.bellKills += 1;
+      if (relics.bellKills >= bell.killsPerCharge) {
+        relics.bellKills = 0;
+        relics.bellCharged = true;
+      }
+      syncRelicView(relics);
+      events.push({
+        type: 'charge',
+        t,
+        at: state.body.pos,
+        charge: relics.bellCharge,
+        max: relics.bellChargeMax,
+        charged: relics.bellCharged,
+      });
+    }
+    const knot = relics.config.travelersKnot;
+    if (knot && knot.maxMarks > 0 && !relics.knotMarked && relics.decoy === null) {
+      relics.knotMarked = true;
+      syncRelicView(relics);
+      events.push({ type: 'knotMarked', t });
+    }
+  }
+  wakeWhere(state, events, (s) => s.wake?.kind === 'enemyKilled' && s.wake.enemy === e.key);
+  const bossWake = state.room.boss?.wake;
+  if (bossWake?.kind === 'enemyKilled' && bossWake.enemy === e.key) wakeBoss(state, events);
+}
+
+/** Warden cycle: idle (turning) -> locked windup (frozen sector) -> sweep -> exposed -> idle. */
+function wardenTransition(state: SimState, e: EnemyState, events: SimEvent[]): void {
+  const w = ENEMY_TUNING.warden;
+  const t = state.time;
+  e.phaseTime = 0;
+  switch (e.phase) {
+    case 'idle':
+      e.phase = 'locked';
+      e.phaseDuration = w.windup;
+      e.aim = e.facing;
+      e.attackId = state.nextId++;
+      events.push({ type: 'telegraph', t, enemyId: e.id, phase: 'locked', target: 'body' });
+      return;
+    case 'locked': {
+      const attackId = e.attackId ?? state.nextId++;
+      e.attackId = null;
+      e.phase = 'exposed';
+      e.phaseDuration = w.exposed;
+      events.push({
+        type: 'sweep',
+        t,
+        enemyId: e.id,
+        attackId,
+        at: e.pos,
+        facing: e.facing,
+        range: w.sweepRange,
+        halfAngle: w.sweepHalfAngle,
+      });
+      // One activation, both endpoints: damage at most once (attack-ID dedup).
+      if (inSweep(e, state.body.pos, TUNING.bodyRadius)) {
+        if (state.body.mode === 'dash') {
+          events.push({ type: 'shielded', t, endpoint: 'body', attackId, at: state.body.pos, reason: 'dash' });
+        } else {
+          applyDamage(state, 'body', attackId, 'sweep', state.body.pos, events);
+        }
+      }
+      if (state.outcome === 'playing' && isSeparated(state.route) && inSweep(e, state.soul.pos, TUNING.soulRadius)) {
+        applyDamage(state, 'soul', attackId, 'sweep', state.soul.pos, events);
+      }
+      return;
+    }
+    case 'exposed':
+      e.phase = 'idle';
+      e.phaseDuration = w.cooldown;
+      return;
+    default:
+      return;
+  }
+}
+
+/** Arrival effects, once per separated-to-reunited transition, at the meeting point. */
+function arrivalEffects(state: SimState, at: Vec2, events: SimEvent[]): void {
+  const relics = state.relicState;
+  if (!relics) return;
+  const bell = relics.config.mourningBell;
+  if (bell && relics.bellCharged) {
+    relics.bellCharged = false;
+    const killed: number[] = [];
+    for (const e of state.enemies) {
+      if (e.phase === 'dead' || dist(e.pos, at) > bell.burstRadius + e.radius) continue;
+      killEnemy(state, e, 'burst', events);
+      killed.push(e.id);
+    }
+    syncRelicView(relics);
+    events.push({ type: 'burst', t: state.time, at, radius: bell.burstRadius, killed });
+  }
+  const knot = relics.config.travelersKnot;
+  if (knot && relics.knotMarked) {
+    relics.knotMarked = false;
+    relics.decoy = at;
+    relics.decoyClaimedBy = null;
+    syncRelicView(relics);
+    events.push({ type: 'decoyPlaced', t: state.time, at });
+  }
+}
+
 /** Collapse the route at `at` and leave dash/return as the rules require. */
 function reunite(state: SimState, at: Vec2, how: 'contact' | 'exhaust', events: SimEvent[]): void {
   const body = state.body;
@@ -453,6 +684,7 @@ function reunite(state: SimState, at: Vec2, how: 'contact' | 'exhaust', events: 
   if (cause === 'contact') state.stats.contactReunions += 1;
   else state.stats.exhaustionReunions += 1;
   events.push({ type: 'reunion', t: state.time, at, cause });
+  arrivalEffects(state, at, events);
 }
 
 function resolveContact(state: SimState, events: SimEvent[], probe: StepProbe | undefined): void {
@@ -490,25 +722,48 @@ function resolveContact(state: SimState, events: SimEvent[], probe: StepProbe | 
 }
 
 function enemyTransition(state: SimState, e: EnemyState, events: SimEvent[]): void {
+  if (e.role === 'warden') {
+    wardenTransition(state, e, events);
+    return;
+  }
   const tune = sentryTuning(e.role);
   const t = state.time;
   e.phaseTime = 0;
   switch (e.phase) {
-    case 'idle':
+    case 'idle': {
       e.phase = 'tracking';
       e.phaseDuration = tune.tracking;
-      e.aim = aimToward(e, targetPos(state, e));
+      // A new aim acquisition takes an unclaimed Traveler's Knot decoy.
+      const relics = state.relicState;
+      if (relics?.decoy && relics.decoyClaimedBy === null) {
+        relics.decoyClaimedBy = e.id;
+        events.push({ type: 'decoyClaimed', t, enemyId: e.id, at: relics.decoy });
+      }
+      e.aimTarget = aimPointFor(state, e, tune.tracking + tune.locked);
+      e.aim = aimToward(e, e.aimTarget);
       e.facing = e.aim;
       events.push({ type: 'telegraph', t, enemyId: e.id, phase: 'tracking', target: e.target });
       return;
-    case 'tracking':
+    }
+    case 'tracking': {
       e.phase = 'locked';
       e.phaseDuration = tune.locked;
-      e.aim = aimToward(e, targetPos(state, e));
+      const point = aimPointFor(state, e, tune.locked);
+      e.aim = aimToward(e, point);
       e.facing = e.aim;
+      e.aimTarget = point;
+      e.lockTarget = point;
       e.attackId = state.nextId++;
+      const relics = state.relicState;
+      if (relics?.decoy && relics.decoyClaimedBy === e.id) {
+        // Consumed at lock; the locked line keeps pointing where the decoy was.
+        events.push({ type: 'decoyTaken', t, enemyId: e.id, at: relics.decoy });
+        relics.decoy = null;
+        relics.decoyClaimedBy = null;
+      }
       events.push({ type: 'telegraph', t, enemyId: e.id, phase: 'locked', target: e.target });
       return;
+    }
     case 'locked': {
       const attackId = e.attackId ?? state.nextId++;
       const pos = add(e.pos, scale(e.aim, e.radius));
@@ -522,9 +777,14 @@ function enemyTransition(state: SimState, e: EnemyState, events: SimEvent[]): vo
         radius: tune.boltRadius,
         age: 0,
         alive: true,
+        aimPoint: e.lockTarget ?? null,
+        speedScale: 1,
+        slowed: false,
       };
       state.projectiles.push(bolt);
       e.attackId = null;
+      e.aimTarget = null;
+      e.lockTarget = null;
       e.phase = 'recover';
       e.phaseDuration = tune.recover;
       events.push({ type: 'fire', t, enemyId: e.id, projectileId: bolt.id, attackId, at: pos });
@@ -542,25 +802,47 @@ function enemyTransition(state: SimState, e: EnemyState, events: SimEvent[]): vo
 function resolve(state: SimState, ev: Candidate, events: SimEvent[], probe: StepProbe | undefined): void {
   const t = state.time;
   const body = state.body;
+  if (ev.kind.startsWith('boss')) {
+    resolveBoss(state, ev.kind as BossKind, ev.endpoint, events);
+    return;
+  }
   switch (ev.kind) {
     case 'cut': {
       const p = removeProjectile(state, ev.id);
       if (p) {
         state.stats.cuts += 1;
         events.push({ type: 'cut', t, projectileId: p.id, at: p.pos });
+        const song = state.relicState?.config.needlesong;
+        if (song) {
+          // Refresh, never stack: the multiplier is set, not multiplied.
+          state.soul.speedMultiplier = song.boostMultiplier;
+          state.soul.boostLeft = song.boostSeconds;
+          events.push({ type: 'boost', t, at: state.soul.pos, multiplier: song.boostMultiplier, seconds: song.boostSeconds });
+        }
       }
       return;
     }
+    case 'haloEnter':
+    case 'haloExit': {
+      const p = state.projectiles.find((q) => q.id === ev.id);
+      const halo = state.relicState?.config.glassLantern;
+      if (!p || !halo) return;
+      const inside = ev.kind === 'haloEnter';
+      p.slowed = inside;
+      p.speedScale = inside ? halo.slowFactor : 1;
+      events.push({ type: inside ? 'haloEnter' : 'haloExit', t, projectileId: p.id, at: p.pos });
+      return;
+    }
+    case 'boostEnd':
+      state.soul.boostLeft = 0;
+      state.soul.speedMultiplier = 1;
+      events.push({ type: 'boostEnd', t });
+      return;
     case 'kill': {
       const e = state.enemies.find((q) => q.id === ev.id);
       if (!e || e.phase === 'dead') return;
-      e.phase = 'dead';
-      e.phaseTime = 0;
-      e.phaseDuration = Infinity;
-      e.attackId = null;
-      state.stats.kills += 1;
-      events.push({ type: 'kill', t, enemyId: e.id, role: e.role, at: e.pos });
-      wakeWhere(state, events, (s) => s.wake?.kind === 'enemyKilled' && s.wake.enemy === e.key);
+      if (wardenGuards(e, body.pos)) stopDashGuarded(state, e.id, events);
+      else killEnemy(state, e, 'dash', events);
       return;
     }
     case 'boltHit': {
@@ -661,6 +943,7 @@ function settle(state: SimState, events: SimEvent[]): void {
     state.contactArmed = true;
     events.push({ type: 'separated', t });
     wakeWhere(state, events, (s) => s.wake?.kind === 'separated');
+    if (state.room.boss?.wake?.kind === 'separated') wakeBoss(state, events);
   }
   wakeWhere(
     state,
@@ -668,7 +951,11 @@ function settle(state: SimState, events: SimEvent[]): void {
     (s) => s.wake?.kind === 'bodyWithin' && dist(body.pos, s.at) <= s.wake.radius,
   );
 
-  const cleared = state.enemies.every((e) => e.phase === 'dead');
+  const bossWake = state.room.boss?.wake;
+  if (state.boss?.phase === 'dormant' && bossWake?.kind === 'bodyWithin' && dist(body.pos, state.boss.body.pos) <= bossWake.radius) {
+    wakeBoss(state, events);
+  }
+  const cleared = state.enemies.every((e) => e.phase === 'dead') && !bossAlive(state);
   const gate = !cleared ? 'sealed' : separated ? 'ready' : 'open';
   if (gate !== state.gate) {
     if (state.gate === 'sealed') events.push({ type: 'roomCleared', t });
@@ -695,6 +982,10 @@ export function stepInternal(state: SimState, commands: readonly Command[], prob
   state.body.prevPos = state.body.pos;
   state.soul.prevPos = state.soul.pos;
   for (const p of state.projectiles) p.prevPos = p.pos;
+  if (state.boss) {
+    state.boss.body.prevPos = state.boss.body.pos;
+    state.boss.heart.prevPos = state.boss.heart.pos;
+  }
 
   if (state.outcome === 'playing') {
     commands.forEach((cmd, i) => {
@@ -713,12 +1004,13 @@ export function stepInternal(state: SimState, commands: readonly Command[], prob
         break;
       }
       const plan = buildPlan(state);
-      const timer = nextTimer(state, plan, remaining);
+      const bp = state.boss && state.boss.phase !== 'dead' ? buildBossPlan(state.boss) : null;
+      const timer = nextTimer(state, plan, bp, remaining);
       const span = timer ? timer.tau : remaining;
-      const collision = findCollision(state, plan, span);
+      const collision = findCollision(state, plan, bp, span);
       const ev = selectBest([collision, timer].filter((c): c is Candidate => c !== null));
       const dt = ev ? Math.min(ev.tau, remaining) : remaining;
-      advance(state, plan, dt);
+      advance(state, plan, bp, dt);
       remaining -= dt;
       if (ev) {
         if (iterations > MAX_ITERATIONS_PER_STEP - 6) recent.push(`${ev.kind}#${ev.id}@${ev.tau}`);

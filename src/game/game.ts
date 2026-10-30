@@ -225,7 +225,7 @@ export async function startGame(container: HTMLElement): Promise<GameHandle | nu
     current = screen;
     room = screen.room;
     const entry = screen.entry;
-    sim = createSim(room, { seed: entry.seed, params: entry.params, health: entry.health });
+    sim = createSim(room, { seed: entry.seed, params: entry.params, health: entry.health, relics: entry.hooks, charges: entry.charges });
     pendingCommands = [];
     frameEvents = [];
     endingLeft = 0;

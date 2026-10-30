@@ -63,6 +63,7 @@ export function previewDash(state: SimState, aim: Vec2): DashPreview {
   const plan = probe.plans[probe.plans.length - 1] ?? geometry;
   if (!plan.valid) return invalidDash(plan, plan.reason ?? 'blocked', state);
   const contact = ended?.reason === 'contact' && probe.contact ? probe.contact : null;
+  const guarded = ended?.reason === 'guarded' ? ended.at : null;
   const soulSpeed = state.params.soulSpeed * state.soul.speedMultiplier;
   const startLength = probe.dashStartLength ?? state.route.length;
   const lengthAtEnd = Math.max(0, startLength + plan.distance - soulSpeed * (plan.distance / TUNING.dashSpeed));
@@ -71,8 +72,8 @@ export function previewDash(state: SimState, aim: Vec2): DashPreview {
     valid: true,
     from: plan.from,
     requestedEnd: plan.requestedEnd,
-    end: contact ? contact.at : plan.end,
-    limitedBy: contact ? 'contact' : plan.limitedBy,
+    end: contact ? contact.at : (guarded ?? plan.end),
+    limitedBy: contact ? 'contact' : guarded ? 'guard' : plan.limitedBy,
     contact,
     capacityAfter: contact
       ? state.params.tetherCapacity

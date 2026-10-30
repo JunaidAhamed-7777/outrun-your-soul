@@ -124,6 +124,10 @@ export class Director {
     const { run: next } = commitRoomCompletion(this.deps.checkpoints, run, {
       nodeId: entry.nodeId,
       health: Math.max(1, sim.health),
+      // Earned relic charges carry to the next room (bell kills/charge, knot mark).
+      ...(sim.relicState
+        ? { charges: { bellKills: sim.relicState.bellKills, bellCharged: sim.relicState.bellCharged, knotMarked: sim.relicState.knotMarked } }
+        : {}),
       stats: {
         hits: sim.stats.hits,
         cuts: sim.stats.cuts,
