@@ -9,7 +9,11 @@
     "preview": "vite preview --host",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "package": "npm run build && node scripts/package-itch.mjs",
+    "check:nested": "node scripts/check-nested.mjs",
+    "check:models": "node scripts/check-models.mjs",
+    "verify": "node scripts/verify.mjs"
   },
   "dependencies": {
     "three": "0.187.0"
@@ -17,6 +21,8 @@
   "devDependencies": {
     "@types/node": "26.6.6",
     "@types/three": "0.186.0",
+    "fflate": "0.8.3",
+    "gltf-validator": "2.0.0-dev.3.10",
     "typescript": "7.0.2",
     "vite": "8.3.5",
     "vitest": "5.0.5"

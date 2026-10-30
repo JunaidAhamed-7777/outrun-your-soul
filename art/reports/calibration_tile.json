@@ -1,0 +1,50 @@
+{
+  "asset_id": "calibration_tile",
+  "status": "exported",
+  "author": "original (script-authored in Blender via the pinned Blender MCP bridge)",
+  "created_at": "2026-10-30T14:34:17+00:00",
+  "blender_version": "5.2.2 LTS",
+  "exporter_version": "5.2.40",
+  "source_path": "art/source/calibration.blend",
+  "export": {
+    "path": "art/exports/calibration_tile.glb",
+    "bytes": 6004,
+    "sha256": "a8a61c8386bcfcd031d4de8b2bd9e6a666f1f0b97c3a2de883bd61655889f499"
+  },
+  "preview": "art/previews/calibration_tile-game-camera.png",
+  "measured": {
+    "triangles": 52,
+    "materials": [
+      "cobalt",
+      "gold",
+      "ivory",
+      "vermilion"
+    ],
+    "material_count": 4,
+    "bounds_min": [
+      -0.0433,
+      -0.05,
+      -0.06
+    ],
+    "bounds_max": [
+      0.99,
+      0.99,
+      0.3
+    ],
+    "dimensions": [
+      1.0333,
+      1.04,
+      0.36
+    ],
+    "parts": [
+      "calibration_tile",
+      "calibration_tile_slab"
+    ]
+  },
+  "budget": {
+    "triangles": 200,
+    "materials": 4
+  },
+  "within_budget": true,
+  "notes": "Disposable axis/scale fixture. Arrow must point screen-up in the game camera."
+}

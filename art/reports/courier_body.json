@@ -1,0 +1,165 @@
+{
+  "asset_id": "courier_body",
+  "status": "exported",
+  "author": "original (script-authored in Blender via the pinned Blender MCP bridge)",
+  "created_at": "2026-10-30T14:52:06+00:00",
+  "blender_version": "5.2.2 LTS",
+  "exporter_version": "5.2.40",
+  "source_path": "art/source/actors.blend",
+  "export": {
+    "path": "public/assets/models/courier_body.glb",
+    "bytes": 49268,
+    "sha256": "35e08e07d9a711dce719d9ac113f9c407ea9e3d5c7ab70903ecdb91652cabcf5"
+  },
+  "preview": "art/previews/courier_body-game-camera.png",
+  "measured": {
+    "triangles": 814,
+    "materials": [
+      "ivory",
+      "mask_black",
+      "vermilion"
+    ],
+    "material_count": 3,
+    "bounds_min": [
+      -0.2569,
+      -0.2216,
+      0
+    ],
+    "bounds_max": [
+      0.3215,
+      0.3878,
+      0.7525
+    ],
+    "dimensions": [
+      0.5784,
+      0.6095,
+      0.7525
+    ],
+    "parts": [
+      "courier_body",
+      "courier_body_body",
+      "courier_body_head",
+      "courier_body_mask",
+      "courier_body_scarf"
+    ]
+  },
+  "budget": {
+    "triangles": 2000,
+    "materials": 3
+  },
+  "within_budget": true,
+  "notes": "Stolen courier body. Ivory robe and cowl, black hood opening framing an enlarged ivory mask tilted 36 deg up toward the game camera, slanted eye slits, dark boots/belt/satchel, vermilion shawl over the shoulders (rings the mask from above) with two broad tails falling back and out, flat faces turned to the camera so they read as cloth at ~40 px. Deviation: 3 materials (ivory, vermilion, mask_black) vs the 1-2 slot guideline; mask_black frames the face and breaks the silhouette. Parts: body pivot at hips (z 0.27), head pivot at neck (world z 0.50, child of body), mask child of head at the face centre, scarf pivot at the neck (child of body) for runtime sway.",
+  "glb_verification": {
+    "checked_at": "2026-10-30T14:52:26.245Z",
+    "file": "public/assets/models/courier_body.glb",
+    "bytes": 49268,
+    "sha256": "35e08e07d9a711dce719d9ac113f9c407ea9e3d5c7ab70903ecdb91652cabcf5",
+    "generator": "Khronos glTF Blender I/O v5.2.40",
+    "triangles": 814,
+    "bounds_yup": {
+      "min": [
+        -0.257,
+        0,
+        -0.388
+      ],
+      "max": [
+        0.322,
+        0.768,
+        0.235
+      ]
+    },
+    "muzzle_or_front_pivot_yup": [
+      0,
+      0.64,
+      0.136
+    ],
+    "checks": [
+      {
+        "name": "single root named after asset",
+        "ok": true,
+        "detail": [
+          "courier_body"
+        ]
+      },
+      {
+        "name": "no cameras",
+        "ok": true,
+        "detail": 0
+      },
+      {
+        "name": "no lights",
+        "ok": true,
+        "detail": []
+      },
+      {
+        "name": "expected part nodes",
+        "ok": true,
+        "detail": {
+          "missing": [],
+          "nodes": [
+            "courier_body_mask",
+            "courier_body_head",
+            "courier_body_scarf",
+            "courier_body_body",
+            "courier_body"
+          ]
+        }
+      },
+      {
+        "name": "palette-key materials",
+        "ok": true,
+        "detail": [
+          "ivory",
+          "mask_black",
+          "vermilion"
+        ]
+      },
+      {
+        "name": "unit node scale",
+        "ok": true,
+        "detail": []
+      },
+      {
+        "name": "stands on ground (min Y ~ 0, Y up)",
+        "ok": true,
+        "detail": {
+          "minY": 0,
+          "maxY": 0.7680352329679494
+        }
+      },
+      {
+        "name": "mask faces +Z (chin forward of brow)",
+        "ok": true,
+        "detail": {
+          "chin": [
+            0,
+            0.507,
+            0.193
+          ],
+          "brow": [
+            0,
+            0.749,
+            0.042
+          ]
+        }
+      },
+      {
+        "name": "scarf trails toward -Z",
+        "ok": true,
+        "detail": {
+          "min": [
+            -0.222,
+            0.076,
+            -0.388
+          ],
+          "max": [
+            0.322,
+            0.535,
+            0.19
+          ]
+        }
+      }
+    ],
+    "passed": true
+  }
+}
