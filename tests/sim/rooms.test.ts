@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { DEPARTURE_COURT, ROOMS, validateRoom } from '../../src/content/rooms';
-import { createSim } from '../../src/sim';
+import { DEPARTURE_COURT, GLASS_CROSSING, reachablePoints, ROOMS, validateRoom } from '../../src/content/rooms';
+import { createSim, TUNING } from '../../src/sim';
 import type { RoomDef } from '../../src/sim/types';
 import { ofType, run } from './helpers';
 
@@ -66,5 +66,23 @@ describe('Departure Court fairness probes', () => {
     const firstTelegraph = ofType(events, 'telegraph')[0]!;
     const firstHit = ofType(events, 'hit')[0];
     if (firstHit) expect(firstHit.t - firstTelegraph.t).toBeGreaterThanOrEqual(1.5);
+  });
+});
+
+describe('Glass Crossing fairness probes', () => {
+  it('a detour that never touches the lane reaches the exit', () => {
+    const lane = GLASS_CROSSING.lanes[0]!;
+    const laneAsWall: RoomDef = { ...GLASS_CROSSING, walls: [...GLASS_CROSSING.walls, lane.rect], enemies: [], lanes: [] };
+    const exit = GLASS_CROSSING.exit;
+    const inExit = (p: { x: number; y: number }): boolean =>
+      p.x >= exit.x && p.x <= exit.x + exit.w && p.y >= exit.y && p.y <= exit.y + exit.h;
+    expect(reachablePoints(laneAsWall).some(inExit)).toBe(true);
+  });
+
+  it('the safe window comfortably exceeds the soul exposure of a straight crossing', () => {
+    const lane = GLASS_CROSSING.lanes[0]!;
+    const exposure = (lane.rect.h + 2 * TUNING.soulRadius) / TUNING.soulSpeed;
+    const safeWindow = lane.period - (lane.activeTo - lane.activeFrom);
+    expect(safeWindow).toBeGreaterThanOrEqual(exposure * 2);
   });
 });

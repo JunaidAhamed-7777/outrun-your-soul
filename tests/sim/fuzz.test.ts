@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { DEPARTURE_COURT } from '../../src/content/rooms';
+import { DEPARTURE_COURT, GLASS_CROSSING } from '../../src/content/rooms';
 import { checkInvariants, createSim, previewDash, previewReturn, stepSim } from '../../src/sim';
 import { nextRandom, seedRng } from '../../src/sim/rng';
 import { simDiagnostics } from '../../src/sim/step';
@@ -82,6 +82,10 @@ describe('seeded fuzz: invariants hold after every step', () => {
   for (const seed of [11, 12, 13]) {
     it(`Departure Court (seed ${seed})`, () => {
       const { violations } = fuzz(DEPARTURE_COURT, seed, 4000);
+      expect(violations).toEqual([]);
+    });
+    it(`Glass Crossing (seed ${seed})`, () => {
+      const { violations } = fuzz(GLASS_CROSSING, seed, 4000);
       expect(violations).toEqual([]);
     });
   }

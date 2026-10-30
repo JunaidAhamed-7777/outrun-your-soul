@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { DEPARTURE_COURT } from '../../src/content/rooms';
+import { DEPARTURE_COURT, GLASS_CROSSING } from '../../src/content/rooms';
 import { createSim, STEP_SECONDS } from '../../src/sim';
 import { simDiagnostics } from '../../src/sim/step';
 import type { SimEvent, SimState } from '../../src/sim/types';
@@ -55,6 +55,16 @@ describe('Departure Court is completable', () => {
     const victory = ofType(events, 'victory')[0]!;
     expect(open.t).toBeCloseTo(reunion.t, 12);
     expect(victory.t).toBeGreaterThanOrEqual(reunion.t);
+  });
+});
+
+describe('Glass Crossing is completable', () => {
+  it('the greedy bot (which ignores the lane) still wins, and the lane really threatens', () => {
+    const s = createSim(GLASS_CROSSING, { seed: 5 });
+    const events = playWithBot(s, 120);
+    expect(s.outcome).toBe('victory');
+    expect(ofType(events, 'kill')).toHaveLength(GLASS_CROSSING.enemies.length);
+    expect(ofType(events, 'lane').length).toBeGreaterThan(0);
   });
 });
 
