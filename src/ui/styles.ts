@@ -339,6 +339,51 @@ export const CSS = /* css */ `
 .oys-charge { width: 5px; height: 5px; border-radius: 50%; background: ${rgba(p.cobalt_deep, 0.8)}; box-shadow: 0 0 0 1px ${rgba(p.gold, 0.8)}; }
 .oys-charge.is-full { background: var(--gold); }
 
+/* ---------- boss bar (boss room only; never takes input) ---------- */
+.oys-boss {
+  position: absolute;
+  top: calc(var(--safe-top) + 54px);
+  left: 50%;
+  transform: translate(-50%, -4px);
+  width: min(64vw, 260px);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 360ms ease, transform 360ms ease;
+}
+.oys-boss.is-on { opacity: 1; transform: translate(-50%, 0); }
+.oys-ui.is-reduced .oys-boss { transform: translate(-50%, 0); }
+.oys-boss-head { display: flex; justify-content: center; align-items: center; gap: 8px; margin-bottom: 5px; }
+.oys-boss-name {
+  font-family: var(--font-display);
+  font-size: 12px;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  color: var(--gold);
+  text-shadow: 0 1px 2px ${rgba(p.cobalt_deep, 0.95)}, 0 0 10px ${rgba(p.cobalt_deep, 0.8)};
+  white-space: nowrap;
+}
+.oys-boss-stages { display: inline-flex; gap: 3px; }
+.oys-boss-stage { width: 5px; height: 5px; transform: rotate(45deg); box-shadow: 0 0 0 1px ${rgba(p.gold, 0.7)}; }
+.oys-boss-stage.is-on { background: var(--gold); }
+.oys-boss-bar {
+  display: flex;
+  gap: 3px;
+  padding: 2px;
+  border-radius: 6px;
+  background: ${rgba(p.cobalt_deep, 0.6)};
+  box-shadow: 0 0 0 1px ${rgba(p.gold, 0.45)}, 0 4px 14px ${rgba('#000000', 0.25)};
+}
+.oys-boss-seg {
+  flex: 1;
+  height: 6px;
+  border-radius: 3px;
+  background: linear-gradient(180deg, #ffd27a, var(--gold) 45%, var(--vermilion));
+  transform-origin: center;
+}
+.oys-boss-seg.is-empty { background: ${rgba(p.ivory, 0.14)}; }
+.oys-hud.has-boss .oys-gate { top: calc(var(--safe-top) + 92px); }
+.oys-hud.has-boss ~ .oys-intro { top: calc(var(--safe-top) + 104px); }
+
 /* ---------- room intro card (never takes input) ---------- */
 .oys-intro {
   position: absolute;
