@@ -6,6 +6,29 @@ A dead courier steals their body back from a funeral railway. Dash through sunli
 
 A mobile-portrait, touch-first action roguelite for [Slapjam #2](https://itch.io/jam/slapjam-ai-2), theme **Speed**. Planned art direction: cobalt stone, ivory masks, vermilion thread and distant golden funeral machinery, with Blender-authored models.
 
+## The story
+
+A courier died on the funeral railway, and then stole their body back. Now the body is quick again, sharply, physically alive. The soul is not. It drifts behind on a vermilion thread, walking the exact route the body ran, slower, always arriving later.
+
+To escape, the pair must cross the railway's sunlit cobalt courtyards, past ivory-masked sentries that read the thread as a forecast: Needlers fire at the body, Keepers aim at where the soul *will be*, and Wardens hold their shields toward whoever approaches. Between courtyards wait the Signal Houses, small safe platforms where relics are left for the dead. Beyond them stands the Last Warden, the courier's mirror: fast, armoured, and followed by a slow heart of its own.
+
+Every dash is a promise the soul must keep. Every reunion is a choice. The gate only opens for both of you.
+
+## Identity
+
+There is no logo or cover art yet. The identity that exists is the in-game one:
+
+- **Wordmark:** "OUTRUN YOUR SOUL" set in a system serif, under the kicker "A funeral-railway escape".
+- **Tagline:** *Your body can outrun death. Your soul cannot.*
+- **Palette** ([src/content/palette.json](src/content/palette.json)): cobalt stone, ivory masks, vermilion silk for the thread, gold funeral machinery, a pale cyan soul. Amber is reserved for attack warnings and violet for environmental lanes, so gameplay signals never blend into the architecture.
+
+<p align="center">
+  <img src="art/previews/e2e-title.png" alt="Title screen, captured from the built game in Edge at 375x812" width="240" />
+  <img src="art/previews/e2e-telegraph.png" alt="A locked amber telegraph in play, captured from the built game" width="240" />
+</p>
+
+<sub>Captured from the built game in desktop Edge with phone-size emulation (375x812), not on a phone.</sub>
+
 ## Status
 
 **Playable expedition, verified on desktop browsers and emulated phone viewports only. Not yet tested on a real phone, not published to itch.io, not submitted to the jam.**
