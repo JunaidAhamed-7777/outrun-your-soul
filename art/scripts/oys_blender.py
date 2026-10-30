@@ -397,6 +397,55 @@ def strip(path, widths, thickness: float, up=(0.0, 0.0, 1.0)) -> bmesh.types.BMe
     return bm
 
 
+def catmull_rom(points, subdivisions: int = 3, closed: bool = True):
+    """Smooth a 2D control polygon [(u, v), ...] into a denser outline (passes through the points)."""
+    pts = [Vector((p[0], p[1])) for p in points]
+    n = len(pts)
+    out = []
+    last = n if closed else n - 1
+    for i in range(last):
+        p0 = pts[(i - 1) % n] if closed else pts[max(i - 1, 0)]
+        p1 = pts[i]
+        p2 = pts[(i + 1) % n] if closed else pts[min(i + 1, n - 1)]
+        p3 = pts[(i + 2) % n] if closed else pts[min(i + 2, n - 1)]
+        for s in range(subdivisions):
+            t = s / subdivisions
+            t2, t3 = t * t, t * t * t
+            q = 0.5 * ((2 * p1) + (-p0 + p2) * t + (2 * p0 - 5 * p1 + 4 * p2 - p3) * t2
+                       + (-p0 + 3 * p1 - 3 * p2 + p3) * t3)
+            out.append((q.x, q.y))
+    if not closed:
+        out.append((pts[-1].x, pts[-1].y))
+    return out
+
+
+def plate_with_holes(outline, holes, thickness: float, plane: str = 'XZ') -> bmesh.types.BMesh:
+    """Solid plate from an outer 2D outline with inner hole outlines (eyes, windows, cut-outs).
+
+    The face is filled with Blender's scanfill (nested loops become holes) and solidified
+    toward +Y (plane 'XZ', front face at y = 0) or +Z (plane 'XY', bottom face at z = 0).
+    """
+    bm = bmesh.new()
+    edges = []
+    for loop in [outline, *holes]:
+        if plane == 'XZ':
+            verts = [bm.verts.new((u, 0.0, w)) for u, w in loop]
+        elif plane == 'XY':
+            verts = [bm.verts.new((u, w, 0.0)) for u, w in loop]
+        else:
+            raise ValueError(plane)
+        for i in range(len(verts)):
+            edges.append(bm.edges.new((verts[i], verts[(i + 1) % len(verts)])))
+    normal = Vector((0, -1, 0)) if plane == 'XZ' else Vector((0, 0, -1))
+    bmesh.ops.triangle_fill(bm, use_beauty=True, use_dissolve=False, edges=edges, normal=normal)
+    for face in bm.faces:
+        if face.normal.dot(normal) < 0:
+            face.normal_flip()
+    bmesh.ops.solidify(bm, geom=list(bm.faces), thickness=thickness)
+    bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
+    return bm
+
+
 def deform(bm: bmesh.types.BMesh, fn) -> bmesh.types.BMesh:
     """Apply fn(Vector) -> Vector to every vertex (bends, tapers, shear) and return bm."""
     for vert in bm.verts:
@@ -475,7 +524,8 @@ def exporter_version() -> str:
 
 
 def render_preview(asset: Asset, rel_path: str | None = None, *, size=512, pitch_deg=58.0,
-                   ortho_scale: float | None = None, yaw_deg: float = 0.0) -> str:
+                   ortho_scale: float | None = None, yaw_deg: float = 0.0,
+                   view_transform: str | None = None) -> str:
     """Render the asset through the agreed game camera (orthographic, looking north, tilted down).
 
     Temporary camera/lights are tagged and removed; the source scene keeps no preview state.
@@ -517,7 +567,11 @@ def render_preview(asset: Asset, rel_path: str | None = None, *, size=512, pitch
         temp.append(sun)
         prev = dict(camera=scene.camera, engine=scene.render.engine, rx=scene.render.resolution_x,
                     ry=scene.render.resolution_y, pct=scene.render.resolution_percentage,
-                    transparent=scene.render.film_transparent, path=scene.render.filepath)
+                    transparent=scene.render.film_transparent, path=scene.render.filepath,
+                    view=scene.view_settings.view_transform)
+        if view_transform:
+            # 'Standard' maps palette sRGB colours 1:1 (closer to the browser) instead of AgX's highlight desaturation.
+            scene.view_settings.view_transform = view_transform
         scene.camera = cam
         for engine in ('BLENDER_EEVEE', 'BLENDER_EEVEE_NEXT', 'BLENDER_WORKBENCH'):
             try:
@@ -547,6 +601,7 @@ def render_preview(asset: Asset, rel_path: str | None = None, *, size=512, pitch
         scene.render.resolution_percentage = prev['pct']
         scene.render.film_transparent = prev['transparent']
         scene.render.filepath = prev['path']
+        scene.view_settings.view_transform = prev['view']
     finally:
         for obj in temp:
             data = obj.data
