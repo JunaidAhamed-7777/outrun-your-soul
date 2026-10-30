@@ -1,0 +1,42 @@
+{
+  "tool": {
+    "script": "scripts/check-models.mjs",
+    "khronosValidator": "2.0.0-dev.3.10"
+  },
+  "sources": {
+    "contract": "docs/ASSET_CONTRACT.md",
+    "budgets": "docs/ART_PIPELINE.md#initial-budgets-and-measurement (proposed guardrails, not platform limits)"
+  },
+  "folders": {
+    "shipping": "public/assets/models",
+    "fixtures": "art/exports"
+  },
+  "note": "no models yet: public/assets/models and art/exports contain no .glb files; the renderer uses placeholders",
+  "runtimeModelIds": [
+    "courier_body",
+    "soul_mask",
+    "needler",
+    "keeper",
+    "floor_tile",
+    "wall_block",
+    "exit_gate",
+    "distant_engine"
+  ],
+  "missingRuntimeModels": [
+    "courier_body",
+    "soul_mask",
+    "needler",
+    "keeper",
+    "floor_tile",
+    "wall_block",
+    "exit_gate",
+    "distant_engine"
+  ],
+  "summary": {
+    "shipping": 0,
+    "fixtures": 0,
+    "failed": 0,
+    "shippingTriangles": 0
+  },
+  "models": []
+}

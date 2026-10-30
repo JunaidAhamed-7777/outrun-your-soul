@@ -10,7 +10,9 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
-    "package": "npm run build && node scripts/package-itch.mjs"
+    "package": "npm run build && node scripts/package-itch.mjs",
+    "check:nested": "node scripts/check-nested.mjs",
+    "check:models": "node scripts/check-models.mjs"
   },
   "dependencies": {
     "three": "0.187.0"
