@@ -12,6 +12,8 @@ import { loadSettings, saveSettings } from '../../save/settings';
 import { createUI } from '../ui';
 import { LAB_ROOM, labState, withThread } from './fixture';
 import { DRAFT_FREE, DRAFT_FULL, LOADOUTS, ROUTES, ending, starterOptions } from './run-fixture';
+import { startRealRun } from './real-run';
+import type { EnemyPhase, EnemyState } from '../../sim/types';
 
 const stage = document.getElementById('stage') as HTMLElement;
 const panel = document.getElementById('lab') as HTMLElement;
@@ -22,7 +24,24 @@ const audio = createAudio();
 audio.setMuted(settings.muted);
 audio.setVolumes(settings.musicVolume, settings.sfxVolume);
 
-let state: SimState = labState();
+/** A warden (id 7) so windup telegraphs and its 'exposed' opening can be auditioned. */
+function labWarden(phase: EnemyPhase): EnemyState {
+  return {
+    id: 7,
+    key: 'w1',
+    role: 'warden',
+    pos: { x: 4, y: 8 },
+    radius: 0.55,
+    phase,
+    phaseTime: 0,
+    phaseDuration: 1,
+    aim: { x: 0, y: -1 },
+    target: 'body',
+    attackId: null,
+    facing: { x: 0, y: -1 },
+  };
+}
+let state: SimState = labState({ enemies: [labWarden('idle')] });
 let thread = 4;
 let running = true;
 
@@ -184,10 +203,63 @@ groups.splice(1, 0, [
 ]);
 groups.splice(2, 0, [
   'Relic events',
-  ['boost', 'charge', 'burst', 'decoyPlaced', 'decoyTaken', 'guarded', 'sweep', 'exposed', 'unknownThing'].map((type): Action => [
-    type,
-    () => emit({ type, t: 0, at: { x: 6, y: 5 } } as unknown as SimEvent),
-  ]),
+  (
+    [
+      ['boost', { type: 'boost', t: 0, at: { x: 3, y: 4 }, multiplier: 1.8, seconds: 1.2 }],
+      ['boostEnd', { type: 'boostEnd', t: 0 }],
+      ['haloEnter', { type: 'haloEnter', t: 0, projectileId: 3, at: { x: 3, y: 4 } }],
+      ['haloExit', { type: 'haloExit', t: 0, projectileId: 3, at: { x: 3, y: 4 } }],
+      ['charge 1/2', { type: 'charge', t: 0, at: { x: 5, y: 6 }, charge: 1, max: 2, charged: false }],
+      ['charge 2/2', { type: 'charge', t: 0, at: { x: 5, y: 6 }, charge: 2, max: 2, charged: true }],
+      ['burst', { type: 'burst', t: 0, at: { x: 4, y: 5 }, radius: 1.6, killed: [1] }],
+      ['burst kill', { type: 'kill', t: 0, enemyId: 1, role: 'needler', at: { x: 5, y: 5 }, cause: 'burst' }],
+      ['knotMarked', { type: 'knotMarked', t: 0 }],
+      ['decoyPlaced', { type: 'decoyPlaced', t: 0, at: { x: 4, y: 5 } }],
+      ['decoyClaimed', { type: 'decoyClaimed', t: 0, enemyId: 1, at: { x: 4, y: 5 } }],
+      ['decoyTaken', { type: 'decoyTaken', t: 0, enemyId: 1, at: { x: 4, y: 5 } }],
+      ['guarded', { type: 'guarded', t: 0, enemyId: 7, at: { x: 4, y: 7.4 } }],
+      ['warden windup', { type: 'telegraph', t: 0, enemyId: 7, phase: 'locked', target: 'body' }],
+      ['sweep', { type: 'sweep', t: 0, enemyId: 7, attackId: 9, at: { x: 4, y: 8 }, facing: { x: 0, y: -1 }, range: 2.2, halfAngle: 1 }],
+      ['unknownThing', { type: 'unknownThing', t: 0 }],
+    ] as [string, unknown][]
+  ).map(([label, e]): Action => [label, () => emit(e as SimEvent)]),
+]);
+groups.splice(3, 0, [
+  'Warden + boss',
+  [
+    ['warden exposed', () => {
+      state = { ...state, enemies: [labWarden('locked')] };
+      labStepFn(0.05);
+      state = { ...state, enemies: [labWarden('exposed')] };
+      labStepFn(0.05);
+      note('warden phase locked -> exposed');
+    }],
+    ...(['wake', 'telegraph', 'charge', 'fan', 'heartHit', 'stagger', 'reunited', 'defeated'] as const).map((what): Action => [
+      `boss ${what}`,
+      () => emit({ type: 'boss', t: 0, what, at: { x: 4, y: 9 }, ...(what === 'telegraph' ? { pattern: 'charge' as const } : {}) }),
+    ]),
+    ['boss telegraph fan', () => emit({ type: 'boss', t: 0, what: 'telegraph', at: { x: 4, y: 9 }, pattern: 'fan' })],
+    ['Boss bar 3/3', () => ui.setBoss({ name: 'The Last Warden', heartHp: 3, heartMax: 3, stage: 0, stages: 3 })],
+    ['Boss hit', () => {
+      bossHp = Math.max(0, bossHp - 1);
+      ui.setBoss({ name: 'The Last Warden', heartHp: bossHp, heartMax: 3, stage: 3 - Math.max(1, bossHp), stages: 3 });
+      emit({ type: 'boss', t: 0, what: 'heartHit', at: { x: 4, y: 9 }, hp: bossHp });
+    }],
+    ['Boss bar off', () => { bossHp = 3; ui.setBoss(null); }],
+    ['HUD: boss room', () => {
+      ui.hideTitle();
+      ui.showHud({ ...LAB_ROOM, hints: [], boss: { id: 'boss', at: { x: 4, y: 9 } } });
+      ui.setBoss({ name: 'The Last Warden', heartHp: 3, heartMax: 3, stage: 0, stages: 3 });
+    }],
+    ['HUD: warden room', () => {
+      ui.hideTitle();
+      ui.showHud({ ...LAB_ROOM, hints: [], enemies: [{ id: 'w1', role: 'warden', at: { x: 4, y: 8 } }] });
+    }],
+    ['Real run', () => {
+      screens.length = 0;
+      startRealRun(ui, { onScreen: (kind, detail) => { screens.push(`${kind}: ${detail}`); note(`${kind}: ${detail}`); } });
+    }],
+  ],
 ]);
 
 for (const [title, actions] of groups) {
@@ -213,6 +285,13 @@ function advance(dt: number): void {
   const shown = withThread(state, thread);
   ui.update(shown, dt);
   audio.update(shown, dt);
+}
+
+let bossHp = 3;
+const screens: string[] = [];
+(window as unknown as { labScreens: string[] }).labScreens = screens;
+function labStepFn(seconds: number): void {
+  for (let t = 0; t < seconds; t += 1 / 60) advance(1 / 60);
 }
 
 let last = performance.now();
