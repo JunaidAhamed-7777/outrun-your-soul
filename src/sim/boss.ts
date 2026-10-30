@@ -53,11 +53,8 @@ export function createBoss(spawn: BossSpawn, id: EntityId): BossState {
     phase: dormant ? 'dormant' : 'idle',
     phaseTime: 0,
     phaseDuration: dormant ? Infinity : BOSS_TUNING.idle,
-    pos: spawn.at,
-    prevPos: spawn.at,
-    facing: spawn.facing ? normalize(spawn.facing) : { x: 0, y: -1 },
-    heart: spawn.at,
-    heartPrev: spawn.at,
+    body: { pos: spawn.at, prevPos: spawn.at, facing: spawn.facing ? normalize(spawn.facing) : { x: 0, y: -1 } },
+    heart: { pos: spawn.at, prevPos: spawn.at },
     route: { points: [], length: 0 },
     path: [],
     legIndex: 0,
@@ -105,13 +102,13 @@ export function buildBossPlan(b: BossState): BossPlan {
   if (b.phase === 'charge') {
     const target = b.path[b.legIndex + 1];
     if (target) {
-      extendDir = normalize(sub(target, b.pos));
+      extendDir = normalize(sub(target, b.body.pos));
       vel = scale(extendDir, BOSS_TUNING.charge.speed);
     }
   }
   const pts = b.route.points.slice();
   const breaks = separated ? cornerArcs(pts).map((arc) => arc / BOSS_TUNING.heartSpeed) : [];
-  return { body0: b.pos, vel, separated, pts, length: b.route.length, extendDir, breaks };
+  return { body0: b.body.pos, vel, separated, pts, length: b.route.length, extendDir, breaks };
 }
 
 export function bossBodyAt(bp: BossPlan, tau: number): Vec2 {
@@ -137,7 +134,7 @@ export function bossTimers(state: SimState, bp: BossPlan): BossCandidate[] {
   }
   if (b.phase === 'charge') {
     const target = b.path[b.legIndex + 1];
-    if (target) out.push({ tau: dist(b.pos, target) / BOSS_TUNING.charge.speed, kind: 'bossLeg', id: b.id, endpoint: 0 });
+    if (target) out.push({ tau: dist(b.body.pos, target) / BOSS_TUNING.charge.speed, kind: 'bossLeg', id: b.id, endpoint: 0 });
   } else if (bp.separated) {
     out.push({ tau: bp.length / BOSS_TUNING.heartSpeed, kind: 'bossHome', id: b.id, endpoint: 0 });
   }
@@ -187,15 +184,15 @@ export function advanceBoss(state: SimState, bp: BossPlan, dt: number): void {
   if (!b || dt <= 0 || b.phase === 'dead') return;
   if (b.phase !== 'dormant') b.phaseTime += dt;
   if (b.phase === 'charge' && (bp.vel.x !== 0 || bp.vel.y !== 0)) {
-    b.pos = add(bp.body0, scale(bp.vel, dt));
-    setTail(b.route, b.pos);
+    b.body.pos = add(bp.body0, scale(bp.vel, dt));
+    setTail(b.route, b.body.pos);
   }
   if (bp.separated || isSeparated(b.route)) {
     consumeHead(b.route, BOSS_TUNING.heartSpeed * dt);
-    b.heart = b.route.points[0] ?? b.pos;
-    b.pos = b.route.points[b.route.points.length - 1] ?? b.pos;
+    b.heart.pos = b.route.points[0] ?? b.body.pos;
+    b.body.pos = b.route.points[b.route.points.length - 1] ?? b.body.pos;
   } else {
-    b.heart = b.pos;
+    b.heart.pos = b.body.pos;
   }
 }
 
@@ -211,14 +208,14 @@ function clampLeg(state: SimState, from: Vec2, dir: Vec2, length: number): Vec2 
 
 function chargePath(state: SimState, b: BossState): Vec2[] {
   const L = BOSS_TUNING.charge.legLength;
-  let d1 = normalize(sub(state.body.pos, b.pos));
-  if (d1.x === 0 && d1.y === 0) d1 = b.facing;
-  const p1 = clampLeg(state, b.pos, d1, L);
+  let d1 = normalize(sub(state.body.pos, b.body.pos));
+  if (d1.x === 0 && d1.y === 0) d1 = b.body.facing;
+  const p1 = clampLeg(state, b.body.pos, d1, L);
   let d2 = normalize(sub(state.soul.pos, p1));
   if (d2.x === 0 && d2.y === 0) d2 = { x: -d1.y, y: d1.x };
   const p2 = clampLeg(state, p1, d2, L);
-  const path = [b.pos];
-  if (dist(p1, b.pos) > 0.25) path.push(p1);
+  const path = [b.body.pos];
+  if (dist(p1, b.body.pos) > 0.25) path.push(p1);
   if (dist(p2, path[path.length - 1]!) > 0.25) path.push(p2);
   return path;
 }
@@ -228,15 +225,15 @@ function fanDirections(state: SimState, b: BossState, events: SimEvent[]): Vec2[
   // A new aim acquisition: a Traveler's Knot decoy takes it (claimed and consumed at once).
   const relics = state.relicState;
   let target: Vec2;
-  if (relics?.decoy && relics.decoy.claimedBy === null) {
-    target = relics.decoy.pos;
-    events.push({ type: 'decoyConsumed', t: state.time, enemyId: b.id, at: target });
+  if (relics?.decoy && relics.decoyClaimedBy === null) {
+    target = relics.decoy;
+    events.push({ type: 'decoyTaken', t: state.time, enemyId: b.id, at: target });
     relics.decoy = null;
   } else {
-    target = leadSoul(state, b.pos, BOSS_TUNING.bodyRadius, f.boltSpeed, f.aim);
+    target = leadSoul(state, b.body.pos, BOSS_TUNING.bodyRadius, f.boltSpeed, f.aim);
   }
-  let centre = normalize(sub(target, b.pos));
-  if (centre.x === 0 && centre.y === 0) centre = b.facing;
+  let centre = normalize(sub(target, b.body.pos));
+  if (centre.x === 0 && centre.y === 0) centre = b.body.facing;
   const base = Math.atan2(centre.y, centre.x);
   const spread = (f.spreadDeg * Math.PI) / 180;
   const dirs: Vec2[] = [];
@@ -261,8 +258,8 @@ function startNextPattern(state: SimState, b: BossState, events: SimEvent[]): vo
     b.phaseDuration = BOSS_TUNING.charge.aim;
     b.attackId = state.nextId++;
     b.chargeTouched = [];
-    b.facing = normalize(sub(b.path[1]!, b.pos));
-    events.push({ type: 'boss', t: state.time, what: 'telegraph', at: b.pos, pattern: 'charge', path: b.path.slice() });
+    b.body.facing = normalize(sub(b.path[1]!, b.body.pos));
+    events.push({ type: 'boss', t: state.time, what: 'telegraph', at: b.body.pos, pattern: 'charge', path: b.path.slice() });
   } else {
     startFan(state, b, events);
   }
@@ -273,14 +270,14 @@ function startFan(state: SimState, b: BossState, events: SimEvent[]): void {
   b.phaseDuration = BOSS_TUNING.fan.aim;
   b.phaseTime = 0;
   b.fan = fanDirections(state, b, events);
-  b.facing = b.fan[Math.floor(b.fan.length / 2)] ?? b.facing;
-  events.push({ type: 'boss', t: state.time, what: 'telegraph', at: b.pos, pattern: 'fan', directions: b.fan.slice() });
+  b.body.facing = b.fan[Math.floor(b.fan.length / 2)] ?? b.body.facing;
+  events.push({ type: 'boss', t: state.time, what: 'telegraph', at: b.body.pos, pattern: 'fan', directions: b.fan.slice() });
 }
 
 function fireFan(state: SimState, b: BossState, events: SimEvent[]): void {
   const f = BOSS_TUNING.fan;
   for (const dir of b.fan) {
-    const pos = add(b.pos, scale(dir, BOSS_TUNING.bodyRadius));
+    const pos = add(b.body.pos, scale(dir, BOSS_TUNING.bodyRadius));
     const bolt: ProjectileState = {
       id: state.nextId++,
       attackId: state.nextId++,
@@ -293,12 +290,12 @@ function fireFan(state: SimState, b: BossState, events: SimEvent[]): void {
       alive: true,
       aimPoint: null,
       speedScale: 1,
-      inHalo: false,
+      slowed: false,
     };
     state.projectiles.push(bolt);
     events.push({ type: 'fire', t: state.time, enemyId: b.id, projectileId: bolt.id, attackId: bolt.attackId, at: pos });
   }
-  events.push({ type: 'boss', t: state.time, what: 'fan', at: b.pos, pattern: 'fan' });
+  events.push({ type: 'boss', t: state.time, what: 'fan', at: b.body.pos, pattern: 'fan' });
   b.fan = [];
   b.phase = 'idle';
   b.phaseTime = 0;
@@ -309,8 +306,8 @@ function beginLeg(b: BossState): void {
   const from = b.path[b.legIndex]!;
   const to = b.path[b.legIndex + 1]!;
   const dir = normalize(sub(to, from));
-  beginAppend(b.route, b.pos, dir);
-  b.facing = dir;
+  beginAppend(b.route, b.body.pos, dir);
+  b.body.facing = dir;
 }
 
 export function wakeBoss(state: SimState, events: SimEvent[]): void {
@@ -319,7 +316,7 @@ export function wakeBoss(state: SimState, events: SimEvent[]): void {
   b.phase = 'idle';
   b.phaseTime = 0;
   b.phaseDuration = BOSS_TUNING.idle;
-  events.push({ type: 'boss', t: state.time, what: 'wake', at: b.pos });
+  events.push({ type: 'boss', t: state.time, what: 'wake', at: b.body.pos });
 }
 
 export function resolveBoss(state: SimState, kind: BossKind, endpoint: 0 | 1, events: SimEvent[]): void {
@@ -341,7 +338,7 @@ export function resolveBoss(state: SimState, kind: BossKind, endpoint: 0 | 1, ev
           b.phaseDuration = Infinity;
           b.legIndex = 0;
           beginLeg(b);
-          events.push({ type: 'boss', t, what: 'charge', at: b.pos, pattern: 'charge' });
+          events.push({ type: 'boss', t, what: 'charge', at: b.body.pos, pattern: 'charge' });
           return;
         case 'aimFan':
           fireFan(state, b, events);
@@ -362,7 +359,7 @@ export function resolveBoss(state: SimState, kind: BossKind, endpoint: 0 | 1, ev
     case 'bossLeg': {
       const target = b.path[b.legIndex + 1];
       if (!target) return;
-      b.pos = target;
+      b.body.pos = target;
       setTail(b.route, target);
       b.legIndex += 1;
       if (b.legIndex + 1 < b.path.length) {
@@ -378,8 +375,8 @@ export function resolveBoss(state: SimState, kind: BossKind, endpoint: 0 | 1, ev
     }
     case 'bossHome':
       clearRoute(b.route);
-      b.heart = b.pos;
-      events.push({ type: 'boss', t, what: 'reunited', at: b.pos });
+      b.heart.pos = b.body.pos;
+      events.push({ type: 'boss', t, what: 'reunited', at: b.body.pos });
       if (b.phase === 'recover') {
         b.phase = 'idle';
         b.phaseTime = 0;
@@ -404,14 +401,14 @@ export function resolveBoss(state: SimState, kind: BossKind, endpoint: 0 | 1, ev
     case 'bossHeart': {
       if (!heartVulnerable(b)) return;
       b.hp -= 1;
-      events.push({ type: 'boss', t, what: 'heartHit', at: b.heart, hp: b.hp });
+      events.push({ type: 'boss', t, what: 'heartHit', at: b.heart.pos, hp: b.hp });
       b.attackId = null;
       b.path = [];
       b.fan = [];
       if (b.hp <= 0) {
         b.phase = 'dead';
         b.phaseDuration = Infinity;
-        events.push({ type: 'boss', t, what: 'defeated', at: b.pos });
+        events.push({ type: 'boss', t, what: 'defeated', at: b.body.pos });
         return;
       }
       b.phase = 'stagger';
@@ -419,7 +416,7 @@ export function resolveBoss(state: SimState, kind: BossKind, endpoint: 0 | 1, ev
       b.phaseDuration = BOSS_TUNING.stagger;
       b.stage = Math.min(b.stage + 1, stagesOf(state).length - 1);
       b.step = 0;
-      events.push({ type: 'boss', t, what: 'stagger', at: b.pos, hp: b.hp });
+      events.push({ type: 'boss', t, what: 'stagger', at: b.body.pos, hp: b.hp });
       return;
     }
   }
@@ -432,10 +429,10 @@ export function bossInvariants(state: SimState): string[] {
   const errors: string[] = [];
   const pts = b.route.points;
   if (pts.length === 0) {
-    if (dist(b.heart, b.pos) > 1e-6) errors.push('boss heart away from body without a route');
+    if (dist(b.heart.pos, b.body.pos) > 1e-6) errors.push('boss heart away from body without a route');
   } else {
-    if (dist(pts[0]!, b.heart) > 1e-6) errors.push('boss route head is not the heart');
-    if (dist(pts[pts.length - 1]!, b.pos) > 1e-6) errors.push('boss route tail is not the body');
+    if (dist(pts[0]!, b.heart.pos) > 1e-6) errors.push('boss route head is not the heart');
+    if (dist(pts[pts.length - 1]!, b.body.pos) > 1e-6) errors.push('boss route tail is not the body');
   }
   if (b.hp < 0 || b.hp > b.maxHp) errors.push('boss hp out of range');
   if ((b.phase === 'dead') !== (b.hp <= 0)) errors.push('boss death inconsistent with hp');

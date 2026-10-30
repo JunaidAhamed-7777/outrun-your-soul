@@ -64,13 +64,11 @@ describe('room registry', () => {
     expect(currentNode(run).roomId).toBe(FIRST_ROOM_ID);
   });
 
-  it('pending warden rooms are held back only because wardens are not implemented yet', () => {
+  it('pending warden rooms now validate (wardens are implemented) and stay out of the pool until enabled', () => {
     const pending = Object.values(PENDING_WARDEN_ROOMS).flat();
     expect(pending.length).toBeGreaterThan(0);
     for (const room of pending) {
-      const errors = validateRoom(room);
-      expect(errors.length).toBeGreaterThan(0);
-      for (const e of errors) expect(e).toMatch(/warden role is not implemented/);
+      expect(validateRoom(room)).toEqual([]);
       expect(ALL_ROOM_VARIANTS).not.toContain(room);
     }
   });

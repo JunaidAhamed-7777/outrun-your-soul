@@ -173,6 +173,10 @@ export interface EnemyState {
   aimTarget?: Vec2 | null;
   /** Point the locked shot was aimed at (where the reticle sits); null outside 'locked'. */
   lockTarget?: Vec2 | null;
+  /** Warden geometry (radians / tiles), copied from ENEMY_TUNING.warden for presentation. */
+  guardHalfAngle?: number;
+  sweepRadius?: number;
+  sweepHalfAngle?: number;
 }
 
 export interface ProjectileState {
@@ -190,8 +194,8 @@ export interface ProjectileState {
   aimPoint?: Vec2 | null;
   /** Glass Lantern: 1 outside the soul halo, slowFactor inside. Missing means 1. */
   speedScale?: number;
-  /** Glass Lantern: whether the bolt centre is inside the soul halo. */
-  inHalo?: boolean;
+  /** Glass Lantern: whether the bolt is inside the soul halo (and slowed). */
+  slowed?: boolean;
 }
 
 export type LaneStatus = 'idle' | 'warning' | 'active';
@@ -241,24 +245,35 @@ export interface SimRelicCharges {
   readonly knotMarked: boolean;
 }
 
-export interface DecoyState {
-  readonly pos: Vec2;
-  readonly radius: number;
-  /** Sentry whose new aim acquisition took the decoy; consumed when that aim locks. */
-  claimedBy: EntityId | null;
-}
-
-/** Live relic state. Charges (bellKills, bellCharged, knotMarked) are what a checkpoint keeps. */
+/**
+ * Live relic state. bellKills / bellCharged / knotMarked are the checkpoint charges
+ * (SimRelicCharges). The flat presentation fields (equipped, haloRadius, bellCharge,
+ * bellChargeMax, burstRadius, knotReady, decoy) are kept in sync by the simulation for
+ * the renderer and HUD.
+ */
 export interface RelicRuntimeState {
   readonly config: SimRelicConfig;
+  /** Behavioural relic IDs equipped in the simulation ('needlesong', 'glass_lantern', ...). */
+  readonly equipped: readonly string[];
+  /** Glass Lantern halo radius in tiles (the exact speed boundary), or null. */
+  readonly haloRadius: number | null;
+  /** Mourning Bell burst radius in tiles, or null. */
+  readonly burstRadius: number | null;
   /** Mourning Bell: distinct direct dash kills counted toward the next charge. */
   bellKills: number;
   /** Mourning Bell: a burst waiting for the next separated-to-reunited transition. */
   bellCharged: boolean;
+  /** Mourning Bell pips: kills toward the charge, or bellChargeMax while charged. */
+  bellCharge: number;
+  readonly bellChargeMax: number;
   /** Traveler's Knot: an earned mark waiting to become a decoy at the next reunion. */
   knotMarked: boolean;
-  /** Traveler's Knot: an active decoy on the ground (never crosses rooms). */
-  decoy: DecoyState | null;
+  /** Presentation alias of knotMarked. */
+  knotReady: boolean;
+  /** Traveler's Knot: the active decoy's position on the ground (never crosses rooms). */
+  decoy: Vec2 | null;
+  /** Sentry whose new aim acquisition took the decoy; consumed when that aim locks. */
+  decoyClaimedBy: EntityId | null;
 }
 
 export interface RunStats {
@@ -319,12 +334,9 @@ export interface BossState {
   phaseTime: number;
   phaseDuration: number;
   /** Armoured body (guards every angle). */
-  pos: Vec2;
-  prevPos: Vec2;
-  facing: Vec2;
+  body: { pos: Vec2; prevPos: Vec2; facing: Vec2 };
   /** Vulnerable heart: follows the boss's own route at a slower speed, like the soul. */
-  heart: Vec2;
-  heartPrev: Vec2;
+  heart: { pos: Vec2; prevPos: Vec2 };
   /** Boss tether, heart (index 0) to body (last); empty when the heart is home. */
   route: RouteState;
   /** Telegraphed charge path starting at the body; frozen once shown. Empty otherwise. */
@@ -455,21 +467,22 @@ export type SimEvent =
       readonly directions?: readonly Vec2[];
       readonly hp?: number;
     }
-  /** Needlesong: a cut sped up the soul (refreshes, never stacks). */
-  | { readonly type: 'soulBoost'; readonly t: number; readonly multiplier: number; readonly seconds: number }
-  | { readonly type: 'soulBoostEnd'; readonly t: number }
-  /** Glass Lantern: a bolt crossed the soul halo boundary (its speed changed). */
-  | { readonly type: 'halo'; readonly t: number; readonly projectileId: EntityId; readonly inside: boolean; readonly at: Vec2 }
-  /** Mourning Bell: progress after a direct dash kill. */
-  | { readonly type: 'bellCharge'; readonly t: number; readonly kills: number; readonly charged: boolean }
+  /** Needlesong: a cut sped up the soul (refreshes, never stacks). `at` is the soul. */
+  | { readonly type: 'boost'; readonly t: number; readonly at: Vec2; readonly multiplier: number; readonly seconds: number }
+  | { readonly type: 'boostEnd'; readonly t: number }
+  /** Glass Lantern: a bolt crossed into / out of the soul halo (its speed changed). */
+  | { readonly type: 'haloEnter'; readonly t: number; readonly projectileId: EntityId; readonly at: Vec2 }
+  | { readonly type: 'haloExit'; readonly t: number; readonly projectileId: EntityId; readonly at: Vec2 }
+  /** Mourning Bell: progress after a direct dash kill (`charge` of `max` pips; `at` is the body). */
+  | { readonly type: 'charge'; readonly t: number; readonly at: Vec2; readonly charge: number; readonly max: number; readonly charged: boolean }
   /** Mourning Bell: the stored charge rang out at a reunion. */
-  | { readonly type: 'bellBurst'; readonly t: number; readonly at: Vec2; readonly radius: number; readonly killed: readonly EntityId[] }
+  | { readonly type: 'burst'; readonly t: number; readonly at: Vec2; readonly radius: number; readonly killed: readonly EntityId[] }
   /** Traveler's Knot: a direct dash kill earned a mark. */
   | { readonly type: 'knotMarked'; readonly t: number }
   | { readonly type: 'decoyPlaced'; readonly t: number; readonly at: Vec2 }
   /** A sentry's new aim acquisition took the decoy (tracking toward it). */
   | { readonly type: 'decoyClaimed'; readonly t: number; readonly enemyId: EntityId; readonly at: Vec2 }
-  /** The claiming sentry locked onto the decoy; the decoy is gone, the locked line stays. */
-  | { readonly type: 'decoyConsumed'; readonly t: number; readonly enemyId: EntityId; readonly at: Vec2 };
+  /** The claiming attacker locked onto the decoy; the decoy is gone, the locked line stays. */
+  | { readonly type: 'decoyTaken'; readonly t: number; readonly enemyId: EntityId; readonly at: Vec2 };
 
 export type SimEventType = SimEvent['type'];

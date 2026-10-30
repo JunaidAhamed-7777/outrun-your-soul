@@ -30,6 +30,7 @@ import {
   type BossPlan,
 } from './boss';
 import { applyDamage, stopDashGuarded } from './combat';
+import { syncRelicView } from './create';
 import {
   aimPointFor,
   aimToward,
@@ -387,10 +388,10 @@ function findCollision(state: SimState, plan: Plan, bp: BossPlan | null, span: n
       }
       if (halo) {
         // The halo is centred on the soul (on the body when reunited) and only changes bolt speed.
-        const tHalo = p.inHalo
+        const tHalo = p.slowed
           ? haloExitTime(sub(p0, s0), sub(pv, vs), halo.haloRadius + HALO_EXIT_BAND, dt)
           : haloEntryTime(sub(p0, s0), sub(pv, vs), halo.haloRadius, dt);
-        if (tHalo !== null) found.push(candidate(ta + tHalo, p.inHalo ? 'haloExit' : 'haloEnter', p.id));
+        if (tHalo !== null) found.push(candidate(ta + tHalo, p.slowed ? 'haloExit' : 'haloEnter', p.id));
       }
     }
 
@@ -549,7 +550,7 @@ function killEnemy(state: SimState, e: EnemyState, cause: 'dash' | 'burst', even
   state.stats.kills += 1;
   events.push({ type: 'kill', t, enemyId: e.id, role: e.role, at: e.pos, cause });
   const relics = state.relicState;
-  if (relics?.decoy?.claimedBy === e.id) relics.decoy.claimedBy = null; // unlocked claim returns
+  if (relics && relics.decoyClaimedBy === e.id) relics.decoyClaimedBy = null; // unlocked claim returns
   if (relics && cause === 'dash') {
     const bell = relics.config.mourningBell;
     if (bell && !relics.bellCharged && bell.maxCharges > 0) {
@@ -558,11 +559,20 @@ function killEnemy(state: SimState, e: EnemyState, cause: 'dash' | 'burst', even
         relics.bellKills = 0;
         relics.bellCharged = true;
       }
-      events.push({ type: 'bellCharge', t, kills: relics.bellKills, charged: relics.bellCharged });
+      syncRelicView(relics);
+      events.push({
+        type: 'charge',
+        t,
+        at: state.body.pos,
+        charge: relics.bellCharge,
+        max: relics.bellChargeMax,
+        charged: relics.bellCharged,
+      });
     }
     const knot = relics.config.travelersKnot;
     if (knot && knot.maxMarks > 0 && !relics.knotMarked && relics.decoy === null) {
       relics.knotMarked = true;
+      syncRelicView(relics);
       events.push({ type: 'knotMarked', t });
     }
   }
@@ -634,12 +644,15 @@ function arrivalEffects(state: SimState, at: Vec2, events: SimEvent[]): void {
       killEnemy(state, e, 'burst', events);
       killed.push(e.id);
     }
-    events.push({ type: 'bellBurst', t: state.time, at, radius: bell.burstRadius, killed });
+    syncRelicView(relics);
+    events.push({ type: 'burst', t: state.time, at, radius: bell.burstRadius, killed });
   }
   const knot = relics.config.travelersKnot;
   if (knot && relics.knotMarked) {
     relics.knotMarked = false;
-    relics.decoy = { pos: at, radius: knot.decoyRadius, claimedBy: null };
+    relics.decoy = at;
+    relics.decoyClaimedBy = null;
+    syncRelicView(relics);
     events.push({ type: 'decoyPlaced', t: state.time, at });
   }
 }
@@ -721,10 +734,10 @@ function enemyTransition(state: SimState, e: EnemyState, events: SimEvent[]): vo
       e.phase = 'tracking';
       e.phaseDuration = tune.tracking;
       // A new aim acquisition takes an unclaimed Traveler's Knot decoy.
-      const decoy = state.relicState?.decoy;
-      if (decoy && decoy.claimedBy === null) {
-        decoy.claimedBy = e.id;
-        events.push({ type: 'decoyClaimed', t, enemyId: e.id, at: decoy.pos });
+      const relics = state.relicState;
+      if (relics?.decoy && relics.decoyClaimedBy === null) {
+        relics.decoyClaimedBy = e.id;
+        events.push({ type: 'decoyClaimed', t, enemyId: e.id, at: relics.decoy });
       }
       e.aimTarget = aimPointFor(state, e, tune.tracking + tune.locked);
       e.aim = aimToward(e, e.aimTarget);
@@ -742,10 +755,11 @@ function enemyTransition(state: SimState, e: EnemyState, events: SimEvent[]): vo
       e.lockTarget = point;
       e.attackId = state.nextId++;
       const relics = state.relicState;
-      if (relics?.decoy && relics.decoy.claimedBy === e.id) {
+      if (relics?.decoy && relics.decoyClaimedBy === e.id) {
         // Consumed at lock; the locked line keeps pointing where the decoy was.
-        events.push({ type: 'decoyConsumed', t, enemyId: e.id, at: relics.decoy.pos });
+        events.push({ type: 'decoyTaken', t, enemyId: e.id, at: relics.decoy });
         relics.decoy = null;
+        relics.decoyClaimedBy = null;
       }
       events.push({ type: 'telegraph', t, enemyId: e.id, phase: 'locked', target: e.target });
       return;
@@ -765,7 +779,7 @@ function enemyTransition(state: SimState, e: EnemyState, events: SimEvent[]): vo
         alive: true,
         aimPoint: e.lockTarget ?? null,
         speedScale: 1,
-        inHalo: false,
+        slowed: false,
       };
       state.projectiles.push(bolt);
       e.attackId = null;
@@ -803,7 +817,7 @@ function resolve(state: SimState, ev: Candidate, events: SimEvent[], probe: Step
           // Refresh, never stack: the multiplier is set, not multiplied.
           state.soul.speedMultiplier = song.boostMultiplier;
           state.soul.boostLeft = song.boostSeconds;
-          events.push({ type: 'soulBoost', t, multiplier: song.boostMultiplier, seconds: song.boostSeconds });
+          events.push({ type: 'boost', t, at: state.soul.pos, multiplier: song.boostMultiplier, seconds: song.boostSeconds });
         }
       }
       return;
@@ -814,15 +828,15 @@ function resolve(state: SimState, ev: Candidate, events: SimEvent[], probe: Step
       const halo = state.relicState?.config.glassLantern;
       if (!p || !halo) return;
       const inside = ev.kind === 'haloEnter';
-      p.inHalo = inside;
+      p.slowed = inside;
       p.speedScale = inside ? halo.slowFactor : 1;
-      events.push({ type: 'halo', t, projectileId: p.id, inside, at: p.pos });
+      events.push({ type: inside ? 'haloEnter' : 'haloExit', t, projectileId: p.id, at: p.pos });
       return;
     }
     case 'boostEnd':
       state.soul.boostLeft = 0;
       state.soul.speedMultiplier = 1;
-      events.push({ type: 'soulBoostEnd', t });
+      events.push({ type: 'boostEnd', t });
       return;
     case 'kill': {
       const e = state.enemies.find((q) => q.id === ev.id);
@@ -938,7 +952,7 @@ function settle(state: SimState, events: SimEvent[]): void {
   );
 
   const bossWake = state.room.boss?.wake;
-  if (state.boss?.phase === 'dormant' && bossWake?.kind === 'bodyWithin' && dist(body.pos, state.boss.pos) <= bossWake.radius) {
+  if (state.boss?.phase === 'dormant' && bossWake?.kind === 'bodyWithin' && dist(body.pos, state.boss.body.pos) <= bossWake.radius) {
     wakeBoss(state, events);
   }
   const cleared = state.enemies.every((e) => e.phase === 'dead') && !bossAlive(state);
@@ -969,8 +983,8 @@ export function stepInternal(state: SimState, commands: readonly Command[], prob
   state.soul.prevPos = state.soul.pos;
   for (const p of state.projectiles) p.prevPos = p.pos;
   if (state.boss) {
-    state.boss.prevPos = state.boss.pos;
-    state.boss.heartPrev = state.boss.heart;
+    state.boss.body.prevPos = state.boss.body.pos;
+    state.boss.heart.prevPos = state.boss.heart.pos;
   }
 
   if (state.outcome === 'playing') {

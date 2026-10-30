@@ -175,19 +175,6 @@ const HANDLERS: { readonly [T in SimEventType]?: Handler<T> } = {
   rejected: () => [cue('rejectClick', { intensity: 0.5 })],
   queued: () => [cue('queuedTick', { intensity: 0.4 })],
   queueExpired: () => [cue('rejectClick', { intensity: 0.3, variant: 'expired' })],
-  // Warden and relic events (added by the simulation; dedicated cues pending from the audio owner).
-  guarded: () => [],
-  sweep: () => [],
-  boss: () => [],
-  soulBoost: () => [],
-  soulBoostEnd: () => [],
-  halo: () => [],
-  bellCharge: () => [],
-  bellBurst: () => [],
-  knotMarked: () => [],
-  decoyPlaced: () => [],
-  decoyClaimed: () => [],
-  decoyConsumed: () => [],
 };
 
 /** Read a position from an event that may not be typed yet ({ at } or { pos }). */

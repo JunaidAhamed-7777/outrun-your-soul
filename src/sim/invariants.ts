@@ -88,16 +88,20 @@ export function checkInvariants(state: SimState): string[] {
     }
     if (!relics.config.travelersKnot && (relics.knotMarked || relics.decoy)) errors.push("knot state without Traveler's Knot");
     if (relics.knotMarked && relics.decoy) errors.push('a knot mark and an active decoy at once');
-    const claimer = relics.decoy?.claimedBy;
-    if (claimer != null && state.enemies.find((e) => e.id === claimer)?.phase !== 'tracking') {
+    const claimer = relics.decoyClaimedBy;
+    if (claimer !== null && (!relics.decoy || state.enemies.find((e) => e.id === claimer)?.phase !== 'tracking')) {
       errors.push('decoy claimed by a sentry that is not tracking');
+    }
+    if (relics.knotReady !== relics.knotMarked) errors.push('knotReady out of sync');
+    if (relics.bellCharge !== (relics.bellCharged ? relics.bellChargeMax : relics.bellKills)) {
+      errors.push('bellCharge out of sync');
     }
     if (state.soul.boostLeft > 0 && !relics.config.needlesong) errors.push('soul boost without Needlesong');
   }
   if ((state.soul.boostLeft > 0) !== (state.soul.speedMultiplier !== 1)) errors.push('soul boost timer and multiplier disagree');
   for (const p of state.projectiles) {
     const scale = p.speedScale ?? 1;
-    const expected = p.inHalo ? (relics?.config.glassLantern?.slowFactor ?? 1) : 1;
+    const expected = p.slowed ? (relics?.config.glassLantern?.slowFactor ?? 1) : 1;
     if (Math.abs(scale - expected) > 1e-12) errors.push(`bolt ${p.id} speed scale ${scale} does not match halo state`);
   }
   for (const lane of state.lanes) {

@@ -23,13 +23,33 @@ export interface CreateOptions {
 export function initialRelicState(config: SimRelicConfig = {}, charges?: SimRelicCharges): RelicRuntimeState {
   const bell = config.mourningBell;
   const kills = charges && Number.isFinite(charges.bellKills) ? Math.floor(charges.bellKills) : 0;
-  return {
+  const equipped: string[] = [];
+  if (config.needlesong) equipped.push('needlesong');
+  if (config.glassLantern) equipped.push('glass_lantern');
+  if (config.mourningBell) equipped.push('mourning_bell');
+  if (config.travelersKnot) equipped.push('travelers_knot');
+  const relics: RelicRuntimeState = {
     config,
+    equipped,
+    haloRadius: config.glassLantern?.haloRadius ?? null,
+    burstRadius: bell?.burstRadius ?? null,
     bellKills: bell ? Math.min(Math.max(kills, 0), Math.max(0, bell.killsPerCharge - 1)) : 0,
     bellCharged: Boolean(bell && charges?.bellCharged === true && bell.maxCharges > 0),
+    bellCharge: 0,
+    bellChargeMax: bell?.killsPerCharge ?? 0,
     knotMarked: Boolean(config.travelersKnot && charges?.knotMarked === true && config.travelersKnot.maxMarks > 0),
+    knotReady: false,
     decoy: null,
+    decoyClaimedBy: null,
   };
+  syncRelicView(relics);
+  return relics;
+}
+
+/** Refresh the flat presentation fields after any relic mutation. */
+export function syncRelicView(relics: RelicRuntimeState): void {
+  relics.bellCharge = relics.bellCharged ? relics.bellChargeMax : relics.bellKills;
+  relics.knotReady = relics.knotMarked;
 }
 
 export function createSim(room: RoomDef, options: CreateOptions): SimState {

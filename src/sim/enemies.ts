@@ -171,6 +171,13 @@ export function createEnemy(spawn: EnemySpawn, id: EntityId): EnemyState {
     facing,
     aimTarget: null,
     lockTarget: null,
+    ...(spawn.role === 'warden'
+      ? {
+          guardHalfAngle: ENEMY_TUNING.warden.guardHalfAngle,
+          sweepRadius: ENEMY_TUNING.warden.sweepRange,
+          sweepHalfAngle: ENEMY_TUNING.warden.sweepHalfAngle,
+        }
+      : {}),
   };
 }
 
@@ -201,8 +208,8 @@ export function aimToward(enemy: EnemyState, point: Vec2): Vec2 {
  * its forecast position along the committed route when the bolt would arrive.
  */
 export function aimPointFor(state: SimState, enemy: EnemyState, delay: number): Vec2 {
-  const decoy = state.relicState?.decoy;
-  if (decoy && decoy.claimedBy === enemy.id) return decoy.pos;
+  const relics = state.relicState;
+  if (relics?.decoy && relics.decoyClaimedBy === enemy.id) return relics.decoy;
   if (enemy.target === 'body') return state.body.pos;
   const tune = sentryTuning(enemy.role);
   return leadSoul(state, enemy.pos, enemy.radius, tune.boltSpeed, delay);

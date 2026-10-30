@@ -43,10 +43,10 @@ describe('Needlesong', () => {
     spawnBolt(s, { x: 3.5, y: 2 }, { x: 0, y: 0 });
     const events = run(s, { first: [dash(3, 0)], seconds: 2 });
     const cut = ofType(events, 'cut')[0]!;
-    const boost = ofType(events, 'soulBoost')[0]!;
+    const boost = ofType(events, 'boost')[0]!;
     expect(boost.t).toBe(cut.t);
     expect(boost.multiplier).toBe(SONG.boostMultiplier);
-    const end = ofType(events, 'soulBoostEnd')[0];
+    const end = ofType(events, 'boostEnd')[0];
     // Soul reunites quickly here, but the timer still expires exactly on schedule.
     expect(end?.t).toBeCloseTo(cut.t + SONG.boostSeconds, 9);
     expect(s.soul.speedMultiplier).toBe(1);
@@ -77,18 +77,18 @@ describe('Needlesong', () => {
     spawnBolt(s, { x: 5.5, y: 9 }, { x: 0, y: 0 });
     const first = run(s, { first: [dash(2, 0)], seconds: 0.5, until: (e) => e.type === 'ready' });
     const second = run(s, { first: [dash(3, 0)], seconds: 0.4 });
-    const boosts = [...ofType(first, 'soulBoost'), ...ofType(second, 'soulBoost')];
+    const boosts = [...ofType(first, 'boost'), ...ofType(second, 'boost')];
     expect(boosts).toHaveLength(2);
     expect(s.soul.speedMultiplier).toBe(SONG.boostMultiplier);
     const rest = run(s, { seconds: 2 });
-    expect(ofType(rest, 'soulBoostEnd')[0]!.t).toBeCloseTo(boosts[1]!.t + SONG.boostSeconds, 9);
-    expect(ofType([...first, ...second], 'soulBoostEnd')).toHaveLength(0);
+    expect(ofType(rest, 'boostEnd')[0]!.t).toBeCloseTo(boosts[1]!.t + SONG.boostSeconds, 9);
+    expect(ofType([...first, ...second], 'boostEnd')).toHaveLength(0);
   });
 
   it('empty swings grant nothing', () => {
     const s = withRelics(['needlesong'], { spawn: { x: 2, y: 2 } });
     const events = run(s, { first: [dash(3, 0)], seconds: 1 });
-    expect(ofType(events, 'soulBoost')).toHaveLength(0);
+    expect(ofType(events, 'boost')).toHaveLength(0);
   });
 
   it('counterexample: earlier arrival carries the soul into a lane slow arrival would miss', () => {
@@ -115,8 +115,8 @@ describe('Glass Lantern', () => {
     // Bolt passes 1 tile from the stationary reunited pair: through the halo, missing them.
     const bolt = spawnBolt(s, { x: 1, y: 3 }, { x: 4, y: 0 });
     const events = run(s, { seconds: 4 });
-    const halo = ofType(events, 'halo').filter((h) => h.projectileId === bolt.id);
-    expect(halo.map((h) => h.inside)).toEqual([true, false]);
+    const halo = events.filter((h): h is Extract<typeof h, { type: 'haloEnter' | 'haloExit' }> => (h.type === 'haloEnter' || h.type === 'haloExit') && h.projectileId === bolt.id);
+    expect(halo.map((h) => h.type === 'haloEnter')).toEqual([true, false]);
     // Slows exactly at the visible radius; recovers just outside it (HALO_EXIT_BAND).
     expect(Math.hypot(halo[0]!.at.x - 6, halo[0]!.at.y - 2)).toBeCloseTo(LANTERN.haloRadius, 9);
     expect(Math.hypot(halo[1]!.at.x - 6, halo[1]!.at.y - 2)).toBeCloseTo(LANTERN.haloRadius + HALO_EXIT_BAND, 9);
@@ -131,9 +131,9 @@ describe('Glass Lantern', () => {
     const graze = (offset: number): boolean[] => {
       const s = withRelics(['glass_lantern'], { spawn: { x: 6, y: 2 } });
       const bolt = spawnBolt(s, { x: 1, y: 2 + offset }, { x: 4, y: 0 });
-      return ofType(run(s, { seconds: 4 }), 'halo')
-        .filter((h) => h.projectileId === bolt.id)
-        .map((h) => h.inside);
+      return run(s, { seconds: 4 })
+        .filter((h) => (h.type === 'haloEnter' || h.type === 'haloExit') && h.projectileId === bolt.id)
+        .map((h) => h.type === 'haloEnter');
     };
     // Exactly tangent in floating point may land a hair inside: never more than one balanced pair.
     expect([[], [true, false]]).toContainEqual(graze(LANTERN.haloRadius));
@@ -156,7 +156,7 @@ describe('Glass Lantern', () => {
     const before = simDiagnostics.iterationOverflows;
     const events = run(s, { seconds: 1.2 });
     expect(simDiagnostics.iterationOverflows).toBe(before);
-    const flips = ofType(events, 'halo');
+    const flips = events.filter((e) => e.type === 'haloEnter' || e.type === 'haloExit');
     expect(flips.length).toBeGreaterThan(2);
     for (let i = 1; i < flips.length; i++) expect(flips[i]!.t).toBeGreaterThan(flips[i - 1]!.t);
   });
@@ -197,11 +197,11 @@ describe('Mourning Bell', () => {
       enemies: [sentry('a', 3.2, 2), sentry('b', 4.4, 2), sentry('near', 5.5, 3.2), sentry('far', 10, 10)],
     });
     const events = run(s, { first: [dash(3, 0)], seconds: 3, until: (e) => e.type === 'reunion' });
-    expect(ofType(events, 'bellCharge').map((e) => [e.kills, e.charged])).toEqual([
+    expect(ofType(events, 'charge').map((e) => [e.charge, e.charged])).toEqual([
       [1, false],
-      [0, true],
+      [2, true],
     ]);
-    const burst = ofType(events, 'bellBurst');
+    const burst = ofType(events, 'burst');
     expect(burst).toHaveLength(1);
     const reunion = ofType(events, 'reunion')[0]!;
     expect(burst[0]!.at).toEqual(reunion.at);
@@ -213,7 +213,7 @@ describe('Mourning Bell', () => {
     expect(ofType(events, 'kill').find((k) => s.enemies.find((e) => e.id === k.enemyId)!.key === 'near')?.cause).toBe('burst');
     // The next reunion without new kills rings nothing.
     const again = run(s, { first: [dash(0, 3)], seconds: 3, until: (e) => e.type === 'reunion' });
-    expect(ofType(again, 'bellBurst')).toHaveLength(0);
+    expect(ofType(again, 'burst')).toHaveLength(0);
   });
 
   it('counterexample: reuniting away from enemies wastes the charge', () => {
@@ -222,7 +222,7 @@ describe('Mourning Bell', () => {
       enemies: [sentry('a', 3.2, 2), sentry('b', 4.4, 2), sentry('far', 10, 10)],
     });
     const events = run(s, { first: [dash(3, 0)], seconds: 3, until: (e) => e.type === 'reunion' });
-    expect(ofType(events, 'bellBurst')[0]?.killed).toEqual([]);
+    expect(ofType(events, 'burst')[0]?.killed).toEqual([]);
     expect(s.relicState!.bellCharged).toBe(false);
   });
 
@@ -243,7 +243,7 @@ describe('Mourning Bell', () => {
       knotMarked: false,
     });
     const events = run(s, { first: [dash(3, 0)], seconds: 3, until: (e) => e.type === 'reunion' });
-    expect(ofType(events, 'bellBurst')[0]!.killed).toHaveLength(1);
+    expect(ofType(events, 'burst')[0]!.killed).toHaveLength(1);
   });
 
   it('carried charges are clamped to what the loadout holds', () => {
@@ -269,18 +269,18 @@ describe("Traveler's Knot", () => {
 
   it('a dash kill earns a mark that becomes a decoy at the meeting point', () => {
     const s = earnAndPlace();
-    expect(s.relicState!.decoy?.pos).toEqual(s.body.pos);
+    expect(s.relicState!.decoy).toEqual(s.body.pos);
     expect(s.relicState!.knotMarked).toBe(false);
   });
 
   it('the next new aim acquisition takes the decoy and is consumed at lock; the locked line stays', () => {
     const s = earnAndPlace([sentry('shooter', 9, 8, { wake: { kind: 'time', seconds: 1.5 } })]);
-    const decoyAt = s.relicState!.decoy!.pos;
+    const decoyAt = s.relicState!.decoy!;
     // Walk the body away so the decoy and body are clearly different targets.
     run(s, { first: [dash(0, 3)], seconds: 0.4, until: (e) => e.type === 'ready' });
     const events = run(s, { seconds: 6, until: (e) => e.type === 'fire' });
     expect(ofType(events, 'decoyClaimed')).toHaveLength(1);
-    const consumed = ofType(events, 'decoyConsumed')[0]!;
+    const consumed = ofType(events, 'decoyTaken')[0]!;
     expect(consumed.at).toEqual(decoyAt);
     const lock = ofType(events, 'telegraph').find((e) => e.phase === 'locked')!;
     expect(lock.t).toBe(consumed.t);
@@ -333,13 +333,13 @@ describe("Traveler's Knot", () => {
   it('a claimer killed before it locks releases the decoy for the next acquisition', () => {
     const s = earnAndPlace([sentry('shooter', 5, 4.2, { wake: { kind: 'time', seconds: 0.9 } })]);
     run(s, { seconds: 3, until: (e) => e.type === 'decoyClaimed' });
-    expect(s.relicState!.decoy?.claimedBy).not.toBeNull();
+    expect(s.relicState!.decoyClaimedBy).not.toBeNull();
     // Kill the tracking claimer before it locks.
     const shooter = s.enemies.find((e) => e.key === 'shooter')!;
     const aim = { x: shooter.pos.x - s.body.pos.x, y: shooter.pos.y - s.body.pos.y };
     const events = run(s, { first: [{ kind: 'dash', aim }], seconds: 0.3 });
     expect(ofType(events, 'kill')).toHaveLength(1);
-    expect(s.relicState!.decoy?.claimedBy ?? null).toBeNull();
+    expect(s.relicState!.decoyClaimedBy).toBeNull();
   });
 });
 
