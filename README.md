@@ -8,9 +8,18 @@ A mobile-portrait, touch-first action roguelite for [Slapjam #2](https://itch.io
 
 ## Status
 
-**Documentation and implementation handoff only. No playable build, models, measured performance or verified submission yet.** This is the public implementation repository. The documents distinguish design targets from tested results. Registration, project publishing and jam submission are separate states.
+**Playable expedition, verified on desktop browsers and emulated phone viewports only. Not yet tested on a real phone, not published to itch.io, not submitted to the jam.**
 
-Official deadline: **31 October 2026, 15:00 UTC / 20:30 IST**. Internal submission target: **12:00 UTC / 17:30 IST** that day. No post-deadline build fixes under the current jam rules. See the sourced submission guide before publishing.
+What exists (30 October 2026):
+- Deterministic 2D combat simulation (fixed 120 Hz step, event-time-ordered sweeps): finite-speed dash, slower route-following soul, vulnerable RETURN, genuine-contact reunion, shared health with attack-ID dedup, needler / keeper (forecast aim on the soul's route) / warden, persistent lanes, four behavioural relics plus Long Silk / Short Stitch parameters, and the Last Warden boss.
+- Run layer: six relics (14 legal pairs), two starters, a seeded branching expedition (opening, two branches, two stations with drafts, final approach, boss, ending), room-entry checkpoints ("Continue restarts this room."), progress atlas.
+- Six room templates with two authored variants each (validated, cleared by novice- and expert-timed planning bots) plus the boss arena.
+- Three.js orthographic presentation with 18 original Blender-authored GLB models (made through the pinned Blender MCP bridge, Khronos-validated, provenance in `art/provenance.csv`), touch gestures, procedural WebAudio, accessible DOM UI.
+- Evidence: automated test suite, model validation, itch-style nested-iframe package check, and Edge/Chrome end-to-end runs including a full expedition, reload-to-Continue and defeat-to-Retry. See [docs/EVIDENCE.md](docs/EVIDENCE.md).
+
+Not yet done: real-phone input/performance testing (the roadmap gate), human playtesting of difficulty and build divergence, itch upload and jam submission.
+
+Official deadline: **31 October 2026, 15:00 UTC / 20:30 IST**. Internal submission target: **12:00 UTC / 17:30 IST** that day.
 
 ## Start here
 
