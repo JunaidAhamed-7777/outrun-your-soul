@@ -1,0 +1,132 @@
+{
+  "asset_id": "station_kiosk",
+  "status": "exported",
+  "author": "original (script-authored in Blender via the pinned Blender MCP bridge)",
+  "created_at": "2026-10-30T15:24:57+00:00",
+  "blender_version": "5.2.2 LTS",
+  "exporter_version": "5.2.40",
+  "source_path": "art/source/environment.blend",
+  "export": {
+    "path": "public/assets/models/station_kiosk.glb",
+    "bytes": 88300,
+    "sha256": "989bcb7084d953d4ed7803bdc937a2c7fd434652260e684876290af15856255a"
+  },
+  "preview": "art/previews/station_kiosk-game-camera.png",
+  "measured": {
+    "triangles": 1666,
+    "materials": [
+      "cobalt",
+      "gold",
+      "gold_dark",
+      "ivory"
+    ],
+    "material_count": 4,
+    "bounds_min": [
+      -0.95,
+      -0.98,
+      0
+    ],
+    "bounds_max": [
+      1.9,
+      0.78,
+      3.3
+    ],
+    "dimensions": [
+      2.85,
+      1.76,
+      3.3
+    ],
+    "parts": [
+      "station_kiosk",
+      "station_kiosk_bell",
+      "station_kiosk_house",
+      "station_kiosk_signal_arm"
+    ]
+  },
+  "budget": {
+    "triangles": 3000,
+    "materials": 4
+  },
+  "within_budget": true,
+  "notes": "Signal House station kiosk, faces -Y, origin at the house ground centre (mast at x=+1.2). Animatable parts: station_kiosk_bell (swing about local X) and station_kiosk_signal_arm (rotate about local Z in Three.js, ~-40 deg to lower to clear).",
+  "glb_verification": {
+    "asset_id": "station_kiosk",
+    "file": "public/assets/models/station_kiosk.glb",
+    "sha256": "989bcb7084d953d4ed7803bdc937a2c7fd434652260e684876290af15856255a",
+    "bytes": 88300,
+    "generator": "Khronos glTF Blender I/O v5.2.40",
+    "triangles": 1666,
+    "materials": [
+      "gold",
+      "gold_dark",
+      "ivory",
+      "cobalt"
+    ],
+    "bounds_gltf_yup": {
+      "min": [
+        -0.95,
+        0,
+        -0.78
+      ],
+      "max": [
+        1.9,
+        3.3,
+        0.98
+      ]
+    },
+    "parts": [
+      "station_kiosk",
+      "station_kiosk_bell",
+      "station_kiosk_house",
+      "station_kiosk_signal_arm"
+    ],
+    "checks": [
+      {
+        "name": "triangles within budget (3000)",
+        "pass": true
+      },
+      {
+        "name": "materials within budget (4)",
+        "pass": true
+      },
+      {
+        "name": "single root named station_kiosk",
+        "pass": true
+      },
+      {
+        "name": "all part nodes prefixed with the asset id",
+        "pass": true
+      },
+      {
+        "name": "materials are palette keys",
+        "pass": true
+      },
+      {
+        "name": "no cameras or lights",
+        "pass": true
+      },
+      {
+        "name": "grounded",
+        "pass": true
+      },
+      {
+        "name": "parts house + bell + signal_arm",
+        "pass": true
+      },
+      {
+        "name": "bell pivot inside the belfry above the roof",
+        "pass": true
+      },
+      {
+        "name": "signal arm pivot on the mast (x ~ 1.2)",
+        "pass": true
+      },
+      {
+        "name": "faces -Y (front step toward glTF +Z)",
+        "pass": true
+      }
+    ],
+    "pass": true,
+    "verified_at": "2026-10-30T15:25:07Z"
+  }
+}

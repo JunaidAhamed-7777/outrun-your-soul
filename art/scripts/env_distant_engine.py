@@ -1,9 +1,10 @@
 """distant_engine: gold funeral machinery beyond the courtyard's north wall.
 
-One backdrop GLB, about 30 m wide, ~7 m tall above its origin and ~7 m deep.
+One backdrop GLB, about 30 m wide, ~5 m tall above its origin and ~8 m deep.
 Origin: ground centre at the foot of the railway. Far-layer towers continue down to
-z = -4 because the machinery rises out of a valley below the courtyard platform;
-those lower parts are hidden behind the room in the game view.
+z ~ -6 because the machinery rises out of a valley below the courtyard platform;
+those lower parts are hidden behind the room in the game view. The far layer sits
+behind the gears' tilted upper halves, so haze never overlaps nearer gold.
 
 An orthographic camera cannot shrink distant things, so distance and size are told
 by relative scale, haze and layering:
@@ -44,8 +45,12 @@ TIER1_Z = 1.7
 TIER2_Z = 2.62
 DECK_T = 0.12
 RAIL_Z = TIER2_Z + DECK_T + 0.02
-# Far layer.
+# Far layer. Authored at FAR_Y, then pushed back by FAR_PUSH so it sits behind the upper
+# halves of the tilted gears (which lean back to y ~ 2.9); the matching drop keeps its
+# projected screen height unchanged at the 58 degree game pitch
+# (0.848 * dy + 0.53 * dz = 0), so only depth order changes, not the composition.
 FAR_Y = 2.2
+FAR_PUSH = (0.0, 1.2, -1.2 * math.tan(math.radians(58.0)))
 
 env.clear_composites()
 asset = ob.Asset('distant_engine')
@@ -88,6 +93,9 @@ body.cylinder(0.03, 0.03, 0.75, center=(MX + 1.6, FAR_Y, 5.65), key='cobalt_mist
 for x, w, h in ((-12.5, 5.0, 1.4), (-9.6, 2.6, 2.2), (8.6, 4.6, 1.9), (12.8, 4.4, 1.2)):
     env.add(body, env.rect_lathe([(w / 2, 0.8, -4.0), (w / 2, 0.8, h - 0.35), (w / 2 - 0.35, 0.5, h)]), 'cobalt_mist',
             center=(x, FAR_Y + 0.9, 0))
+
+body.bm.verts.ensure_lookup_table()
+bmesh.ops.translate(body.bm, vec=FAR_PUSH, verts=list(body.bm.verts))  # far layer only: built first
 
 # ----------------------------------------------------------------- miniature two-tier aqueduct (gold)
 n_bays = int(30 / SPAN)
