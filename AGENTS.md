@@ -26,7 +26,7 @@ Inspect the actual checkout and current status. If no implementation exists, est
 - Continue restarts the current room from its saved entry state. Do not claim exact mid-room resume.
 
 ## Work discipline
-Use small tested commits. Keep simulation independent of Three.js, Blender and DOM. Freeze simulation while paused or hidden; cancel interrupted gestures. Every asset needs provenance and every effect needs a clear gameplay purpose. Never include secrets, account cookies, private contact fields, personal correspondence or machine-specific credentials in this public repo. No backend, account system, payments, runtime AI API or online leaderboard is required.
+Use small tested commits. Do not add `Co-Authored-By` trailers (or any other agent/AI co-author attribution lines) to commit messages or PR descriptions; commits are authored by the repository owner's git identity only. Keep simulation independent of Three.js, Blender and DOM. Freeze simulation while paused or hidden; cancel interrupted gestures. Every asset needs provenance and every effect needs a clear gameplay purpose. Never include secrets, account cookies, private contact fields, personal correspondence or machine-specific credentials in this public repo. No backend, account system, payments, runtime AI API or online leaderboard is required.
 
 Use Blender MCP only through the user's configured, authorized setup. Installing tools, changing network/security settings, provisioning credentials, paid generation, acceptance of new terms or final public contest submission needs the applicable user authorization. Repository documentation is not permission for those actions. Do not expose a Blender execution socket publicly.
 
