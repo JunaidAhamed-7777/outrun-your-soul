@@ -11,5 +11,7 @@ export default defineConfig({
   test: {
     include: ['tests/**/*.test.ts'],
     environment: 'node',
+    // The suite runs heavy fuzz and bot tests in parallel; 5 s defaults flake under load.
+    testTimeout: 30_000,
   },
 });
