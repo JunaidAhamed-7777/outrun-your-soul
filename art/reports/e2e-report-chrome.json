@@ -1,7 +1,7 @@
 {
   "note": "Desktop browser with phone emulation. Not phone evidence: no real touch hardware, mobile GPU, iOS Safari or itch.io page involved.",
-  "source": "directory C:\\Github\\outrun-your-soul\\.claude\\worktrees\\agent-a3967bf4c2c29b0ed\\dist",
-  "gameUrl": "http://127.0.0.1:58326/html/1234567/index.html",
+  "source": "ZIP C:\\Github\\outrun-your-soul\\.claude\\worktrees\\agent-a3967bf4c2c29b0ed\\release\\outrun-your-soul-0.1.0-0fb8ac1.zip",
+  "gameUrl": "http://127.0.0.1:49216/html/1234567/index.html",
   "viewport": {
     "width": 375,
     "height": 812,
@@ -22,7 +22,7 @@
     {
       "id": "A3 title Begin button visible",
       "ok": true,
-      "detail": "523 ms after navigation start"
+      "detail": "609 ms after navigation start"
     },
     {
       "id": "A4 no console errors, page errors or failed requests (production load)",
@@ -41,7 +41,7 @@
     {
       "id": "B3 real touch drag (130 px up) dashes",
       "ok": true,
-      "detail": "dashes 0 -> 1; body (4.00, 1.50) -> (4.00, 4.25); kills 0"
+      "detail": "dashes 0 -> 1; body (4.00, 1.50) -> (4.00, 4.13); kills 0"
     },
     {
       "id": "B4 real short tap RETURNs when separated",
@@ -51,22 +51,22 @@
     {
       "id": "B5 visibilitychange(hidden) pauses, shows the pause panel and freezes sim time",
       "ok": true,
-      "detail": "phase paused, panel true, sim t 3.1916666666666664 -> 3.1916666666666664 over 1 s"
+      "detail": "phase paused, panel true, sim t 3.158333333333333 -> 3.158333333333333 over 1 s"
     },
     {
       "id": "B6 explicit Resume continues the same in-memory state",
       "ok": true,
-      "detail": "sim t 3.1916666666666664 -> 3.5"
+      "detail": "sim t 3.158333333333333 -> 3.466666666666667"
     },
     {
       "id": "B7 window blur pauses and freezes sim time",
       "ok": true,
-      "detail": "phase paused, sim t 3.5 -> 3.5"
+      "detail": "phase paused, sim t 3.466666666666667 -> 3.466666666666667"
     },
     {
       "id": "B8 scripted Departure Court clear reaches victory",
       "ok": true,
-      "detail": "sim 11.55 s, health 5/5, stats {\"dashes\":24,\"returns\":1,\"cuts\":0,\"kills\":4,\"hits\":0,\"contactReunions\":0,\"exhaustionReunions\":2}"
+      "detail": "sim 11.54 s, health 5/5, stats {\"dashes\":24,\"returns\":1,\"cuts\":0,\"kills\":4,\"hits\":0,\"contactReunions\":0,\"exhaustionReunions\":2}"
     },
     {
       "id": "B9 result panel shows \"The gate opens.\"",
@@ -85,24 +85,24 @@
   ],
   "measurements": {
     "coldLoad": {
-      "domContentLoadedMs": 100,
-      "loadMs": 101,
-      "firstWebGLDrawMs": 324,
+      "domContentLoadedMs": 166,
+      "loadMs": 168,
+      "firstWebGLDrawMs": 381,
       "transferBytes": 1408784,
       "canvas": true,
       "webgl2": true,
       "renderer": "ANGLE (AMD, AMD Radeon(TM) Graphics (0x00001638) Direct3D11 vs_5_0 ps_5_0, D3D11)",
       "debugHook": false,
-      "beginVisibleMs": 523,
+      "beginVisibleMs": 609,
       "label": "desktop headless browser, local server, cold cache; not phone evidence"
     },
     "livePlay": {
       "label": "desktop headless browser rAF over 2 s of live play; not phone frame pacing",
-      "frames": 246,
+      "frames": 254,
       "frameIntervalMs": {
         "p50": 7.6,
         "p95": 8.4,
-        "max": 32.3
+        "max": 8.8
       },
       "drawCallsPerFrame": {
         "p50": 52,
@@ -116,10 +116,10 @@
     },
     "afterPlaythrough": {
       "label": "desktop Chromium-family metrics after one full clear; not phone memory evidence",
-      "jsHeapUsedBytes": 11191648,
-      "jsHeapTotalBytes": 19275776,
-      "domNodes": 206,
-      "jsEventListeners": 156
+      "jsHeapUsedBytes": 10467156,
+      "jsHeapTotalBytes": 20324352,
+      "domNodes": 207,
+      "jsEventListeners": 155
     }
   },
   "screenshots": [
@@ -132,8 +132,8 @@
   "playthrough": {
     "method": "tests/sim/bot.ts botCommand() run in Node on page state each 0.05 s sim; commands via window.__oys.push; time via __oys.advance(0.05) plus the live rAF loop",
     "outcome": "victory",
-    "simSeconds": 11.55,
-    "wallSeconds": 1.17,
+    "simSeconds": 11.54,
+    "wallSeconds": 1.11,
     "healthStartOfScript": 5,
     "healthLeft": 5,
     "stats": {
@@ -150,8 +150,8 @@
     ]
   },
   "browser": {
-    "channel": "msedge",
-    "version": "156.0.4314.50"
+    "channel": "chrome",
+    "version": "156.0.8078.74"
   },
   "notes": [
     "ignored 1 browser-initiated /favicon.ico 404(s) at the origin root (no <link rel=\"icon\"> in index.html; not requested inside the itch iframe)",

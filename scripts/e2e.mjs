@@ -36,7 +36,6 @@ const option = (name) => {
   return i >= 0 ? argv[i + 1] : undefined;
 };
 const previewsDir = join(root, 'art', 'previews');
-const reportPath = join(root, 'art', 'reports', 'e2e-report.json');
 const VIEWPORT = { width: 375, height: 812 };
 const SIM_LIMIT_SECONDS = 150;
 
@@ -158,12 +157,20 @@ const revive = (json) =>
 async function newPhoneContext() {
   const context = await browser.newContext({ viewport: VIEWPORT, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
   const page = await context.newPage();
-  const problems = { console: [], pageErrors: [], failedRequests: [] };
+  const problems = { console: [], pageErrors: [], failedRequests: [], aborted: [], finishedOk: new Set() };
   page.on('console', (m) => {
     if (m.type() === 'error') problems.console.push(m.text());
   });
   page.on('pageerror', (e) => problems.pageErrors.push(String(e?.message ?? e)));
-  page.on('requestfailed', (r) => problems.failedRequests.push(`${r.url()} ${r.failure()?.errorText ?? ''}`));
+  page.on('requestfailed', (r) => {
+    const error = r.failure()?.errorText ?? '';
+    if (error === 'net::ERR_ABORTED') problems.aborted.push(r.url());
+    else problems.failedRequests.push(`${r.url()} ${error}`);
+  });
+  page.on('requestfinished', async (r) => {
+    const response = await r.response().catch(() => null);
+    if (response?.status() === 200) problems.finishedOk.add(r.url());
+  });
   page.on('response', (r) => {
     if (r.status() >= 400) problems.failedRequests.push(`${r.url()} HTTP ${r.status()}`);
   });
@@ -191,7 +198,14 @@ function problemsOf(problems, logStart) {
       note = `ignored ${n404} browser-initiated /favicon.ico 404(s) at the origin root (no <link rel="icon"> in index.html; not requested inside the itch iframe)`;
     }
   }
-  return { list: [...consoleErrors, ...problems.pageErrors, ...problems.failedRequests, ...other.map((l) => `${l.path} HTTP ${l.status}`)], note };
+  // Chrome intermittently reports net::ERR_ABORTED for a URL whose request already
+  // finished with HTTP 200 (observed on the 400 KB distant_engine.glb, 1 of 3 Chrome runs,
+  // never in Edge). Such an abort is noted, not failed; an abort without a successful
+  // completion of the same URL is a real failure.
+  const benign = problems.aborted.filter((url) => problems.finishedOk.has(url));
+  const realAborts = problems.aborted.filter((url) => !problems.finishedOk.has(url)).map((url) => `${url} net::ERR_ABORTED`);
+  if (benign.length > 0) note = [note, `noted ${benign.length} net::ERR_ABORTED report(s) for URLs that also finished with HTTP 200: ${benign.map((u) => u.split('/').pop()).join(', ')}`].filter(Boolean).join('; ');
+  return { list: [...consoleErrors, ...problems.pageErrors, ...problems.failedRequests, ...realAborts, ...other.map((l) => `${l.path} HTTP ${l.status}`)], note };
 }
 
 async function shot(page, name) {
@@ -429,10 +443,11 @@ function fmt(p) {
 }
 
 report.result = !failed && checks.every((c) => c.ok) ? 'PASS' : 'FAIL';
-writeFileSync(reportPath, `${JSON.stringify(report, null, 2)}\n`);
+const reportName = `e2e-report-${launchedChannel}.json`;
+writeFileSync(join(root, 'art', 'reports', reportName), `${JSON.stringify(report, null, 2)}\n`);
 console.log('\nMeasurements (desktop browser, NOT phone evidence):');
 console.log(JSON.stringify(report.measurements, null, 2));
 console.log(`\nScreenshots: ${report.screenshots.join(', ')}`);
-console.log(`Report: art/reports/e2e-report.json`);
+console.log(`Report: art/reports/${reportName} (one report per browser channel; screenshots are from the latest run)`);
 console.log(`\nE2E ${report.result}: ${checks.filter((c) => c.ok).length}/${checks.length} checks passed`);
 process.exit(report.result === 'PASS' ? 0 : 1);
