@@ -1,0 +1,47 @@
+{
+  "asset_id": "floor_tile",
+  "status": "exported",
+  "author": "original (script-authored in Blender via the pinned Blender MCP bridge)",
+  "created_at": "2026-10-30T14:40:32+00:00",
+  "blender_version": "5.2.2 LTS",
+  "exporter_version": "5.2.40",
+  "source_path": "art/source/environment.blend",
+  "export": {
+    "path": "public/assets/models/floor_tile.glb",
+    "bytes": 2208,
+    "sha256": "ae54b311595319da34f9a57491d9799b1573c6d8c407c7b543f61d3cf846b20f"
+  },
+  "preview": "art/previews/floor_tile-game-camera.png",
+  "measured": {
+    "triangles": 20,
+    "materials": [
+      "cobalt"
+    ],
+    "material_count": 1,
+    "bounds_min": [
+      0.01,
+      0.01,
+      -0.1
+    ],
+    "bounds_max": [
+      0.99,
+      0.99,
+      0.0
+    ],
+    "dimensions": [
+      0.98,
+      0.98,
+      0.1
+    ],
+    "parts": [
+      "floor_tile",
+      "floor_tile_slab"
+    ]
+  },
+  "budget": {
+    "triangles": 60,
+    "materials": 1
+  },
+  "within_budget": true,
+  "notes": "Chamfered flagstone; neighbours leave a 0.02 m V-groove grout line. Renderer should place a dark cobalt_deep base plane slightly below z=-0.03 so grout reads at phone size."
+}
