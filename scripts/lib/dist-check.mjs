@@ -39,6 +39,9 @@ const FORBIDDEN_FILES = [
   { test: (p) => /\.blend\d*$/i.test(p), why: 'Blender source file (source-only asset)' },
   { test: (p) => /(^|\/)\.env(\.|$)/.test(p), why: 'environment/secrets file' },
   { test: (p) => /(^|\/)(\.DS_Store|Thumbs\.db|desktop\.ini)$/i.test(p), why: 'OS metadata file' },
+  // Authoring fixtures (art/exports/*.glb such as calibration_tile) never ship.
+  { test: (p) => /(^|\/)calibration_tile[^/]*$/i.test(p), why: 'calibration fixture (art/exports only, excluded from release)' },
+  { test: (p) => /^art\//.test(p), why: 'art authoring folder (sources, exports, previews, reports)' },
 ];
 
 const LOCAL_HOST_PATTERN = /\b(?:https?|wss?):\/\/(?:localhost|127\.0\.0\.1|0\.0\.0\.0|\[::1\])(?::\d+)?/gi;

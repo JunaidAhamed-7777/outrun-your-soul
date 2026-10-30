@@ -115,9 +115,16 @@ describe('package checks', () => {
     files.push(file('assets\\win.js', ''));
     files.push(file('art/courier.blend', new Uint8Array([1])));
     files.push(file('.env', 'SECRET=1'));
+    files.push(file('assets/models/calibration_tile.glb', new Uint8Array([1])));
     const codes = checkPackage(files).errors.map((e) => e.code);
     expect(codes).toEqual(expect.arrayContaining(['case-collision', 'whitespace-path', 'backslash-path', 'forbidden-file']));
-    expect(codes.filter((c) => c === 'forbidden-file')).toHaveLength(2);
+    // .blend (also under art/), .env and the calibration fixture
+    expect(checkPackage(files).errors.filter((e) => e.code === 'forbidden-file').map((e) => e.path)).toEqual([
+      'art/courier.blend',
+      'art/courier.blend',
+      '.env',
+      'assets/models/calibration_tile.glb',
+    ]);
   });
 
   it('enforces itch.io file count and path length limits', () => {
