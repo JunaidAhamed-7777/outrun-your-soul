@@ -217,6 +217,16 @@ function canAct(s: SimState): boolean {
   return s.outcome === 'playing' && (s.body.mode === 'ready' || s.body.mode === 'return') && s.buffered === null;
 }
 
+/**
+ * One planner decision for an externally driven game (e.g. the browser e2e): the best
+ * command for this state, or null to keep waiting. No aim delay or stall pressure is
+ * modelled; callers pace decisions themselves.
+ */
+export function decide(s: SimState, cfg: BotConfig = EXPERT_BOT, pressure = 1): Command | null {
+  if (!canAct(s)) return null;
+  return choose(s, cfg, pressure).command;
+}
+
 export function playRoom(room: RoomDef, options: SimOptions, cfg: BotConfig = NOVICE_BOT): BotResult {
   const s = createSim(room, options);
   const decisions: BotDecision[] = [];

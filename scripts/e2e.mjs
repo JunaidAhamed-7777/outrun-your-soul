@@ -118,6 +118,8 @@ const vite = await createViteServer({
   optimizeDeps: { noDiscovery: true, include: [] },
 });
 const { botCommand } = await vite.ssrLoadModule('/tests/sim/bot.ts');
+// Boss rooms need the boss-aware planner (src/bot): the greedy bot ignores the armoured body.
+const { decide: plannerDecide } = await vite.ssrLoadModule('/src/bot/bot.ts');
 const { previewDash, TUNING } = await vite.ssrLoadModule('/src/sim/index.ts');
 
 /**
@@ -380,8 +382,9 @@ async function botPlayRoom(page, onState) {
   const inExit = (st) => st.body.pos.x >= st.room.exit.x && st.body.pos.x <= st.room.exit.x + st.room.exit.w && st.body.pos.y >= st.room.exit.y && st.body.pos.y <= st.room.exit.y + st.room.exit.h;
   while (s.outcome === 'playing' && s.time < SIM_LIMIT_SECONDS && iterations < 6000) {
     iterations += 1;
-    let command = botCommand(s);
-    if (!command && s.body.mode === 'ready' && !inExit(s) && s.time - lastCommandAt > 1) {
+    // The planner is expensive: in boss rooms consult it a few times per sim second, not every tick.
+    let command = s.boss ? (iterations % 4 === 0 ? plannerDecide(s, undefined, 1 + Math.max(0, s.time - lastCommandAt - 2)) : null) : botCommand(s);
+    if (!command && !s.boss && s.body.mode === 'ready' && !inExit(s) && s.time - lastCommandAt > 1) {
       command = fallbackCommand(s);
       if (command) fallbacks += 1;
     }
