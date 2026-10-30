@@ -4,6 +4,7 @@
  * element to focus. They own no run state: picks are reported through callbacks and
  * the run layer validates them again.
  */
+import palette from '../content/palette.json';
 import { RELICS, STARTERS } from '../run/relics';
 import type { UiSound } from '../audio/audio';
 import { button, el, iconSpan } from './dom';
@@ -136,7 +137,7 @@ function offerCard(option: OfferOption): HTMLButtonElement {
     el('span', 'oys-card-cost', {}, [r.cost]),
   ];
   if (option.mode === 'blocked' && option.reason) parts.push(el('span', 'oys-card-reason', {}, [option.reason]));
-  const card = button('oys-card', parts, {
+  const card = button('oys-card oys-card--relic', parts, {
     'aria-pressed': 'false',
     'aria-label': `${r.name}. ${r.rule} Cost: ${r.cost}${option.reason ? ` ${option.reason}` : ''}`,
   });
@@ -184,7 +185,7 @@ export function draftContent(
       for (const opt of pick.replace) {
         const label: (Node | string)[] = [`Set down ${opt.drop.name}`];
         if (!opt.enabled && opt.reason) label.push(el('span', 'oys-btn-reason', {}, [opt.reason]));
-        const b = button('oys-btn oys-btn--ghost', label);
+        const b = button(opt.enabled ? 'oys-btn' : 'oys-btn oys-btn--ghost', label);
         b.disabled = !opt.enabled;
         b.addEventListener('pointerenter', () => markDrop(opt.index));
         b.addEventListener('focus', () => markDrop(opt.index));
@@ -200,6 +201,8 @@ export function draftContent(
     }
     nodes.push(keep);
     actions.replaceChildren(...nodes);
+    // On short screens the choice buttons may sit below the fold; bring them into view.
+    if (selected) actions.scrollIntoView?.({ block: 'nearest', behavior: 'smooth' });
   }
 
   const cards = options.map((option) => {
@@ -237,6 +240,23 @@ export function atlasLine(discoveries: readonly string[]): string {
   return `New in the atlas: ${discoveries.join(', ')}.`;
 }
 
+/** Body and soul together in a gold ring, or apart with the thread broken between them. */
+export function endingEmblem(escaped: boolean): string {
+  const p = palette;
+  const inner = escaped
+    ? `<circle cx="40" cy="24" r="18" fill="none" stroke="${p.gold}" stroke-width="1.6"/>` +
+      `<circle cx="40" cy="24" r="22" fill="none" stroke="${p.gold}" stroke-opacity=".35" stroke-width="1"/>` +
+      `<circle cx="45" cy="22" r="7" fill="${p.soul_core}" opacity=".95"/>` +
+      `<circle cx="36" cy="25" r="8" fill="${p.ivory}" stroke="${p.cobalt_deep}" stroke-width="1.2"/>` +
+      `<rect x="31.5" y="22.6" width="9" height="2.6" rx="1.3" fill="${p.mask_black}"/>`
+    : `<path d="M22 26 Q31 20 37 25" fill="none" stroke="${p.vermilion}" stroke-width="2.4" stroke-linecap="round"/>` +
+      `<path d="M45 24 Q51 29 58 25" fill="none" stroke="${p.vermilion}" stroke-opacity=".45" stroke-width="2.4" stroke-linecap="round" stroke-dasharray="2 4"/>` +
+      `<circle cx="17" cy="27" r="8" fill="${p.ivory}" stroke="${p.cobalt_deep}" stroke-width="1.2"/>` +
+      `<rect x="12.5" y="24.6" width="9" height="2.6" rx="1.3" fill="${p.mask_black}"/>` +
+      `<circle cx="64" cy="22" r="6.5" fill="${p.soul_core}" opacity=".35"/>`;
+  return `<svg class="oys-emblem" viewBox="0 0 80 48" width="120" height="72" aria-hidden="true" focusable="false">${inner}</svg>`;
+}
+
 export function endingContent(view: EndingView, onAgain: () => void, env: PanelEnv, saveNote: HTMLElement): PanelContent {
   const again = button('oys-btn', 'Again');
   again.addEventListener('click', () => {
@@ -260,6 +280,7 @@ export function endingContent(view: EndingView, onAgain: () => void, env: PanelE
   return {
     nodes: [
       el('div', 'oys-stack', {}, [
+        iconSpan(endingEmblem(view.escaped)),
         el('div', 'oys-eyebrow-sm', {}, [view.escaped ? 'The last gate' : 'The railway']),
         el('h2', 'oys-heading', { id: 'oys-choice-h' }, [view.escaped ? 'Escaped.' : 'Lost on the line.']),
         el('p', 'oys-ending-line', {}, [view.escaped ? ESCAPED_LINE : FAILED_LINE]),

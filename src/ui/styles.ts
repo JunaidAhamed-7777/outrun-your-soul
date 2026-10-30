@@ -407,6 +407,15 @@ export const CSS = /* css */ `
 .oys-card-reason { display: block; font-size: 13px; color: #ffb4a0; }
 .oys-card-flavour { display: block; font-family: var(--font-display); font-style: italic; font-size: 15px; color: var(--ivory-dim); }
 .oys-card--route { grid-template-columns: 1fr; }
+/* Relic cards: symbol beside the name, rule and cost across the full width. */
+.oys-card--relic { grid-template-columns: 38px 1fr; gap: 6px 12px; padding: 12px 14px; align-items: center; }
+.oys-card--relic .oys-card-icon { grid-row: auto; width: 38px; height: 38px; border-radius: 11px; }
+.oys-card--relic .oys-card-icon .oys-relic-svg { width: 30px; height: 30px; }
+.oys-card--relic .oys-card-title { font-size: 19px; }
+.oys-card--relic .oys-card-text, .oys-card--relic .oys-card-cost, .oys-card--relic .oys-card-reason { grid-column: 1 / -1; }
+.oys-draft { gap: 14px; }
+.oys-draft .oys-choice-head .oys-rule { display: none; }
+.oys-draft .oys-heading { font-size: clamp(26px, 7.4vw, 36px); }
 .oys-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
 .oys-tag {
   font-size: 11px;
@@ -437,6 +446,8 @@ export const CSS = /* css */ `
 .oys-replace-q { margin: 0; font-family: var(--font-display); font-size: 16px; color: var(--ivory); }
 .oys-btn--ghost:disabled { opacity: 0.5; cursor: not-allowed; }
 .oys-btn-reason { display: block; font-family: var(--font-ui); font-size: 12px; letter-spacing: 0; text-transform: none; color: #ffb4a0; }
+.oys-ending { justify-content: center; }
+.oys-emblem { display: block; margin: 0 auto -4px; }
 .oys-ending.is-escaped .oys-heading { color: #fff3da; text-shadow: 0 0 26px ${rgba(p.gold, 0.6)}; }
 .oys-ending-line { margin: 0; font-family: var(--font-display); font-size: clamp(18px, 5vw, 22px); line-height: 1.35; max-width: 340px; }
 .oys-atlas { margin: 0; font-size: 13px; color: var(--gold); max-width: 320px; line-height: 1.45; }
