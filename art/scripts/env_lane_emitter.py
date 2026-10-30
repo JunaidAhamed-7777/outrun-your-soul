@@ -12,6 +12,8 @@ vertical face would vanish whenever the emitter faces sideways). Everything else
 architecture gold: a gold_dark housing and a drum with toothed gear flanges, so the
 device reads as part of the funeral railway rather than an enemy.
 """
+import math
+
 import oys_blender as ob
 import oys_env as env
 
@@ -42,7 +44,6 @@ for x in (0.13, 0.87):
     pb.cylinder(0.22, 0.22, 0.05, center=(x, 0.65, DRUM_Z), key='gold_dark', segments=12, rot=(0, 90, 0))
     for i in range(8):
         a = 22.5 + i * 45
-        import math
         dy, dz = math.cos(math.radians(a)) * 0.235, math.sin(math.radians(a)) * 0.235
         pb.box((0.05, 0.06, 0.05), center=(x, 0.65 + dy, DRUM_Z + dz), key='gold_dark', rot=(a, 0, 0))
 # Crown finial on the drum.

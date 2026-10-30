@@ -1,0 +1,49 @@
+{
+  "asset_id": "lamp_post",
+  "status": "exported",
+  "author": "original (script-authored in Blender via the pinned Blender MCP bridge)",
+  "created_at": "2026-10-30T15:17:16+00:00",
+  "blender_version": "5.2.2 LTS",
+  "exporter_version": "5.2.40",
+  "source_path": "art/source/environment.blend",
+  "export": {
+    "path": "public/assets/models/lamp_post.glb",
+    "bytes": 14336,
+    "sha256": "addaa00c038556de14a00a3ff686c885488119572430847689f3199991f51936"
+  },
+  "preview": "art/previews/lamp_post-game-camera.png",
+  "measured": {
+    "triangles": 206,
+    "materials": [
+      "gold",
+      "gold_dark",
+      "ivory"
+    ],
+    "material_count": 3,
+    "bounds_min": [
+      -0.2,
+      -0.1126,
+      0.0
+    ],
+    "bounds_max": [
+      0.2,
+      0.1126,
+      1.77
+    ],
+    "dimensions": [
+      0.4,
+      0.2252,
+      1.77
+    ],
+    "parts": [
+      "lamp_post",
+      "lamp_post_lamp"
+    ]
+  },
+  "budget": {
+    "triangles": 300,
+    "materials": 3
+  },
+  "within_budget": true,
+  "notes": "Nonblocking decor: gold railway lamp with an ivory globe in an open gold crown (readable from the tilted camera), ladder crossarm. Origin ground centre."
+}
