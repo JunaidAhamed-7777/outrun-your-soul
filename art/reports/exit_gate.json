@@ -1,0 +1,51 @@
+{
+  "asset_id": "exit_gate",
+  "status": "exported",
+  "author": "original (script-authored in Blender via the pinned Blender MCP bridge)",
+  "created_at": "2026-10-30T14:46:10+00:00",
+  "blender_version": "5.2.2 LTS",
+  "exporter_version": "5.2.40",
+  "source_path": "art/source/environment.blend",
+  "export": {
+    "path": "public/assets/models/exit_gate.glb",
+    "bytes": 64772,
+    "sha256": "5c4742faccf11b6d53638282f2518fc7a276dd6a35efb5659985bcddbc457913"
+  },
+  "preview": "art/previews/exit_gate-game-camera.png",
+  "measured": {
+    "triangles": 1206,
+    "materials": [
+      "gold",
+      "gold_dark",
+      "ivory"
+    ],
+    "material_count": 3,
+    "bounds_min": [
+      -1.44,
+      -0.19,
+      0.0
+    ],
+    "bounds_max": [
+      1.44,
+      0.19,
+      2.352
+    ],
+    "dimensions": [
+      2.88,
+      0.38,
+      2.352
+    ],
+    "parts": [
+      "exit_gate",
+      "exit_gate_door_left",
+      "exit_gate_door_right",
+      "exit_gate_frame"
+    ]
+  },
+  "budget": {
+    "triangles": 2500,
+    "materials": 3
+  },
+  "within_budget": true,
+  "notes": "Gate origin at the ground centre of the 2-tile opening; doors closed, hinged at x=-1/+1 (rotate about the pivot vertical axis to open). Frame pillars occupy |x| in [1.02, 1.44], depth |y| <= 0.19, so they stand on the perimeter wall tiles beside the opening. Each leaf carries half of the ring emblem (left filled, right open)."
+}
