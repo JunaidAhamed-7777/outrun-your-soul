@@ -5,6 +5,7 @@
  */
 import {
   AdditiveBlending,
+  Color,
   Group,
   Mesh,
   MeshBasicMaterial,
@@ -21,9 +22,14 @@ import { yawForFacing } from './contract';
 import { lerpVec } from './actors';
 import { color } from './palette';
 import { laneMaterial, ringMaterial, setUniform } from './shaders';
+import { boltSlowed } from './simext';
 import { verticalGradient } from './textures';
 
 export const BOLT_HEIGHT = 0.34;
+const HOT_CORE = color('bolt_core');
+const HOT_EDGE = color('bolt_edge');
+const COOL_CORE = new Color('#e4f6ff');
+const COOL_EDGE = new Color('#59b8ff');
 
 class BoltView {
   readonly root = new Group();
@@ -70,13 +76,25 @@ class BoltView {
     this.root.add(head, this.dot);
   }
 
-  update(p: ProjectileState, alpha: number, time: number): void {
+  update(p: ProjectileState, alpha: number, time: number, slowed: boolean): void {
     const pos: Vec2 = lerpVec(p.prevPos, p.pos, alpha);
     this.root.position.set(pos.x, 0, -pos.y);
     this.root.rotation.y = yawForFacing(p.vel);
     const flicker = 0.85 + 0.15 * Math.sin(time * 40 + p.id);
     this.glow.material.opacity = 0.7 * flicker;
+    // Inside a Glass Lantern halo the bolt cools: same shape, colder colours, shorter trail.
+    if (slowed !== this.slowed) {
+      this.slowed = slowed;
+      this.needle.material.color.copy(slowed ? COOL_CORE : HOT_CORE);
+      this.edge.material.color.copy(slowed ? COOL_EDGE : HOT_EDGE);
+      this.trail.material.color.copy(slowed ? COOL_EDGE : HOT_EDGE);
+      this.glow.material.color.copy(slowed ? COOL_EDGE : HOT_EDGE);
+      this.dot.material.uniforms.uColor!.value.copy(slowed ? COOL_EDGE : HOT_EDGE);
+      this.trail.scale.z = slowed ? 0.55 : 1;
+    }
   }
+
+  private slowed = false;
 
   dispose(): void {
     this.needle.material.dispose();
@@ -118,7 +136,7 @@ export class BoltLayer {
     return view ? { x: view.root.position.x, y: -view.root.position.z } : null;
   }
 
-  update(projectiles: readonly ProjectileState[], alpha: number, time: number): void {
+  update(projectiles: readonly ProjectileState[], alpha: number, time: number, soul?: Vec2, haloRadius: number | null = null): void {
     const seen = this.seen;
     seen.clear();
     for (const p of projectiles) {
@@ -131,7 +149,7 @@ export class BoltLayer {
         this.active.set(p.id, view);
         this.group.add(view.root);
       }
-      view.update(p, alpha, time);
+      view.update(p, alpha, time, soul ? boltSlowed(p, soul, haloRadius) : false);
     }
     for (const [id, view] of this.active) {
       if (seen.has(id)) continue;
