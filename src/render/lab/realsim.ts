@@ -3,15 +3,15 @@
  * authoritative state and events (dev only). Same surface as MiniSim.
  */
 import { createSim, previewDash, previewReturn, stepSim } from '../../sim';
-import type { Command, DashPreview, ReturnPreview, RoomDef, SimEvent, SimState } from '../../sim/types';
+import type { Command, DashPreview, ReturnPreview, RoomDef, SimEvent, SimRelicConfig, SimState } from '../../sim/types';
 import type { Vec2 } from '../../sim/vec';
 
 export class RealSim {
   state: SimState;
   private readonly pending: Command[] = [];
 
-  constructor(room: RoomDef, seed = 1) {
-    this.state = createSim(room, { seed });
+  constructor(room: RoomDef, seed = 1, relics?: SimRelicConfig) {
+    this.state = createSim(room, { seed, ...(relics ? { relics } : {}) });
   }
 
   previewDash(aim: Vec2): DashPreview {

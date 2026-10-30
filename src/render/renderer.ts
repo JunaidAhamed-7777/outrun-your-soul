@@ -17,7 +17,7 @@ import {
 import type { DashPreview, ReturnPreview, RoomDef, SimEvent, SimState } from '../sim/types';
 import { TUNING } from '../sim/tuning';
 import type { Vec2 } from '../sim/vec';
-import { BodyView, GateView, SentryView, SoulView, approach } from './actors';
+import { BodyView, GateView, SentryView, SoulView, approach, lerpVec } from './actors';
 import { BossBodyView, BossLayer, HeartView } from './boss';
 import { RelicLayer } from './relics';
 import { buildStation, STATION_SIZE, STATION_SPOT, type StationView } from './station';
@@ -233,6 +233,7 @@ export async function createRenderer(container: HTMLElement, options: RendererOp
     bolts.clear();
     lanes.clear();
     effects.clear();
+    bossLayer.clear();
     defeat = 0;
   }
 
@@ -288,6 +289,7 @@ export async function createRenderer(container: HTMLElement, options: RendererOp
           break;
         case 'kill':
           effects.kill(e.at);
+          if (e.cause === 'burst') effects.sparkle(e.at, new Color('#d9a43c'), 0.9);
           break;
         case 'hit':
           effects.hit(e.at);
@@ -321,6 +323,19 @@ export async function createRenderer(container: HTMLElement, options: RendererOp
         case 'roomCleared': {
           const at = exitCentre();
           if (at) effects.ring(at, new Color('#d9a43c'), 0.5, 3.2, 0.9, { thickness: 0.08 });
+          break;
+        }
+        case 'boss':
+          handleBossEvent(e);
+          break;
+        case 'knotMarked':
+          effects.sparkle({ x: body.pos.x, y: body.pos.y - 0.46 }, new Color('#e8411f'), 0.6);
+          break;
+        case 'decoyClaimed': {
+          // The claiming sentry's aim snaps onto the decoy: amber pulse on the ghost.
+          effects.ring(e.at, new Color('#ffb21e'), 0.15, 0.6, 0.3, { thickness: 0.3 });
+          const enemy = enemyById(state, e.enemyId);
+          if (enemy) effects.streak(enemy.pos, e.at, new Color('#ffb21e'), 0.12);
           break;
         }
         case 'victory':
@@ -368,7 +383,7 @@ export async function createRenderer(container: HTMLElement, options: RendererOp
       let view = sentries.get(enemy.id);
       if (!view) {
         if (kind === 'warden') view = new WardenView(lib, spot, enemy);
-        else if (kind === 'boss_body') view = new BossBodyView(lib, spot, enemy.radius);
+        else if (kind === 'boss_body') view = new BossBodyView(lib, enemy.radius);
         else if (kind === 'boss_heart') view = new HeartView(lib, spot, enemy.radius);
         else view = new SentryView(lib, spot, enemy);
         sentries.set(enemy.id, view);
@@ -402,11 +417,17 @@ export async function createRenderer(container: HTMLElement, options: RendererOp
       telegraphs.delete(id);
     }
 
+    // The Last Warden's parts cast shadows too (positions straight from the simulation).
+    const boss = state.boss;
+    if (boss && boss.phase !== 'dead') {
+      ground.shadow(lerpVec(boss.body.prevPos, boss.body.pos, alpha), 1.5, 0.9);
+      ground.shadow(lerpVec(boss.heart.prevPos, boss.heart.pos, alpha), 0.6, 0.45);
+    }
     ground.end(time, reducedMotion);
     const relics = relicView(state);
     ribbon.update(state, soul.pos, body.pos, dt, reducedMotion, relics.boosting);
     relicLayer.update(state, relics, soul.pos, body.pos, dt, reducedMotion);
-    bossLayer.update(state, alpha, dt, reducedMotion, body.pos);
+    bossLayer.update(state, alpha, dt, reducedMotion, body.pos, room);
     preview.update(
       state,
       body.pos,
@@ -478,6 +499,51 @@ export async function createRenderer(container: HTMLElement, options: RendererOp
     for (const tele of telegraphs.values()) tele.group.visible = !on;
     effects.clear();
     applyCamera();
+  }
+
+  function handleBossEvent(e: Extract<SimEvent, { type: 'boss' }>): void {
+    switch (e.what) {
+      case 'wake':
+        effects.alert(e.at, 0.9);
+        effects.addShake(0.06);
+        break;
+      case 'telegraph':
+        effects.ring(e.at, new Color('#ffb21e'), 0.7, 1.4, 0.3, { thickness: 0.2 });
+        break;
+      case 'charge':
+        effects.dash(e.at, e.path?.[e.path.length - 1] ?? e.at, 0.3);
+        effects.addShake(0.05);
+        break;
+      case 'fan':
+        effects.muzzle(e.at, 1.0);
+        break;
+      case 'heartHit':
+        bossLayer.heartHit();
+        effects.hit(e.at);
+        effects.bellBurst(e.at, 0.9);
+        effects.addShake(0.12);
+        break;
+      case 'stagger':
+        effects.clang(e.at);
+        break;
+      case 'reunited':
+        effects.ring(e.at, new Color('#d9a43c'), 0.3, 1.0, 0.4, { thickness: 0.2 });
+        break;
+      case 'defeated': {
+        // A satisfying end: gold and ivory shatter, a wide double ring and a flare.
+        effects.kill(e.at);
+        effects.burst(e.at, 0.9, new Color('#f4ecd8'), 24, 3.2, 0.09, 0.9);
+        effects.burst(e.at, 0.8, new Color('#d9a43c'), 24, 2.8, 0.08, 0.9);
+        effects.burst(e.at, 0.6, new Color('#e8411f'), 12, 2.2, 0.06, 0.8);
+        effects.ring(e.at, new Color('#d9a43c'), 0.4, 3.4, 0.9, { thickness: 0.06 });
+        effects.ring(e.at, new Color('#fff1c8'), 0.2, 2.2, 0.7, { thickness: 0.1 });
+        effects.sparkle(e.at, new Color('#fff1c8'), 2.6);
+        effects.addShake(0.22);
+        break;
+      }
+      default:
+        break;
+    }
   }
 
   function handleExtraEvent(e: LooseEvent, state: SimState): void {
