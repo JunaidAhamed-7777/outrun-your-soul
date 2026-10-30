@@ -135,7 +135,7 @@ export class PreviewView {
   private readonly invalidX: Group;
   private readonly cancelGlyph: Group;
   private readonly cancelRing: Mesh<PlaneGeometry, ShaderMaterial>;
-  private readonly meet: Mesh<PlaneGeometry, ShaderMaterial>;
+  private readonly meet: Mesh<PlaneGeometry, MeshBasicMaterial>;
   private time = 0;
   private readonly ivory = color('ivory');
   private readonly grey = new Color('#8b90a8');
@@ -158,8 +158,12 @@ export class PreviewView {
     this.invalidX = crossGlyph(0.42, this.grey);
     this.cancelGlyph = crossGlyph(0.3, color('ivory'));
     this.cancelRing = flatPlane(0.8, ringMaterial({ color: color('ivory'), inner: 0.8, outer: 0.95, opacity: 0.8 }), 41);
-    this.meet = flatPlane(0.36, ringMaterial({ color: color('gold'), inner: 0.0, outer: 1, segments: 4, gap: 0.0 }), 38);
-    this.meet.rotation.y = Math.PI / 4;
+    // Return meet point: a small gold diamond lying on the ribbon (distinct from round markers).
+    const meetGeo = new PlaneGeometry(0.2, 0.2);
+    meetGeo.rotateX(-Math.PI / 2);
+    meetGeo.rotateY(Math.PI / 4);
+    this.meet = new Mesh(meetGeo, new MeshBasicMaterial({ color: color('gold'), transparent: true, depthTest: false, depthWrite: false }));
+    this.meet.renderOrder = 38;
     this.group.add(
       this.capacityArc,
       this.path.mesh,

@@ -17,6 +17,7 @@ import {
   OctahedronGeometry,
   PlaneGeometry,
   Quaternion,
+  RepeatWrapping,
   RingGeometry,
   Vector3,
   type BufferGeometry,
@@ -92,7 +93,15 @@ export function buildRoomView(room: RoomDef, lib: ModelLibrary): RoomView {
   const plazaNorth = room.height + 1;
   const plazaGeo = new PlaneGeometry(80, plazaNorth - plazaSouth);
   plazaGeo.rotateX(-Math.PI / 2);
-  const plaza = new Mesh(plazaGeo, sharedToon('cobalt_deep'));
+  // Large dark flagstones (2x2 tiles) so the surroundings read as stone, not void.
+  const plazaTex = stoneTile(128, 11, true);
+  plazaTex.wrapS = RepeatWrapping;
+  plazaTex.wrapT = RepeatWrapping;
+  plazaTex.repeat.set(40, (plazaNorth - plazaSouth) / 2);
+  const plazaMat = toon('cobalt_deep');
+  plazaMat.map = plazaTex;
+  disposables.push(plazaTex, plazaMat);
+  const plaza = new Mesh(plazaGeo, plazaMat);
   plaza.position.set(room.width / 2, -0.1, -(plazaSouth + plazaNorth) / 2);
   plaza.name = 'plaza';
   const groutGeo = new PlaneGeometry(room.width, room.height);

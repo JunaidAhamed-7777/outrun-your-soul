@@ -9,6 +9,8 @@ import type { Vec2 } from '../../sim/vec';
 import { createRenderer, type RenderOverlay } from '../renderer';
 import { LAB_ROOM, makeFixtureState, makeLane } from './fixture';
 import { MiniSim } from './minisim';
+import { RealSim } from './realsim';
+import { ROOMS, DEPARTURE_COURT } from '../../content/rooms';
 
 const params = new URLSearchParams(location.search);
 const scene = params.get('scene') ?? 'live';
@@ -18,9 +20,11 @@ const controls = document.getElementById('controls')!;
 
 let reducedMotion = params.get('rm') === '1';
 const renderer = await createRenderer(app, { reducedMotion, onContextLost: () => (hud.textContent = 'WebGL context lost') });
-renderer.setRoom(LAB_ROOM);
+// ?scene=sim runs the real simulation (room via ?room=<id>); other scenes use lab fixtures.
+const realRoom = ROOMS[params.get('room') ?? ''] ?? DEPARTURE_COURT;
+renderer.setRoom(scene === 'sim' ? realRoom : LAB_ROOM);
 
-const sim = new MiniSim(makeFixtureState());
+const sim: MiniSim | RealSim = scene === 'sim' ? new RealSim(realRoom) : new MiniSim(makeFixtureState());
 const still = makeFixtureState();
 let state: SimState = scene === 'still' ? still : sim.state;
 const overlay: RenderOverlay = { dashPreview: null, aimCancel: false, returnPreview: null, queued: false };
@@ -180,7 +184,7 @@ function autopilot(dt: number): void {
     sim.ret(pending);
     return;
   }
-  const alive = s.enemies.filter((e) => e.phase !== 'dead' && e.phase !== 'dormant');
+  const alive = s.enemies.filter((e) => e.phase !== 'dead');
   const target =
     alive.length && Math.random() < 0.5
       ? alive[Math.floor(Math.random() * alive.length)]!.pos
@@ -211,8 +215,7 @@ function tick(dt: number): void {
       acc -= 1 / 120;
     }
     state = sim.state;
-    if (!gateOverride) state.gate = 'sealed';
-    else state.gate = gates[gateIndex]!;
+    if (scene !== 'sim') state.gate = gateOverride ? gates[gateIndex]! : 'sealed';
     overlay.returnPreview = down || autoAim ? null : sim.previewReturn();
   } else {
     state.gate = gates[gateIndex]!;
