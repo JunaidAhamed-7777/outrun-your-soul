@@ -1,0 +1,50 @@
+{
+  "asset_id": "lane_emitter",
+  "status": "exported",
+  "author": "original (script-authored in Blender via the pinned Blender MCP bridge)",
+  "created_at": "2026-10-30T15:15:09+00:00",
+  "blender_version": "5.2.2 LTS",
+  "exporter_version": "5.2.40",
+  "source_path": "art/source/environment.blend",
+  "export": {
+    "path": "public/assets/models/lane_emitter.glb",
+    "bytes": 31364,
+    "sha256": "0811eb7ce6428832c29d07b1b7c8ca62f97c436dbd812ac5427cdd46b40d2f81"
+  },
+  "preview": "art/previews/lane_emitter-game-camera.png",
+  "measured": {
+    "triangles": 564,
+    "materials": [
+      "gold",
+      "gold_dark",
+      "lane_violet"
+    ],
+    "material_count": 3,
+    "bounds_min": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "bounds_max": [
+      1.0,
+      1.0,
+      0.9
+    ],
+    "dimensions": [
+      1.0,
+      1.0,
+      0.9
+    ],
+    "parts": [
+      "lane_emitter",
+      "lane_emitter_aperture",
+      "lane_emitter_body"
+    ]
+  },
+  "budget": {
+    "triangles": 600,
+    "materials": 3
+  },
+  "within_budget": true,
+  "notes": "Replaces one perimeter wall tile; footprint exactly [0,1]^2, height <= 0.9 m. Aperture empty at the front (-Y) face, rod height 0.2 m; rotate about the tile centre (0.5, 0.5) so it faces the lane. lane_violet glass rod sits in an open-topped trough so the tilted camera sees it at any yaw."
+}

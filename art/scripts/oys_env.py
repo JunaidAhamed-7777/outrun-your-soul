@@ -133,6 +133,52 @@ def add(pb: ob.PartBuilder, piece: bmesh.types.BMesh, key: str, center=(0, 0, 0)
     return pb.add(piece, key, ob.placement(center, rot))
 
 
+def add_banded_lathe(pb: ob.PartBuilder, profile, keys, center=(0, 0, 0), segments: int = 10,
+                     rot=None) -> ob.PartBuilder:
+    """Revolve [(radius, z), ...] around Z with palette key keys[i] on the band from profile[i]
+    to profile[i + 1] (len(keys) == len(profile) - 1). End caps take the adjacent band's key;
+    zero-radius ends become poles. One closed surface, so material changes cost no extra caps.
+    """
+    if len(keys) != len(profile) - 1:
+        raise ValueError('add_banded_lathe needs one key per band')
+    slots = [pb._slot(k) for k in keys]  # noqa: SLF001 - same toolkit
+    bm = bmesh.new()
+    rings = []
+    for r, z in profile:
+        if r <= 1e-6:
+            rings.append([bm.verts.new((0.0, 0.0, z))])
+        else:
+            rings.append([bm.verts.new((r * math.cos(2 * math.pi * i / segments),
+                                         r * math.sin(2 * math.pi * i / segments), z))
+                          for i in range(segments)])
+    for band, (a, b) in enumerate(zip(rings, rings[1:])):
+        for i in range(segments):
+            j = (i + 1) % segments
+            if len(a) == 1 and len(b) == 1:
+                continue
+            if len(a) == 1:
+                face = bm.faces.new((a[0], b[i], b[j]))
+            elif len(b) == 1:
+                face = bm.faces.new((a[i], b[0], a[j]))
+            else:
+                face = bm.faces.new((a[i], a[j], b[j], b[i]))
+            face.material_index = slots[band]
+    if len(rings[0]) > 1:
+        bm.faces.new(list(reversed(rings[0]))).material_index = slots[0]
+    if len(rings[-1]) > 1:
+        bm.faces.new(rings[-1]).material_index = slots[-1]
+    bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
+    return merge_preassigned(pb, bm, ob.placement(center, rot))
+
+
+def merge_preassigned(pb: ob.PartBuilder, bm: bmesh.types.BMesh, matrix: Matrix | None = None) -> ob.PartBuilder:
+    """Merge a bmesh whose faces already carry PartBuilder slot indices (see add_banded_lathe)."""
+    if matrix is not None:
+        bmesh.ops.transform(bm, matrix=matrix, verts=bm.verts)
+    _merge(pb.bm, bm)
+    return pb
+
+
 # ---------------------------------------------------------------------------
 # Composites (never exported: tagged and kept out of every asset hierarchy)
 # ---------------------------------------------------------------------------
