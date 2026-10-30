@@ -380,15 +380,19 @@ export class SentryView {
     else if (enemy.phase === 'recover') glow = 0.35;
     for (const m of this.eyeMaterials) m.emissiveIntensity = glow;
 
+    // Muzzle glow works for any model (GLBs carry no special eye material): a soft amber
+    // flicker while tracking, a steadily growing charge once the line is locked.
     const progress = enemy.phase === 'locked' && enemy.phaseDuration > 0 ? Math.min(1, enemy.phaseTime / enemy.phaseDuration) : 0;
     const chargeMat = this.charge.material as SpriteMaterial;
-    if (enemy.phase === 'locked' && this.muzzle) {
+    const tracking = enemy.phase === 'tracking';
+    if ((enemy.phase === 'locked' || tracking) && this.muzzle) {
+      this.root.updateMatrixWorld(true);
       this.muzzle.getWorldPosition(this.tmp);
       this.root.worldToLocal(this.tmp);
       this.charge.position.copy(this.tmp);
-      const size = 0.25 + progress * 0.45;
+      const size = tracking ? 0.26 + (reducedMotion ? 0 : 0.05 * Math.sin(time * 16)) : 0.3 + progress * 0.5;
       this.charge.scale.set(size, size, 1);
-      chargeMat.opacity = 0.35 + progress * 0.6;
+      chargeMat.opacity = tracking ? 0.45 : 0.5 + progress * 0.5;
     } else {
       chargeMat.opacity = 0;
     }

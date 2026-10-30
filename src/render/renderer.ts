@@ -74,6 +74,8 @@ export interface GameRenderer {
   stats(): RenderStats;
   /** Dev diagnostics only: visible renderables grouped by top-level scene child. */
   drawBreakdown(): Record<string, number>;
+  /** Dev diagnostics only: magnify around a ground point (null restores the game framing). */
+  debugCloseUp(center: Vec2 | null, zoom?: number): void;
 }
 
 export function isWebGL2Available(): boolean {
@@ -121,6 +123,7 @@ export async function createRenderer(container: HTMLElement, options: RendererOp
   let fit: CameraFit | null = null;
   let time = 0;
   let defeat = 0;
+  let closeUp: { center: Vec2; zoom: number } | null = null;
 
   const body = new BodyView(lib, spot);
   const soul = new SoulView(lib, spot);
@@ -157,10 +160,11 @@ export async function createRenderer(container: HTMLElement, options: RendererOp
     const w = Math.max(1, container.clientWidth);
     const h = Math.max(1, container.clientHeight);
     fit = fitCamera({ roomWidth: room.width, roomHeight: room.height, viewportWidth: w, viewportHeight: h });
-    camera.left = -fit.viewWidth / 2;
-    camera.right = fit.viewWidth / 2;
-    camera.top = fit.viewHeight / 2;
-    camera.bottom = -fit.viewHeight / 2;
+    const z = closeUp?.zoom ?? 1;
+    camera.left = -fit.viewWidth / 2 / z;
+    camera.right = fit.viewWidth / 2 / z;
+    camera.top = fit.viewHeight / 2 / z;
+    camera.bottom = -fit.viewHeight / 2 / z;
     camera.updateProjectionMatrix();
     placeCamera();
   }
@@ -169,8 +173,10 @@ export async function createRenderer(container: HTMLElement, options: RendererOp
     if (!fit) return;
     const [x, y, z] = fit.position(CAMERA_DISTANCE);
     const o = effects.cameraOffset;
-    camera.position.set(x + o.x, y + o.y, z + o.z);
-    camera.lookAt(fit.target.x + o.x, o.y, -fit.target.y + o.z);
+    const dx = closeUp ? closeUp.center.x - fit.target.x : 0;
+    const dy = closeUp ? closeUp.center.y - fit.target.y : 0;
+    camera.position.set(x + o.x + dx, y + o.y, z + o.z - dy);
+    camera.lookAt(fit.target.x + o.x + dx, o.y, -fit.target.y + o.z - dy);
     camera.updateMatrixWorld();
   }
 
@@ -394,6 +400,10 @@ export async function createRenderer(container: HTMLElement, options: RendererOp
         pixelRatio: gl.getPixelRatio(),
         models,
       };
+    },
+    debugCloseUp(center: Vec2 | null, zoom = 3) {
+      closeUp = center ? { center, zoom } : null;
+      applyCamera();
     },
     drawBreakdown() {
       const out: Record<string, number> = {};

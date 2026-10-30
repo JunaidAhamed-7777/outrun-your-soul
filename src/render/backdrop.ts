@@ -180,17 +180,17 @@ export function buildBackdrop(room: RoomDef, pitch: number, lib: ModelLibrary): 
     map: sunTex,
     color: new Color('#fff1c8'),
     transparent: true,
-    opacity: 0.9,
+    opacity: 0.55,
     blending: AdditiveBlending,
     depthWrite: false,
   });
   disposables.push(sunMat);
-  addCard(new PlaneGeometry(6.5, 6.5), sunMat, -6, 'sun').position.set(room.width * 0.22, 2.6, -6);
+  addCard(new PlaneGeometry(5, 5), sunMat, -6, 'sun').position.set(room.width * 0.22, 3.0, -6);
   const sunDisc = new MeshBasicMaterial({ color: new Color('#fff6dc'), transparent: true, opacity: 0.85, depthWrite: false });
   disposables.push(sunDisc);
   const discShape = new Shape();
   discShape.absarc(0, 0, 0.55, 0, Math.PI * 2, false);
-  addCard(new ShapeGeometry(discShape, 24), sunDisc, -5.9, 'sun_disc').position.set(room.width * 0.22, 2.6, -5.9);
+  addCard(new ShapeGeometry(discShape, 24), sunDisc, -5.9, 'sun_disc').position.set(room.width * 0.22, 3.0, -5.9);
 
   // Far cliffs, two hazy layers.
   addCard(ridge(-18, room.width + 18, rand, 1.9, 1.3), basic('#cfa59a'), -5, 'ridge_far').position.x = -cx;

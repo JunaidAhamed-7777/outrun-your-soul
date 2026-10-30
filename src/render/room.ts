@@ -170,8 +170,10 @@ export function buildRoomView(room: RoomDef, lib: ModelLibrary): RoomView {
 
   // Interior walls and perimeter.
   const wallPlacements: Placement[] = [];
+  // Interior obstacles: warm sand caps, a step below the ivory of the courier.
+  const sand = new Color(0.88, 0.84, 0.8);
   for (const w of room.walls) {
-    for (let y = w.y; y < w.y + w.h; y++) for (let x = w.x; x < w.x + w.w; x++) wallPlacements.push({ matrix: placeAt(x, y) });
+    for (let y = w.y; y < w.y + w.h; y++) for (let x = w.x; x < w.x + w.w; x++) wallPlacements.push({ matrix: placeAt(x, y), tint: sand });
   }
   // Perimeter stone is tinted down so interior obstacles stay the brightest architecture.
   const rim = new Color(0.6, 0.64, 0.8);
