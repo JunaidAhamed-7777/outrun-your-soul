@@ -19,6 +19,9 @@ const ACTORS = {
   soul_mask: { parts: ['mask', 'wisp'], front: 'mask', back: 'wisp' },
   needler: { parts: ['base', 'head', 'muzzle'], front: 'muzzle' },
   keeper: { parts: ['base', 'head', 'muzzle'], front: 'muzzle' },
+  warden: { parts: ['base', 'body', 'shield', 'core', 'muzzle'], front: 'muzzle', shieldCoversCore: true },
+  last_warden_body: { parts: ['body', 'head', 'mask', 'mantle'], front: 'mask', back: 'mantle' },
+  last_warden_heart: { parts: ['cage', 'core'], front: 'core', tilted: true },
 };
 
 function parseGlb(path) {
@@ -119,14 +122,22 @@ function verify(id, spec) {
   const nodeIndex = (n) => names.indexOf(`${id}_${n}`);
   const pos = (n) => apply(world.get(nodeIndex(n)), [0, 0, 0]);
   const front = pos(spec.front);
-  if (spec.front === 'mask') {
+  if (spec.front === 'mask' || spec.tilted) {
     // A face tipped up toward the camera: its chin (lowest vertex) sits forward (+Z) of its brow.
-    const verts = worldVertices(json, buf, nodeIndex('mask'), world.get(nodeIndex('mask')));
+    const verts = worldVertices(json, buf, nodeIndex(spec.front), world.get(nodeIndex(spec.front)));
     const low = verts.reduce((a, b) => (b[1] < a[1] ? b : a));
     const high = verts.reduce((a, b) => (b[1] > a[1] ? b : a));
-    check('mask faces +Z (chin forward of brow)', low[2] > high[2] + 0.05, { chin: low.map((v) => +v.toFixed(3)), brow: high.map((v) => +v.toFixed(3)) });
+    check(`${spec.front} faces +Z (lowest point forward of highest)`, low[2] > high[2] + 0.05, { chin: low.map((v) => +v.toFixed(3)), brow: high.map((v) => +v.toFixed(3)) });
   } else {
     check(`${spec.front} faces +Z (glTF forward)`, front[2] > 0.02 && Math.abs(front[0]) < 0.01, { pivot: front.map((v) => +v.toFixed(3)) });
+  }
+  if (spec.shieldCoversCore) {
+    // The raised shield must sit in front (+Z) of the core so it hides it from the camera.
+    const shield = partBounds[`${id}_shield`];
+    const core = partBounds[`${id}_core`];
+    const covers = shield.min[0] < core.min[0] && shield.max[0] > core.max[0] &&
+      shield.min[1] < core.min[1] && shield.max[1] > core.max[1] + 0.2;
+    check('raised shield in front of and covering core', shield.max[2] > core.max[2] + 0.03 && covers, { shield, core });
   }
   if (spec.back) {
     const b = partBounds[`${id}_${spec.back}`];
