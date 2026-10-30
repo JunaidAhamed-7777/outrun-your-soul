@@ -373,6 +373,7 @@ export async function createRenderer(container: HTMLElement, options: RendererOp
     const seen = seenEnemies;
     seen.clear();
     for (const enemy of state.enemies) {
+      if (enemy.hidden) continue; // not arrived yet: its 'wake' event plays the spawn-in effect
       seen.add(enemy.id);
       const kind = roleKind(enemy);
       if (enemy.phase !== 'dead') {

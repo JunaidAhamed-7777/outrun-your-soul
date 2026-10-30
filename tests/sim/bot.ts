@@ -45,7 +45,7 @@ function segmentPointDistance(a: Vec2, b: Vec2, p: Vec2): number {
 function nearestAlive(state: SimState): EnemyState | null {
   let best: EnemyState | null = null;
   for (const e of state.enemies) {
-    if (e.phase === 'dead') continue;
+    if (e.phase === 'dead' || e.hidden) continue;
     if (!best || dist(e.pos, state.body.pos) < dist(best.pos, state.body.pos)) best = e;
   }
   return best;

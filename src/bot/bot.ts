@@ -66,7 +66,7 @@ export interface BotResult {
 const clone = (s: SimState): SimState => structuredClone(s);
 
 function aliveEnemies(s: SimState) {
-  return s.enemies.filter((e) => e.phase !== 'dead');
+  return s.enemies.filter((e) => e.phase !== 'dead' && !e.hidden);
 }
 
 /**

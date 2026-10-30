@@ -2,7 +2,13 @@ import { describe, expect, it } from 'vitest';
 import { NOVICE_BOT, playRoom } from '../../src/bot/bot';
 import { FIRST_LIGHT, validateRoom } from '../../src/content/rooms';
 import { DEFAULT_READ_SECONDS, READ_SECONDS, TIMED_STEPS, TUTORIAL_STEPS, TutorialCoach } from '../../src/game/tutorial';
-import { createSim, stepSim, type SimEvent, type SimState } from '../../src/sim';
+import { createSim, stepSim, wakeByKey, type RoomDef, type SimEvent, type SimState } from '../../src/sim';
+
+/** First Light with the first sentry already arrived (what lesson 5 does in the game). */
+const ARRIVED: RoomDef = {
+  ...FIRST_LIGHT,
+  enemies: FIRST_LIGHT.enemies.map((e) => (e.id === 'dummy' ? { ...e, dormant: false, hidden: false } : e)),
+};
 
 const ev = (e: Record<string, unknown>) => e as unknown as SimEvent;
 
@@ -85,10 +91,27 @@ describe('First Light room', () => {
     expect(validateRoom(FIRST_LIGHT)).toEqual([]);
   });
 
-  it('stays quiet for the movement lessons, then its shots land but never drop health below 1', () => {
+  it('has no sentry present or able to hurt during the movement lessons', () => {
     const s = createSim(FIRST_LIGHT, { seed: 1, minHealth: 1 });
-    while (s.time < 15) stepSim(s, []);
+    while (s.time < 60) stepSim(s, []);
     expect(s.health).toBe(s.maxHealth);
+    expect(s.enemies.every((e) => e.hidden && e.phase === 'dormant')).toBe(true);
+  });
+
+  it('a hidden sentry cannot be struck: dashing through its spot does nothing', () => {
+    const s = createSim(FIRST_LIGHT, { seed: 1 });
+    const dummy = s.enemies.find((e) => e.key === 'dummy')!;
+    stepSim(s, [{ kind: 'dash', aim: { x: dummy.pos.x - s.body.pos.x, y: dummy.pos.y - s.body.pos.y } }]);
+    while (s.time < 1) stepSim(s, []);
+    expect(dummy.phase).toBe('dormant');
+    expect(s.stats.kills).toBe(0);
+  });
+
+  it('once lesson 5 brings the sentry in, its shots land but never drop health below 1', () => {
+    const s = createSim(FIRST_LIGHT, { seed: 1, minHealth: 1 });
+    const arrival = wakeByKey(s, 'dummy');
+    expect(arrival.map((e) => e.type)).toEqual(['wake']);
+    expect(s.enemies.find((e) => e.key === 'dummy')!.hidden).toBeUndefined();
     while (s.time < 120) stepSim(s, []);
     expect(s.stats.hits).toBeGreaterThan(s.maxHealth);
     expect(s.health).toBe(1);
@@ -96,7 +119,8 @@ describe('First Light room', () => {
   });
 
   it('is cleared by a novice-timed bot without losing', () => {
-    const r = playRoom(FIRST_LIGHT, { seed: 1 }, NOVICE_BOT);
+    // The tutorial wakes the first sentry at lesson 5; here it arrives at once.
+    const r = playRoom(ARRIVED, { seed: 1 }, NOVICE_BOT);
     expect(r.outcome).toBe('victory');
     expect(r.healthLeft).toBeGreaterThan(0);
     expect(r.killOrder[0]).toBe('dummy');

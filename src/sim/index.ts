@@ -7,6 +7,7 @@ import { createSim as create, type CreateOptions } from './create';
 import { checkInvariants as check } from './invariants';
 import { previewDash as dashForecast, previewReturn as returnForecast } from './preview';
 import { stepInternal } from './step';
+export { wakeByKey } from './step';
 import type { Command, DashPreview, ReturnPreview, RoomDef, SimEvent, SimState } from './types';
 import type { Vec2 } from './vec';
 

@@ -91,6 +91,7 @@ export function validateRoom(room: RoomDef): string[] {
     if (!circleClear(room, e.at, radius)) err(`enemy ${e.id} overlaps a wall or bound`);
     if (dist(e.at, room.spawn) < radius + TUNING.bodyRadius + 0.5) err(`enemy ${e.id} is on top of the spawn`);
     if (e.wake && !e.dormant) err(`enemy ${e.id} has a wake trigger but is not dormant`);
+    if (e.hidden && !e.dormant) err(`enemy ${e.id} is hidden but not dormant`);
     if (e.wake?.kind === 'enemyKilled') {
       const awaited = e.wake.enemy;
       if (awaited === e.id) err(`enemy ${e.id} waits for its own death`);

@@ -16,7 +16,7 @@ export const TUTORIAL_STEPS: readonly TutorialStep[] = [
   { id: 'follow', title: 'Your soul follows', text: 'Your soul walks your red thread slowly. Wait, and it will catch up and rejoin you.' },
   { id: 'return', title: 'Return', text: 'Dash out again, then tap once (no drag). Your body runs back along the thread to meet your soul.' },
   { id: 'contact', title: 'Meet early', text: 'Dash out, then dash straight back into your soul. Touching it rejoins you at once — the gold ring shows where.' },
-  { id: 'strike', title: 'Strike', text: 'A dash cuts through anything in its path. Break the sentry on the right before it starts firing.' },
+  { id: 'strike', title: 'Strike', text: 'A sentry has arrived, and it will fire at you. A dash cuts through anything in its path: break it.' },
   { id: 'locked', title: 'Read the amber line', text: 'An amber line is a shot about to fire. Once it locks it never moves: step off it, or dash through the bolt.' },
   { id: 'keeper', title: 'Protect your soul', text: 'The lantern aims where your soul is going, not where it is. Return or dash back to it before the shot lands, then break the lantern.' },
   { id: 'gate', title: 'Leave together', text: 'The gate opens only for both of you. Rejoin your soul and step into the gate.' },

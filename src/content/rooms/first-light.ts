@@ -1,7 +1,7 @@
 /**
  * First Light: the onboarding room played before a player's first expedition. Not part
- * of the expedition template pool. The first sentry wakes after the movement lessons;
- * each later threat wakes only when the previous one falls. Hits land but the room runs
+ * of the expedition template pool. No sentry is present during the movement lessons: the
+ * first arrives when lesson 5 begins, each later one when the previous one falls. Hits land but the room runs
  * with a health floor of 1, so nobody can lose here; the step-by-step prompts live in src/game/tutorial.ts.
  *
  * Layout (8 x 12 tiles, y grows up the screen):
@@ -11,7 +11,7 @@
  *   y=10 |        |
  *        |n       |   needler n wakes when the dummy breaks (aims at the body)
  *   y=7  |  ##    |   low block: cover from the needler's line
- *        |     d  |   sentry d: quiet for 18 s, then fires; the first strike target
+ *        |     d  |   sentry d: arrives when lesson 5 begins, then fires; the first strike target
  *   y=4  |        |
  *        |        |   open start: room to practise dash, follow, RETURN, contact
  *   y=1  |   S    |
@@ -28,22 +28,17 @@ export const FIRST_LIGHT: RoomDef = {
   spawn: { x: 4, y: 1.5 },
   exit: { x: 3, y: 11, w: 2, h: 1 },
   enemies: [
-    // Quiet while the movement lessons run, then it starts firing at the body. The tutorial
-    // runs with a health floor of 1 (src/game/game.ts), so shots teach without ending the run.
-    {
-      id: 'dummy',
-      role: 'needler',
-      at: { x: 5.6, y: 5.6 },
-      facing: { x: 0, y: -1 },
-      dormant: true,
-      wake: { kind: 'time', seconds: 18 },
-    },
+    // Not present during the movement lessons: the tutorial wakes it (spawn-in) when step 5
+    // begins, and it starts firing at the body. The tutorial runs with a health floor of 1
+    // (src/game/game.ts), so shots teach without ending the run.
+    { id: 'dummy', role: 'needler', at: { x: 5.6, y: 5.6 }, facing: { x: 0, y: -1 }, dormant: true, hidden: true },
     {
       id: 'needler',
       role: 'needler',
       at: { x: 1.2, y: 8.8 },
       facing: { x: 1, y: -1 },
       dormant: true,
+      hidden: true,
       wake: { kind: 'enemyKilled', enemy: 'dummy' },
       // Extra idle time after waking so the first lock arrives after the prompt is read.
       phase: -1.2,
@@ -54,6 +49,7 @@ export const FIRST_LIGHT: RoomDef = {
       at: { x: 6.8, y: 10.4 },
       facing: { x: -1, y: -1 },
       dormant: true,
+      hidden: true,
       wake: { kind: 'enemyKilled', enemy: 'needler' },
       phase: -1.2,
     },

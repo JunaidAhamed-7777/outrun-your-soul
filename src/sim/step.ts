@@ -399,7 +399,7 @@ function findCollision(state: SimState, plan: Plan, bp: BossPlan | null, span: n
 
     if (dashing) {
       for (const e of state.enemies) {
-        if (e.phase === 'dead') continue;
+        if (e.phase === 'dead' || e.hidden) continue;
         const reachE = TUNING.bodyRadius + e.radius;
         const tKill =
           e.role === 'warden'
@@ -518,8 +518,21 @@ function removeProjectile(state: SimState, id: number): ProjectileState | undefi
 
 function wake(state: SimState, e: EnemyState, events: SimEvent[]): void {
   if (e.phase !== 'dormant') return;
+  delete e.hidden;
   wakeEnemy(e, roomIndex(state.room).spawns.get(e.key));
   events.push({ type: 'wake', t: state.time, enemyId: e.id });
+}
+
+/**
+ * Wake a dormant sentry by its authored id from outside the step (e.g. a scripted tutorial
+ * beat). Call between steps; the returned events belong to the next frame. Deterministic
+ * given when it is called, like a command.
+ */
+export function wakeByKey(state: SimState, key: string): SimEvent[] {
+  const events: SimEvent[] = [];
+  const e = state.enemies.find((x) => x.key === key);
+  if (e) wake(state, e, events);
+  return events;
 }
 
 function wakeWhere(state: SimState, events: SimEvent[], test: (spawn: EnemySpawn) => boolean): void {
@@ -637,7 +650,7 @@ function arrivalEffects(state: SimState, at: Vec2, events: SimEvent[]): void {
     relics.bellCharged = false;
     const killed: number[] = [];
     for (const e of state.enemies) {
-      if (e.phase === 'dead' || dist(e.pos, at) > bell.burstRadius + e.radius) continue;
+      if (e.phase === 'dead' || e.hidden || dist(e.pos, at) > bell.burstRadius + e.radius) continue;
       killEnemy(state, e, 'burst', events);
       killed.push(e.id);
     }

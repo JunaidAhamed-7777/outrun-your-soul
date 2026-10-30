@@ -40,6 +40,8 @@ export interface EnemySpawn {
   readonly facing?: Vec2;
   /** Dormant enemies never attack until their wake trigger fires (tutorial teaching rule). */
   readonly dormant?: boolean;
+  /** Not yet arrived: invisible and untouchable (no kill, cut or burst) until woken. Requires dormant. */
+  readonly hidden?: boolean;
   readonly wake?: WakeTrigger;
   /** Authored initial cycle offset in seconds. Deterministic; no hidden randomness. */
   readonly phase?: number;
@@ -148,6 +150,8 @@ export type EnemyPhase = 'dormant' | 'idle' | 'tracking' | 'locked' | 'recover' 
 
 export interface EnemyState {
   readonly id: EntityId;
+  /** True while a hidden spawn has not arrived yet (see EnemySpawn.hidden). */
+  hidden?: boolean;
   /** Authored room ID (EnemySpawn.id). */
   readonly key: string;
   readonly role: EnemyRole;

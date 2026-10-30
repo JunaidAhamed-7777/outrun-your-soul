@@ -161,6 +161,7 @@ export function createEnemy(spawn: EnemySpawn, id: EntityId): EnemyState {
     role: spawn.role,
     pos: spawn.at,
     radius: roleRadius(spawn.role),
+    ...(dormant && spawn.hidden ? { hidden: true } : {}),
     phase: dormant ? 'dormant' : 'idle',
     // `phase` is idle time already elapsed at activation; negative delays the first attack.
     phaseTime: dormant ? 0 : (spawn.phase ?? 0),

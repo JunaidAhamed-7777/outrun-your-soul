@@ -22,6 +22,7 @@ import {
   STEP_SECONDS,
   stepSim,
   TUNING,
+  wakeByKey,
   type Command,
   type RoomDef,
   type SimEvent,
@@ -633,6 +634,12 @@ export async function startGame(container: HTMLElement): Promise<GameHandle | nu
     }
     if (tutorial && isTutorialRoom() && phase === 'playing') {
       const view = tutorial.coach.view;
+      // Lesson 5 brings the first sentry in; it was absent (hidden) during the movement lessons.
+      if (view.step?.id === 'strike' && sim.enemies.some((e) => e.key === 'dummy' && e.hidden)) {
+        const arrival = wakeByKey(sim, 'dummy');
+        activeRenderer.handleEvents(arrival, sim);
+        audio.handleEvents(arrival, sim);
+      }
       if (view.justCompleted) {
         objective.flash();
         audio.ui('select');

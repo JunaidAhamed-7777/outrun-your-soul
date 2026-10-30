@@ -571,6 +571,34 @@ try {
   await objective.waitFor({ state: 'visible', timeout: 5000 }).catch(() => {});
   const objectiveText = (await objective.textContent().catch(() => '')) ?? '';
   report.screenshots.push(await shot(page, 'tutorial'));
+  // Lessons 1-4 (dash, follow, RETURN, contact) are performed for real; no sentry may exist
+  // until lesson 5, which brings the first one in. Then the bot clears the room.
+  const lessons = await page.evaluate(() => {
+    const g = window.__oys;
+    const present = () => g.state().enemies.filter((e) => !e.hidden).map((e) => e.key);
+    const seen = { beforeLesson5: [] };
+    g.push({ kind: 'dash', aim: { x: 0, y: 2 } });
+    g.advance(3);
+    g.advance(5.6);
+    g.push({ kind: 'dash', aim: { x: 2, y: 0 } });
+    g.advance(0.4);
+    g.push({ kind: 'return' });
+    g.advance(3);
+    seen.beforeLesson5 = present();
+    g.push({ kind: 'dash', aim: { x: -3, y: 0 } });
+    g.advance(0.35);
+    const b = g.state().body.pos;
+    const so = g.state().soul.pos;
+    g.push({ kind: 'dash', aim: { x: so.x - b.x, y: so.y - b.y } });
+    g.advance(3.6);
+    return { ...seen, afterLesson5: present(), contacts: g.state().stats.contactReunions };
+  });
+  report.screenshots.push(await shot(page, 'tutorial-sentry-arrives'));
+  record(
+    'B0a tutorial: no sentry exists during lessons 1-4; the first arrives when lesson 5 begins',
+    lessons.beforeLesson5.length === 0 && lessons.afterLesson5.includes('dummy'),
+    `present before lesson 5: [${lessons.beforeLesson5}]; after: [${lessons.afterLesson5}]; contact reunions ${lessons.contacts}`,
+  );
   const tutorialClear = await botPlayRoom(page);
   const begin = page.getByRole('button', { name: 'Begin the expedition' });
   await begin.waitFor({ state: 'visible', timeout: 8000 });
