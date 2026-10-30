@@ -115,13 +115,13 @@ for side, length, droop, spread, width in ((1, 0.2, 0.36, 0.26, 0.13), (-1, 0.14
 scarf_obj = asset.mesh('scarf', scarf, location=(0, 0, NECK_Z - HIP_Z), parent=body_obj)
 
 if MCP_ARGS.get('views') == '1':  # noqa: F821 - debug renders, not committed
-    ob.render_preview(asset, 'art/logs/courier_front.png', size=512, pitch_deg=8.0)
-    ob.render_preview(asset, 'art/logs/courier_side.png', size=512, pitch_deg=8.0, yaw_deg=90.0)
+    ob.render_preview(asset, 'art/logs/courier_front.png', size=512, pitch_deg=8.0, view_transform='Standard')
+    ob.render_preview(asset, 'art/logs/courier_side.png', size=512, pitch_deg=8.0, yaw_deg=90.0, view_transform='Standard')
 
 if MCP_ARGS.get('dry') == '1':  # noqa: F821 - injected by scripts/blender-mcp.mjs
     print(ob.stats(asset))
 else:
-    ob.finish(asset, budget_triangles=2000, budget_materials=3, pitch_deg=58.0,
+    ob.finish(asset, budget_triangles=2000, budget_materials=3, pitch_deg=58.0, view_transform='Standard',
               notes=('Stolen courier body. Ivory robe and cowl, black hood opening framing an enlarged ivory mask '
                      'tilted 36 deg up toward the game camera, slanted eye slits, dark boots/belt/satchel, '
                      'vermilion shawl over the shoulders (rings the mask from above) with two broad tails falling back and out, flat faces turned to the camera so they read as cloth at ~40 px. '
