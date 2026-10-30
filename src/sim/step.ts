@@ -618,6 +618,7 @@ function resolve(state: SimState, ev: Candidate, events: SimEvent[], probe: Step
       const boundary = ev.boundary;
       if (!lane || !boundary) return;
       lane.cycleTime = mod(boundary.at, laneDef(state, lane).period);
+      if (lane.status === boundary.status) return;
       lane.status = boundary.status;
       lane.attackId = boundary.status === 'active' ? state.nextId++ : null;
       events.push({ type: 'lane', t, laneId: lane.id, status: lane.status });

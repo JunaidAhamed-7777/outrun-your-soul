@@ -29,7 +29,11 @@ export interface LaneBoundary {
   readonly status: LaneStatus;
 }
 
-/** The next status boundary strictly after the current cycle position. */
+/**
+ * The next status boundary strictly after the current cycle position. Resolving a
+ * boundary sets cycleTime to exactly `at`, so only an exact zero means "already
+ * processed"; a boundary approached to within float noise is still due now.
+ */
 export function nextLaneBoundary(def: LaneDef, cycleTime: number): LaneBoundary {
   const boundaries: { at: number; status: LaneStatus }[] = [
     { at: def.activeFrom, status: 'active' },
@@ -39,7 +43,9 @@ export function nextLaneBoundary(def: LaneDef, cycleTime: number): LaneBoundary 
   let best: LaneBoundary = { dt: Infinity, at: 0, status: 'idle' };
   for (const b of boundaries) {
     let dt = mod(b.at - cycleTime, def.period);
-    if (dt <= 1e-9) dt += def.period;
+    if (dt === 0) dt = def.period;
+    // A position a hair past the boundary (float noise after an exact resolution) wraps
+    // to almost a full period, which is correct: that boundary has been processed.
     if (dt < best.dt) best = { dt, at: b.at, status: b.status };
   }
   return best;
