@@ -1,0 +1,51 @@
+{
+  "asset_id": "last_warden_heart",
+  "status": "exported",
+  "author": "original (script-authored in Blender via the pinned Blender MCP bridge)",
+  "created_at": "2026-10-30T15:20:35+00:00",
+  "blender_version": "5.2.2 LTS",
+  "exporter_version": "5.2.40",
+  "source_path": "art/source/actors.blend",
+  "export": {
+    "path": "public/assets/models/last_warden_heart.glb",
+    "bytes": 61832,
+    "sha256": "4c1fd618fdf9d01c7b2f1e745b51f483f30fd5d28b53947dfd52c5b84333ed73"
+  },
+  "preview": "art/previews/last_warden_heart-game-camera.png",
+  "measured": {
+    "triangles": 1026,
+    "materials": [
+      "gold",
+      "gold_dark",
+      "vermilion",
+      "vermilion_dark"
+    ],
+    "material_count": 4,
+    "bounds_min": [
+      -0.2361,
+      -0.19,
+      0.0
+    ],
+    "bounds_max": [
+      0.2597,
+      0.19,
+      1.12
+    ],
+    "dimensions": [
+      0.4958,
+      0.38,
+      1.12
+    ],
+    "parts": [
+      "last_warden_heart",
+      "last_warden_heart_cage",
+      "last_warden_heart_core"
+    ]
+  },
+  "budget": {
+    "triangles": 2000,
+    "materials": 4
+  },
+  "within_budget": true,
+  "notes": "Last Warden heart: floating gold birdcage-lantern (small crown cap so the heart reads from above, domed base, eight bowed bars, equator ring, finial) holding a faceted vermilion heart with a vermilion_dark cleft and gold rivet, four vermilion_dark ember sparks, and a gold_dark chain to a ground anchor that marks the true position (the boss counterpart of the player soul wisp, in warm ember-gold, never cyan). Cage pivot at the heart centre (z 0.70); core is a child at the same pivot for pulse/spin."
+}
