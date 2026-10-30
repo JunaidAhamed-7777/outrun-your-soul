@@ -1,0 +1,122 @@
+{
+  "asset_id": "exit_gate",
+  "status": "exported",
+  "author": "original (script-authored in Blender via the pinned Blender MCP bridge)",
+  "created_at": "2026-10-30T14:54:42+00:00",
+  "blender_version": "5.2.2 LTS",
+  "exporter_version": "5.2.40",
+  "source_path": "art/source/environment.blend",
+  "export": {
+    "path": "public/assets/models/exit_gate.glb",
+    "bytes": 64772,
+    "sha256": "5c4742faccf11b6d53638282f2518fc7a276dd6a35efb5659985bcddbc457913"
+  },
+  "preview": "art/previews/exit_gate-game-camera.png",
+  "measured": {
+    "triangles": 1206,
+    "materials": [
+      "gold",
+      "gold_dark",
+      "ivory"
+    ],
+    "material_count": 3,
+    "bounds_min": [
+      -1.44,
+      -0.19,
+      0
+    ],
+    "bounds_max": [
+      1.44,
+      0.19,
+      2.352
+    ],
+    "dimensions": [
+      2.88,
+      0.38,
+      2.352
+    ],
+    "parts": [
+      "exit_gate",
+      "exit_gate_door_left",
+      "exit_gate_door_right",
+      "exit_gate_frame"
+    ]
+  },
+  "budget": {
+    "triangles": 2500,
+    "materials": 3
+  },
+  "within_budget": true,
+  "notes": "Gate origin at the ground centre of the 2-tile opening; doors closed, hinged at x=-1/+1 (rotate about the pivot vertical axis to open). Frame pillars occupy |x| in [1.02, 1.44], depth |y| <= 0.19, so they stand on the perimeter wall tiles beside the opening. Each leaf carries half of the ring emblem (left filled, right open).",
+  "glb_verification": {
+    "asset_id": "exit_gate",
+    "file": "public/assets/models/exit_gate.glb",
+    "sha256": "5c4742faccf11b6d53638282f2518fc7a276dd6a35efb5659985bcddbc457913",
+    "bytes": 64772,
+    "generator": "Khronos glTF Blender I/O v5.2.40",
+    "triangles": 1206,
+    "materials": [
+      "ivory",
+      "gold",
+      "gold_dark"
+    ],
+    "bounds_gltf_yup": {
+      "min": [
+        -1.44,
+        0,
+        -0.19
+      ],
+      "max": [
+        1.44,
+        2.352,
+        0.19
+      ]
+    },
+    "parts": [
+      "exit_gate",
+      "exit_gate_door_left",
+      "exit_gate_door_right",
+      "exit_gate_frame"
+    ],
+    "checks": [
+      {
+        "name": "single root named exit_gate",
+        "pass": true
+      },
+      {
+        "name": "all part nodes prefixed with the asset id",
+        "pass": true
+      },
+      {
+        "name": "materials are palette keys",
+        "pass": true
+      },
+      {
+        "name": "no cameras or lights",
+        "pass": true
+      },
+      {
+        "name": "parts frame/door_left/door_right",
+        "pass": true
+      },
+      {
+        "name": "door_left pivot at x=-1",
+        "pass": true
+      },
+      {
+        "name": "door_right pivot at x=+1",
+        "pass": true
+      },
+      {
+        "name": "stands on the ground, height along +Y",
+        "pass": true
+      },
+      {
+        "name": "opening centred on origin",
+        "pass": true
+      }
+    ],
+    "pass": true,
+    "verified_at": "2026-10-30T14:54:52Z"
+  }
+}
