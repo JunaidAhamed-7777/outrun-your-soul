@@ -50,7 +50,7 @@
   "within_budget": true,
   "notes": "Stolen courier body. Ivory robe and cowl, black hood opening framing an enlarged ivory mask tilted 36 deg up toward the game camera, slanted eye slits, dark boots/belt/satchel, vermilion shawl over the shoulders (rings the mask from above) with two broad tails falling back and out, flat faces turned to the camera so they read as cloth at ~40 px. Deviation: 3 materials (ivory, vermilion, mask_black) vs the 1-2 slot guideline; mask_black frames the face and breaks the silhouette. Parts: body pivot at hips (z 0.27), head pivot at neck (world z 0.50, child of body), mask child of head at the face centre, scarf pivot at the neck (child of body) for runtime sway.",
   "glb_verification": {
-    "checked_at": "2026-10-30T14:52:26.245Z",
+    "checked_at": "2026-10-30T15:21:42.946Z",
     "file": "public/assets/models/courier_body.glb",
     "bytes": 49268,
     "sha256": "35e08e07d9a711dce719d9ac113f9c407ea9e3d5c7ab70903ecdb91652cabcf5",
@@ -128,7 +128,7 @@
         }
       },
       {
-        "name": "mask faces +Z (chin forward of brow)",
+        "name": "mask faces +Z (lowest point forward of highest)",
         "ok": true,
         "detail": {
           "chin": [

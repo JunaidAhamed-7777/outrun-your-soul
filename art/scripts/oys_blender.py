@@ -448,6 +448,29 @@ def plate_with_holes(outline, holes, thickness: float, plane: str = 'XZ') -> bme
     return canonicalize(bm)
 
 
+def symmetric_panel(profile, cols: int, thickness: float) -> bmesh.types.BMesh:
+    """Solid panel symmetric about X=0 in the XZ plane, built as a grid with interior vertices.
+
+    profile: [(half_width, z), ...] bottom to top. Unlike plate_with_holes (whose scanfill
+    triangles only touch the outline), the grid lets deform() bend the whole surface, e.g.
+    curved shields. Front face at y = 0, solidified toward +Y.
+    """
+    bm = bmesh.new()
+    rows = []
+    for half, z in profile:
+        rows.append([bm.verts.new((-half + 2 * half * c / cols, 0.0, z)) for c in range(cols + 1)])
+    for a, b in zip(rows, rows[1:]):
+        for c in range(cols):
+            bm.faces.new((a[c], b[c], b[c + 1], a[c + 1]))
+    bmesh.ops.remove_doubles(bm, verts=bm.verts, dist=1e-6)
+    for face in bm.faces:
+        if face.normal.y > 0:
+            face.normal_flip()
+    bmesh.ops.solidify(bm, geom=list(bm.faces), thickness=thickness)
+    bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
+    return canonicalize(bm)
+
+
 def canonicalize(bm: bmesh.types.BMesh, places: int = 6) -> bmesh.types.BMesh:
     """Return a copy with deterministic vertex order, face order and face loop start.
 
