@@ -1,0 +1,48 @@
+{
+  "asset_id": "wall_block",
+  "status": "exported",
+  "author": "original (script-authored in Blender via the pinned Blender MCP bridge)",
+  "created_at": "2026-10-30T14:44:25+00:00",
+  "blender_version": "5.2.2 LTS",
+  "exporter_version": "5.2.40",
+  "source_path": "art/source/environment.blend",
+  "export": {
+    "path": "public/assets/models/wall_block.glb",
+    "bytes": 5228,
+    "sha256": "2209ab7b727cfede5626064bdea5d8e05469c8ca9d74b52daf4bc638921a269d"
+  },
+  "preview": "art/previews/wall_block-game-camera.png",
+  "measured": {
+    "triangles": 64,
+    "materials": [
+      "wall_body",
+      "wall_cap"
+    ],
+    "material_count": 2,
+    "bounds_min": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "bounds_max": [
+      1.0,
+      1.0,
+      0.55
+    ],
+    "dimensions": [
+      1.0,
+      1.0,
+      0.55
+    ],
+    "parts": [
+      "wall_block",
+      "wall_block_block"
+    ]
+  },
+  "budget": {
+    "triangles": 150,
+    "materials": 2
+  },
+  "within_budget": true,
+  "notes": "Low wall module, visual footprint exactly [0,1]^2. Navy wall_body plinth/body (inset 0.02 for joints) under a chamfered, slightly crowned ivory wall_cap coping stone. Chosen after composite iterations: navy tops blended into the floor; framed tops read as UI tiles."
+}

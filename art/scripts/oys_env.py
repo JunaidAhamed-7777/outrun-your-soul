@@ -20,10 +20,12 @@ COMPOSITE_TAG = 'oys_composite'
 # Geometry primitives
 # ---------------------------------------------------------------------------
 
-def rect_lathe(rings, cap_bottom: bool = True, cap_top: bool = True) -> bmesh.types.BMesh:
+def rect_lathe(rings, cap_bottom: bool = True, cap_top: bool = True, recalc: bool = True) -> bmesh.types.BMesh:
     """Stack of axis-aligned rectangles [(hx, hy, z), ...] bottom->top, centred on the Z axis.
 
     Gives chamfers, tapers, plinths and copings with exactly 8 triangles per band.
+    Rings may step inward at constant z (a flat ledge) or downward (an inner lip); face
+    winding then already points outward/upward, so pass recalc=False for open shells.
     """
     bm = bmesh.new()
     loops = []
@@ -38,7 +40,8 @@ def rect_lathe(rings, cap_bottom: bool = True, cap_top: bool = True) -> bmesh.ty
         bm.faces.new(list(reversed(loops[0])))
     if cap_top:
         bm.faces.new(loops[-1])
-    bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
+    if recalc:
+        bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
     return bm
 
 
@@ -202,7 +205,7 @@ def _set_engine(scene) -> None:
 def render_composite(tag: str, rel_path: str, *, width: int, height: int, ortho_width: float,
                      target, pitch_deg: float = 58.0, sky_key: str = 'sky_top',
                      sun_dir=(0.42, 0.62, -0.66), sun_energy: float = 3.6,
-                     sun_color=(1.0, 0.9, 0.76)) -> str:
+                     sun_color=(1.0, 0.9, 0.76), world_strength: float = 0.85) -> str:
     """Render only objects tagged with `tag` through an orthographic game camera.
 
     Camera looks along +Y tilted down by pitch, aimed at `target`; horizontal extent
@@ -256,7 +259,7 @@ def render_composite(tag: str, rel_path: str, *, width: int, height: int, ortho_
         bg = world.node_tree.nodes.get('Background')
         if bg:
             bg.inputs['Color'].default_value = ob.palette_rgba(sky_key)
-            bg.inputs['Strength'].default_value = 0.85
+            bg.inputs['Strength'].default_value = world_strength
         scene.world = world
 
         scene.camera = cam
