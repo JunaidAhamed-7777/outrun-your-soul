@@ -222,6 +222,15 @@ export async function startGame(container: HTMLElement): Promise<GameHandle | nu
       },
       pause: () => pause('user'),
       resume,
+      /** Drive the game synchronously (hidden/throttled browser panes do not fire frames). */
+      advance: (seconds: number, frameSeconds = 1 / 60) => {
+        for (let t = 0; t < seconds - 1e-9; t += frameSeconds) {
+          const steps = Math.round(frameSeconds / STEP_SECONDS);
+          for (let i = 0; i < steps; i++) step();
+          frame(1, frameSeconds);
+        }
+        return { t: sim.time, phase, outcome: sim.outcome, health: sim.health };
+      },
     };
   }
   return handle;
